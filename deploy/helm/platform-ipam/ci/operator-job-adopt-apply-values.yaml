@@ -1,0 +1,25 @@
+# CI-only overlay for scripts/ai/checks.py's helm() check (work-plan package
+# H3): operatorJob's mode: adopt, command: apply combination. Not a
+# deployment environment; only used by scripts/ai/check-helm. See
+# operator-job-adopt-plan-values.yaml for why identity.existingConfigMap is
+# set here.
+identity:
+  existingConfigMap: platform-ipam-identities-ci
+operatorJob:
+  enabled: true
+  mode: adopt
+  command: apply
+  args: ["--operator", "ci-operator"]
+  runId: ci-adopt-apply
+  input:
+    existingConfigMap: platform-ipam-adopt-records-ci
+    key: records.csv
+# The chart-wide egress list (what api and worker get: the database, AWS, the
+# OIDC issuer). Set here only so the helm check can tell it from onboard's own
+# list: onboard's NetworkPolicy must never contain it, adopt's must equal the
+# worker's.
+networkPolicy:
+  egress:
+    - cidr: 10.0.99.0/24
+      ports:
+        - {protocol: TCP, port: 5432}

@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["deploymentEnvironment", "image", "api", "worker", "database", "netbox", "auth", "aws", "policy", "ingress"],
+  "properties": {
+    "deploymentEnvironment": {"type": "string", "enum": ["stage", "prod"]},
+    "image": {
+      "type": "object", "additionalProperties": false, "required": ["repository", "digest"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "pullPolicy": {"type": "string", "enum": ["Always", "IfNotPresent", "Never"]},
+        "pullSecrets": {"type": "array", "items": {"type": "object", "required": ["name"], "additionalProperties": false, "properties": {"name": {"type": "string", "minLength": 1}}}}
+      }
+    },
+    "api": {"$ref": "#/definitions/workload"},
+    "worker": {"$ref": "#/definitions/workload"},
+    "database": {
+      "type": "object", "additionalProperties": false, "required": ["existingSecret", "secretKey"],
+      "properties": {"existingSecret": {"type": "string", "minLength": 1}, "secretKey": {"type": "string", "minLength": 1}}
+    },
+    "netbox": {
+      "type": "object", "additionalProperties": false, "required": ["url", "existingSecret", "secretKey"],
+      "properties": {
+        "url": {"type": "string", "format": "uri", "minLength": 1},
+        "existingSecret": {"type": "string", "minLength": 1},
+        "secretKey": {"type": "string", "minLength": 1}
+      }
+    },
+    "auth": {
+      "type": "object", "additionalProperties": false, "required": ["mode", "issuer", "audience"],
+      "properties": {
+        "mode": {"type": "string", "enum": ["oidc", "local"]},
+        "issuer": {"type": "string", "minLength": 1},
+        "audience": {"type": "string", "minLength": 1}
+      }
+    },
+    "aws": {
+      "type": "object", "additionalProperties": false, "required": ["mode"],
+      "properties": {
+        "mode": {"type": "string", "enum": ["live", "fake"]}
+      }
+    },
+    "identity": {"type": "object", "additionalProperties": false, "required": ["existingConfigMap"], "properties": {"existingConfigMap": {"type": "string"}}},
+    "policy": {
+      "type": "object", "additionalProperties": false, "required": ["configMapName", "data"],
+      "properties": {"configMapName": {"type": "string", "minLength": 1}, "data": {"type": "object"}}
+    },
+    "ingress": {
+      "type": "object", "additionalProperties": false, "required": ["enabled", "host", "tlsSecretName"],
+      "properties": {
+        "enabled": {"type": "boolean"}, "className": {"type": "string"}, "host": {"type": "string", "minLength": 1},
+        "tlsSecretName": {"type": "string", "minLength": 1}, "annotations": {"type": "object"}
+      }
+    },
+    "ui": {"type": "object", "additionalProperties": false, "required": ["inventoryLinksEnabled", "netboxBaseURL"], "properties": {"inventoryLinksEnabled": {"type": "boolean"}, "netboxBaseURL": {"type": "string", "format": "uri", "minLength": 1}}},
+    "podSecurityContext": {"type": "object"},
+    "containerSecurityContext": {"type": "object"},
+    "networkPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "apiIngress", "dns", "egress"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "apiIngress": {"$ref": "#/definitions/selectorPair"},
+        "dns": {"$ref": "#/definitions/selectorPair"},
+        "egress": {"type": "array", "items": {"$ref": "#/definitions/egressEntry"}}
+      }
+    },
+    "podDisruptionBudget": {"type": "object"},
+    "migration": {"type": "object", "additionalProperties": false, "required": ["backoffLimit", "activeDeadlineSeconds"], "properties": {"backoffLimit": {"type": "integer", "minimum": 0}, "activeDeadlineSeconds": {"type": "integer", "minimum": 1}}},
+    "uiProxy": {
+      "description": "Optional reverse proxy fronting an EXTERNAL NetBox UI (work-plan package A7, ADR 0006). Disabled by default; this chart never deploys NetBox itself.",
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "image", "replicas", "resources", "mode", "upstream", "basicAuth", "ingress", "networkPolicy"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "image": {
+          "type": "object", "additionalProperties": false, "required": ["repository", "tag"],
+          "properties": {
+            "repository": {"type": "string", "minLength": 1},
+            "tag": {"type": "string", "minLength": 1},
+            "digest": {"type": "string", "pattern": "^(|sha256:[0-9a-f]{64})$"}
+          }
+        },
+        "replicas": {"type": "integer", "minimum": 1},
+        "resources": {"type": "object", "additionalProperties": false, "required": ["requests", "limits"], "properties": {"requests": {"type": "object"}, "limits": {"type": "object"}}},
+        "mode": {
+          "description": "Only \"basic\" is implemented today. \"entra\" (package A4) and \"ldap\" (package A5) are separate, not-yet-built packages -- the enum intentionally excludes them until they land.",
+          "type": "string", "enum": ["basic"]
+        },
+        "upstream": {"type": "string", "description": "The external NetBox's reachable URL. Required, and must be https://, when enabled is true (https:// enforced in stage/prod)."},
+        "basicAuth": {
+          "type": "object", "additionalProperties": false, "required": ["existingSecret"],
+          "properties": {
+            "existingSecret": {"type": "string", "description": "Secret (not created by this chart) with keys \"username\" and \"passwordHash\" -- a bcrypt hash, never a plaintext password."}
+          }
+        },
+        "ingress": {
+          "type": "object", "additionalProperties": false, "required": ["enabled", "className", "host", "tlsSecretName", "annotations"],
+          "properties": {
+            "enabled": {"type": "boolean"}, "className": {"type": "string"}, "host": {"type": "string"},
+            "tlsSecretName": {"type": "string"}, "annotations": {"type": "object"}
+          }
+        },
+        "networkPolicy": {
+          "type": "object", "additionalProperties": false, "required": ["ingress", "egress"],
+          "properties": {
+            "ingress": {"$ref": "#/definitions/selectorPair"},
+            "egress": {"type": "array", "items": {"$ref": "#/definitions/egressEntry"}}
+          }
+        }
+      }
+    },
+    "operatorJob": {
+      "description": "Opt-in Job running `adopt` or `onboard` in the cluster (work-plan package H3). Disabled by default; disabled, this changes nothing in the rendered manifests. Semantic validation (mode enum, required-when-enabled fields, least privilege) lives in templates/operator-job.yaml's `fail` guards, not here, so every error carries one clear, specific message.",
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "mode", "command", "args", "runId", "input", "ttlSecondsAfterFinished", "activeDeadlineSeconds", "resources", "networkPolicy"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "mode": {"type": "string", "description": "\"adopt\" or \"onboard\"; anything else fails the render (templates/operator-job.yaml)."},
+        "command": {"type": "string", "description": "The subcommand. Validated against an explicit allow-list per operatorJob.mode in templates/operator-job.yaml's `fail` guards (work-plan package H7), not by an enum here, so the error names exactly what is and is not supported: \"plan\", \"apply\" or \"abandon\" for mode: adopt; \"plan\" or \"apply\" for mode: onboard. \"abandon\" (ADR 0012) takes no positional table argument; every other allow-listed command does."},
+        "args": {"type": "array", "items": {"type": "string"}},
+        "runId": {"type": "string", "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$", "maxLength": 40},
+        "input": {
+          "type": "object", "additionalProperties": false, "required": ["existingConfigMap", "key"],
+          "properties": {
+            "existingConfigMap": {"type": "string"},
+            "key": {"type": "string"}
+          }
+        },
+        "ttlSecondsAfterFinished": {"type": "integer", "minimum": 0},
+        "activeDeadlineSeconds": {"type": "integer", "minimum": 1},
+        "resources": {"type": "object", "additionalProperties": false, "required": ["requests", "limits"], "properties": {"requests": {"type": "object"}, "limits": {"type": "object"}}},
+        "networkPolicy": {
+          "type": "object", "additionalProperties": false, "required": ["egress"],
+          "properties": {"egress": {"type": "array", "items": {"$ref": "#/definitions/egressEntry"}}}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "workload": {
+      "type": "object", "additionalProperties": false, "required": ["replicas", "serviceAccount", "resources"],
+      "properties": {
+        "replicas": {"type": "integer", "minimum": 1},
+        "serviceAccount": {"type": "object", "additionalProperties": false, "required": ["create", "name", "annotations"], "properties": {"create": {"type": "boolean"}, "name": {"type": "string", "minLength": 1}, "annotations": {"type": "object"}}},
+        "resources": {"type": "object", "additionalProperties": false, "required": ["requests", "limits"], "properties": {"requests": {"type": "object"}, "limits": {"type": "object"}}}
+      }
+    },
+    "selectorPair": {
+      "type": "object", "additionalProperties": false, "required": ["namespaceSelector", "podSelector"],
+      "properties": {
+        "namespaceSelector": {"type": "object", "minProperties": 1},
+        "podSelector": {"type": "object", "minProperties": 1}
+      }
+    },
+    "egressEntry": {
+      "type": "object", "additionalProperties": false, "required": ["cidr", "ports"],
+      "properties": {
+        "cidr": {"type": "string", "minLength": 1, "not": {"enum": ["0.0.0.0/0", "::/0"]}},
+        "ports": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["protocol", "port"], "properties": {"protocol": {"type": "string", "enum": ["TCP", "UDP", "SCTP"]}, "port": {"type": "integer", "minimum": 1, "maximum": 65535}}}}
+      }
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"deploymentEnvironment": {"enum": ["stage", "prod"]}}}, "then": {"properties": {
+      "auth": {"properties": {"mode": {"const": "oidc"}, "issuer": {"pattern": "^https://"}, "audience": {"minLength": 1}}},
+      "aws": {"properties": {"mode": {"const": "live"}}},
+      "netbox": {"properties": {"url": {"pattern": "^https://", "not": {"pattern": "localhost|127\\.0\\.0\\.1"}}}}
+    }}},
+    {"if": {"properties": {"uiProxy": {"properties": {"enabled": {"const": true}}}}}, "then": {"properties": {
+      "uiProxy": {"properties": {
+        "upstream": {"minLength": 1},
+        "basicAuth": {"properties": {"existingSecret": {"minLength": 1}}}
+      }}
+    }}},
+    {"if": {"properties": {"uiProxy": {"properties": {
+      "enabled": {"const": true},
+      "ingress": {"properties": {"enabled": {"const": true}}}
+    }}}}, "then": {"properties": {
+      "uiProxy": {"properties": {"ingress": {"properties": {
+        "host": {"minLength": 1},
+        "tlsSecretName": {"minLength": 1}
+      }}}}
+    }}},
+    {"if": {"properties": {
+      "deploymentEnvironment": {"enum": ["stage", "prod"]},
+      "uiProxy": {"properties": {"enabled": {"const": true}}}
+    }}, "then": {"properties": {
+      "uiProxy": {"properties": {"upstream": {"pattern": "^https://"}}}
+    }}}
+  ]
+}

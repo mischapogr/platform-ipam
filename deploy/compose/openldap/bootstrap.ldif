@@ -1,0 +1,97 @@
+# Development-only OpenLDAP seed data for `ldap` mode (package A5,
+# docs/GUI_AUTHENTICATION.md "LDAP mode (package A5)").
+#
+# Loaded once, at first start of an empty data volume, by the osixia/openldap
+# image's custom-bootstrap mechanism (deploy/compose/compose.ui-ldap.yaml
+# mounts this file to
+# /container/service/slapd/assets/config/bootstrap/ldif/custom/, READ-ONLY,
+# with --copy-service so the image works from its own writable copy and
+# never touches this bind-mounted source file -- see the compose overlay's
+# comments; an earlier read-write mount let the image's own bootstrap-
+# cleanup step delete this file from the repository working tree). The base
+# entry dc=platform-ipam,dc=dev is created by the image itself from
+# LDAP_DOMAIN/LDAP_ORGANISATION before custom LDIF is applied, so this file
+# only adds the two organizational units, three users and two groups the
+# design and tests/e2e/test_e2e_ui_ldap.py need.
+#
+# Group mapping decision (see compose.ui-ldap.yaml and the appended doc
+# section for the full rationale): these two groups are named EXACTLY like
+# the NetBox groups deploy/compose/netbox/bootstrap-groups.py already creates
+# -- platform-operators and platform-inventory-maintainers -- so that
+# AUTH_LDAP_MIRROR_GROUPS mirrors a user straight into the existing NetBox
+# group (and its ObjectPermission) with no custom NetBox code and no
+# AUTH_LDAP_USER_FLAGS_BY_GROUP mapping.
+#
+# Passwords are plaintext, development-only, and never used outside this
+# throw-away test directory -- the same convention deploy/compose/.env.example
+# already uses for other local secrets.
+
+dn: ou=people,dc=platform-ipam,dc=dev
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=platform-ipam,dc=dev
+objectClass: organizationalUnit
+ou: groups
+
+# -- users -------------------------------------------------------------
+#
+# uid is the search attribute (AUTH_LDAP_USER_SEARCH_ATTR=uid in
+# compose.ui-ldap.yaml): the pinned NetBox image's ldap_config.py defaults
+# that attribute to sAMAccountName, the Active Directory name, which this
+# OpenLDAP tree does not have (docs/GUI_AUTHENTICATION.md "Verified in image"
+# table).
+
+dn: uid=viewer,ou=people,dc=platform-ipam,dc=dev
+objectClass: inetOrgPerson
+uid: viewer
+cn: Viewer Testuser
+sn: Testuser
+mail: viewer@platform-ipam.dev
+userPassword: viewer-ldap-dev-password
+
+dn: uid=maintainer,ou=people,dc=platform-ipam,dc=dev
+objectClass: inetOrgPerson
+uid: maintainer
+cn: Maintainer Testuser
+sn: Testuser
+mail: maintainer@platform-ipam.dev
+userPassword: maintainer-ldap-dev-password
+
+dn: uid=outsider,ou=people,dc=platform-ipam,dc=dev
+objectClass: inetOrgPerson
+uid: outsider
+cn: Outsider Testuser
+sn: Testuser
+mail: outsider@platform-ipam.dev
+userPassword: outsider-ldap-dev-password
+
+# -- groups ------------------------------------------------------------
+#
+# groupOfNames / member is the standard OpenLDAP schema (core.schema +
+# cosine.schema, present without any extra schema load). The pinned image's
+# ldap_config.py defaults AUTH_LDAP_GROUP_SEARCH_CLASS to "group" and
+# AUTH_LDAP_GROUP_TYPE to GroupOfNamesType -- "group" is an Active Directory
+# objectClass this OpenLDAP tree does not have, so compose.ui-ldap.yaml
+# overrides AUTH_LDAP_GROUP_SEARCH_CLASS=groupOfNames to match what is
+# actually defined here; AUTH_LDAP_GROUP_TYPE=GroupOfNamesType already
+# matches the "member" attribute groupOfNames uses.
+#
+# viewer: platform-operators only (read-only).
+# maintainer: platform-operators AND platform-inventory-maintainers (read +
+#   write on prefixes/IP ranges).
+# outsider: member of neither -- AUTH_LDAP_REQUIRE_GROUP_DN points at
+#   platform-operators, so this user's login must be refused outright.
+
+dn: cn=platform-operators,ou=groups,dc=platform-ipam,dc=dev
+objectClass: groupOfNames
+cn: platform-operators
+description: Mirrors onto the NetBox group of the same name (view-only IPAM access)
+member: uid=viewer,ou=people,dc=platform-ipam,dc=dev
+member: uid=maintainer,ou=people,dc=platform-ipam,dc=dev
+
+dn: cn=platform-inventory-maintainers,ou=groups,dc=platform-ipam,dc=dev
+objectClass: groupOfNames
+cn: platform-inventory-maintainers
+description: Mirrors onto the NetBox group of the same name (prefix/IP range add+change access)
+member: uid=maintainer,ou=people,dc=platform-ipam,dc=dev

@@ -1,0 +1,33 @@
+# CI-only overlay for scripts/ai/checks.py's helm() check (work-plan package
+# H9): operatorJob's mode: adopt, command: abandon combination with NO
+# identity.existingConfigMap set at all -- the proof, at render time, that
+# `adopt abandon` needs no identity file: it resolves no domain.Principal
+# (internal/adoptcmd/abandon.go's runAbandon never receives cfg; ADR 0012;
+# Settings.Validate("adopt") never requires IPAM_IDENTITY_FILE either).
+# Otherwise identical to operator-job-adopt-abandon-values.yaml, which sets
+# identity.existingConfigMap and stays PASSED so plan/apply's own requirement
+# for it is unaffected. operatorJob.input is left at its chart defaults (both
+# fields empty): abandon's flags arrive entirely through args.
+identity:
+  existingConfigMap: ""
+operatorJob:
+  enabled: true
+  mode: adopt
+  command: abandon
+  args:
+    - "--allocation-id"
+    - "ci-allocation"
+    - "--operator"
+    - "ci-operator"
+    - "--reason"
+    - "ci reason for abandon"
+  runId: ci-adopt-abandon-no-identity
+# The chart-wide egress list (what api and worker get: the database, AWS, the
+# OIDC issuer). Set here only so the helm check can tell it from onboard's own
+# list: onboard's NetworkPolicy must never contain it, adopt's must equal the
+# worker's -- abandon runs as mode: adopt like plan/apply, so it must too.
+networkPolicy:
+  egress:
+    - cidr: 10.0.99.0/24
+      ports:
+        - {protocol: TCP, port: 5432}

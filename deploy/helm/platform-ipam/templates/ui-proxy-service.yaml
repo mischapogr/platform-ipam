@@ -1,0 +1,20 @@
+{{- if .Values.uiProxy.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "platform-ipam.fullname" . }}-ui-proxy
+  labels:
+    {{- include "platform-ipam.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui-proxy
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "platform-ipam.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ui-proxy
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+{{- end }}

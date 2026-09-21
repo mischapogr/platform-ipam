@@ -1,0 +1,13 @@
+# Optional developer conveniences. The release-target stack remains the
+# integration-test path; this overlay only selects the development image.
+services:
+  api:
+    build:
+      target: development
+    environment:
+      IPAM_LOG_LEVEL: debug
+  worker:
+    build:
+      target: development
+    environment:
+      IPAM_LOG_LEVEL: debug

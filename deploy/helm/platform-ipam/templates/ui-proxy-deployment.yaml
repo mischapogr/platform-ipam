@@ -1,0 +1,120 @@
+{{- if .Values.uiProxy.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "platform-ipam.fullname" . }}-ui-proxy
+  labels:
+    {{- include "platform-ipam.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui-proxy
+spec:
+  replicas: {{ .Values.uiProxy.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "platform-ipam.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: ui-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "platform-ipam.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: ui-proxy
+      annotations:
+        checksum/ui-proxy-caddyfile: {{ include "platform-ipam.uiProxy.caddyfile" . | sha256sum | quote }}
+    spec:
+      # No ServiceAccount token: ui-proxy only terminates HTTP Basic and
+      # reverse-proxies to the external NetBox in .Values.uiProxy.upstream --
+      # it never talks to the Kubernetes API.
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: ui-proxy
+          image: {{ include "platform-ipam.uiProxy.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            # Written out rather than reusing .Values.containerSecurityContext,
+            # for one reason: that block drops ALL capabilities, and the
+            # official Caddy image ships its binary with the file capability
+            # cap_net_bind_service. The kernel refuses to exec a binary whose
+            # file capabilities are outside the bounding set, so with a bare
+            # "drop: [ALL]" the container dies at start with
+            # "exec /usr/bin/caddy: operation not permitted" -- even though
+            # Caddy listens on :8080 here and never uses the capability.
+            # Adding that single capability back is what lets it start;
+            # verified by running this chart's rendered Caddyfile under these
+            # exact constraints (read-only root, UID 10001, no-new-privileges).
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [NET_BIND_SERVICE]
+            # The upstream image has no USER, so runAsNonRoot needs an
+            # explicit UID/GID; 10001 is this project's own convention.
+            runAsUser: 10001
+            runAsGroup: 10001
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            # NETBOX_UI_PASSWORD_HASH is already a bcrypt hash in the
+            # Secret -- unlike Compose there is no hash-at-start step here.
+            - name: NETBOX_UI_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.uiProxy.basicAuth.existingSecret }}
+                  key: username
+            - name: NETBOX_UI_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.uiProxy.basicAuth.existingSecret }}
+                  key: passwordHash
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.uiProxy.resources | nindent 12 }}
+          volumeMounts:
+            - name: caddyfile
+              mountPath: /etc/caddy
+              readOnly: true
+            # readOnlyRootFilesystem: true (containerSecurityContext) needs
+            # writable homes for Caddy's XDG_CONFIG_HOME=/config and
+            # XDG_DATA_HOME=/data (set in the upstream image); Kubernetes
+            # creates emptyDir volumes world-writable, so UID 10001 can use
+            # them even though they are not the image's baked-in owner.
+            - name: caddy-config
+              mountPath: /config
+            - name: caddy-data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: caddyfile
+          configMap:
+            name: {{ include "platform-ipam.fullname" . }}-ui-proxy
+        - name: caddy-config
+          emptyDir: {}
+        - name: caddy-data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+{{- end }}

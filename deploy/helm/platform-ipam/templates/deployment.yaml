@@ -1,0 +1,85 @@
+{{- $root := . -}}
+{{- range $name := list "api" "worker" }}
+{{- $workload := index $root.Values $name }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "platform-ipam.fullname" $root }}-{{ $name }}
+  labels:
+    {{- include "platform-ipam.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  replicas: {{ $workload.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "platform-ipam.name" $root }}
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "platform-ipam.name" $root }}
+        app.kubernetes.io/instance: {{ $root.Release.Name }}
+        app.kubernetes.io/component: {{ $name }}
+      annotations:
+        checksum/platform-ipam-policy: {{ include "platform-ipam.policy" $root | sha256sum | quote }}
+    spec:
+      serviceAccountName: {{ include "platform-ipam.serviceAccountName" (dict "root" $root "workload" $workload "name" $name) }}
+      automountServiceAccountToken: true
+      securityContext:
+        {{- toYaml $root.Values.podSecurityContext | nindent 8 }}
+      {{- with $root.Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ $name }}
+          image: {{ include "platform-ipam.image" $root | quote }}
+          imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+          args: [{{ $name | quote }}]
+          securityContext:
+            {{- toYaml $root.Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- include "platform-ipam.workloadEnv" (dict "root" $root "full" true) | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          resources:
+            {{- toYaml $workload.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "platform-ipam.policyVolumeMount" $root | nindent 12 }}
+            {{- include "platform-ipam.tmpVolumeMount" $root | nindent 12 }}
+            {{- if $root.Values.identity.existingConfigMap }}
+            {{- include "platform-ipam.identityVolumeMount" $root | nindent 12 }}
+            {{- end }}
+      volumes:
+        {{- include "platform-ipam.policyVolume" $root | nindent 8 }}
+        {{- include "platform-ipam.tmpVolume" $root | nindent 8 }}
+        {{- if $root.Values.identity.existingConfigMap }}
+        {{- include "platform-ipam.identityVolume" $root | nindent 8 }}
+        {{- end }}
+---
+{{- end }}

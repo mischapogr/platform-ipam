@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.policy.configMapName }}
+  labels:
+    {{- include "platform-ipam.labels" . | nindent 4 }}
+data:
+  pools.yaml: |-
+    {{- include "platform-ipam.policy" . | nindent 4 }}

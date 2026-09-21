@@ -1,0 +1,152 @@
+# Optional overlay: `entra` mode for the operator UI (package A4, ADR 0006,
+# docs/GUI_AUTHENTICATION.md section 2), verified locally against a mock OIDC
+# issuer. Ships as an overlay rather than editing the shared compose.netbox.yaml
+# / netbox.env / ui-proxy/Caddyfile files packages A3 and A5 are using at the
+# same time: layer this file after compose.netbox.yaml and nothing else
+# changes; without it `basic` mode is exactly what it was.
+#
+#   docker compose --env-file .env \
+#     -f compose.yaml -f compose.netbox.yaml -f compose.ui-entra.yaml \
+#     up -d netbox-db netbox-redis netbox-redis-cache netbox ui-proxy oauth2-proxy mock-oidc
+#
+# Shape (docs/GUI_AUTHENTICATION.md section 2, "why oauth2-proxy for Entra"):
+# Caddy's `forward_auth` calls oauth2-proxy's /oauth2/auth for every request;
+# on success it copies oauth2-proxy's X-Auth-Request-User response header to
+# X-Remote-User before proxying to NetBox -- the identical header `basic`
+# mode sets, verified by the identical NetBox setting
+# (REMOTE_AUTH_HEADER=HTTP_X_REMOTE_USER, deploy/compose/netbox/netbox.env).
+# That is why the `netbox` service below carries no environment override:
+# `entra` mode needs none. Group handling deliberately stays that simple too
+# -- see the note on the `oauth2-proxy` service below for why this overlay
+# does not turn on REMOTE_AUTH_GROUP_SYNC_ENABLED.
+#
+# Verified here: the wiring, against the mock issuer this file also starts
+# (docs/GUI_AUTHENTICATION.md section 3, "Local verification" for `entra`).
+# NOT verified: a real Entra ID tenant -- see the "Entra ID mode" section
+# appended to docs/GUI_AUTHENTICATION.md for what a real tenant needs.
+services:
+  ui-proxy:
+    # ui-proxy/entrypoint.sh (shared with `basic` mode, not edited here) is a
+    # `:?`-guarded script that hashes NETBOX_UI_PASSWORD for `basic_auth` --
+    # a credential this mode's Caddyfile never checks. Running caddy directly
+    # is the "entrypoint that does not require the basic password": no
+    # NETBOX_UI_USER/NETBOX_UI_PASSWORD value is read in this mode, even
+    # though compose.netbox.yaml still requires them to be *set* (so `.env`
+    # keeps working unmodified across modes).
+    entrypoint: ["/bin/sh", "-c", "exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]
+    volumes:
+      # Compose merges `volumes:` entries by target path, so this replaces
+      # the `basic`-mode Caddyfile mount (same target, different source)
+      # rather than adding a second one; entrypoint.sh stays mounted from
+      # compose.netbox.yaml but is unused by the entrypoint override above.
+      - ./ui-proxy/Caddyfile.entra:/etc/caddy/Caddyfile:ro
+    depends_on:
+      netbox:
+        condition: service_healthy
+      oauth2-proxy:
+        condition: service_started
+      mock-oidc:
+        condition: service_started
+
+  # Verifies the OIDC login against the mock issuer below and gates
+  # admission on `--allowed-group` before NetBox is ever involved (see that
+  # flag below for the group-handling decision). oauth2-proxy's own startup
+  # fetches the issuer's discovery document, so it can fail its first start
+  # if `mock-oidc` is not accepting connections yet; `restart: on-failure`
+  # lets it converge instead of leaving the overlay flaky on a fresh `up`.
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
+    restart: on-failure
+    command:
+      - --http-address=0.0.0.0:4180
+      - --provider=oidc
+      - --oidc-issuer-url=http://mock-oidc:8080/default
+      - --client-id=${UI_ENTRA_CLIENT_ID:-ui-proxy-dev}
+      - --client-secret=${UI_ENTRA_CLIENT_SECRET:-development-oauth2-proxy-client-secret-not-real}
+      - --cookie-secret=${UI_ENTRA_COOKIE_SECRET:-yHYy79gfa3hcprk-PJYZqm2yGlFkSL6fWAN6FamvrCM=}
+      # Development-only: plain HTTP inside the Compose network, no TLS
+      # termination in front of ui-proxy locally (ADR 0006 rule 7 requires
+      # TLS outside loopback; that is onboarding work, not this overlay).
+      - --cookie-secure=false
+      - --insecure-oidc-allow-unverified-email=true
+      - --email-domain=*
+      # The mock issuer's default OIDC user claim is "email"
+      # (oauth2-proxy's own default when --user-id-claim/--oidc-email-claim
+      # are left unset); "preferred_username" is the readable login name we
+      # want in X-Remote-User instead, matching what a real Entra ID tenant
+      # exposes as the same claim on an ID token.
+      - --user-id-claim=preferred_username
+      - --oidc-groups-claim=groups
+      # Group handling (package A4 contract): the design's first choice --
+      # no NetBox group sync, everyone who authenticates gets
+      # REMOTE_AUTH_DEFAULT_GROUPS=platform-operators only (already set in
+      # netbox.env for `basic` mode, unchanged here) -- gated at oauth2-proxy
+      # instead. REMOTE_AUTH_GROUP_SYNC_ENABLED is NOT turned on: NetBox's
+      # group sync matches the header's group *names* one-for-one against
+      # existing NetBox group names, with no translation step available
+      # short of custom code (a Django auth backend or extra.py hook); a
+      # real Entra ID tenant's group claim carries the group's *object ID*
+      # (docs/GUI_AUTHENTICATION.md, "Entra ID mode" section below), so
+      # group sync there would need a NetBox group literally named after a
+      # GUID. That is exactly the condition the package A4 contract says to
+      # ship the first choice under, so this overlay does.
+      - --allowed-group=platform-entra-operators
+      - --skip-provider-button=true
+      - --reverse-proxy=true
+      - --set-xauthrequest=true
+      # Caddy's forward_auth only calls /oauth2/auth; nothing is ever
+      # reverse-proxied *through* oauth2-proxy to an upstream (ui-proxy's own
+      # Caddyfile.entra proxies straight to netbox:8080), so this upstream is
+      # never dereferenced. It exists because oauth2-proxy requires one.
+      - --upstream=static://202
+    environment:
+      OAUTH2_PROXY_SILENCE_PING_LOGGING: "true"
+
+  # Mock OIDC issuer, development only (docs/GUI_AUTHENTICATION.md section 3:
+  # this proves the wiring, not a real tenant). navikt/mock-oauth2-server was
+  # chosen over dex's mock connectors because its `requestMappings` let a
+  # single static JSON config hand back different, scriptable claims --
+  # including a `groups` claim -- per login username, with no interactive
+  # browser needed: the login page is one plain HTML form (username + an
+  # optional claims override) that POSTs back to the same authorize URL, so
+  # tests/e2e/run-ui-entra.sh drives the whole OIDC round trip with curl and
+  # a cookie jar. Two identities are configured below:
+  #   * any username except "denied-bob" -- groups=[platform-entra-operators],
+  #     the allowed group oauth2-proxy admits (an "unmapped" operator: NetBox
+  #     still only ever grants REMOTE_AUTH_DEFAULT_GROUPS).
+  #   * "denied-bob" -- groups=[contractors], outside the allowed group, so
+  #     oauth2-proxy refuses at the callback and NetBox never sees the login.
+  mock-oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.2
+    environment:
+      JSON_CONFIG: |
+        {
+          "interactiveLogin": true,
+          "tokenCallbacks": [
+            {
+              "issuerId": "default",
+              "requestMappings": [
+                {
+                  "requestParam": "subject",
+                  "match": "denied-bob",
+                  "claims": {
+                    "email": "denied-bob@mock.invalid",
+                    "email_verified": true,
+                    "preferred_username": "denied-bob",
+                    "groups": ["contractors"]
+                  }
+                },
+                {
+                  "requestParam": "subject",
+                  "match": ".*",
+                  "claims": {
+                    "email": "$${subject}@mock.invalid",
+                    "email_verified": true,
+                    "preferred_username": "$${subject}",
+                    "groups": ["platform-entra-operators"]
+                  }
+                }
+              ]
+            }
+          ]
+        }

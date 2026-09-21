@@ -1,0 +1,3 @@
+﻿account_id,cidr,region,name
+123456789012,10.1.0.0/16,eu-central-1,"prod, primary"
+123456789012,10.1.1.0/24,eu-central-1,prod-subnet-a

@@ -1,0 +1,37 @@
+{
+  "complete": true,
+  "domain_id": "local-development",
+  "finished_at": "0001-01-01T00:00:00Z",
+  "generation": "dev-1",
+  "resources": [
+    {
+      "account_id": "000000000001",
+      "cidr": "10.0.1.0/24",
+      "cidrs": [
+        "10.0.1.0/24"
+      ],
+      "id": "subnet-22223333",
+      "parent_id": "vpc-00001111",
+      "region": "eu-central-1",
+      "state": "available",
+      "tags": null,
+      "type": "subnet",
+      "zone_id": "eu-central-1a"
+    },
+    {
+      "account_id": "000000000001",
+      "cidr": "10.0.0.0/16",
+      "cidrs": [
+        "10.0.0.0/16"
+      ],
+      "id": "vpc-00001111",
+      "parent_id": "",
+      "region": "eu-central-1",
+      "state": "available",
+      "tags": null,
+      "type": "vpc",
+      "zone_id": ""
+    }
+  ],
+  "started_at": "0001-01-01T00:00:00Z"
+}

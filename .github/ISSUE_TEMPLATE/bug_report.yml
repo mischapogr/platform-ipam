@@ -1,0 +1,78 @@
+name: Bug report
+description: Something behaves differently from the documented contract.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report a security vulnerability here — see [SECURITY.md](../blob/main/SECURITY.md).
+
+        Never paste real tokens, credentials, account IDs, or production CIDRs.
+        Redact them; the shape of the value is what matters.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Observed behaviour, and the documented behaviour you expected instead.
+      placeholder: |
+        Reserving a second /22 for a new allocation key returned ... but docs/API_V1.md says ...
+    validations: { required: true }
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest sequence that shows it. Include the exact command.
+      placeholder: |
+        1. ./tests/e2e/run-e2e.sh
+        2. platform-ipam client reserve --key ... --prefix-length 22
+        3. ...
+    validations: { required: true }
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface
+      multiple: true
+      options:
+        - REST API
+        - CLI (platform-ipam client)
+        - Terraform provider
+        - NetBox inventory or UI
+        - Reconciliation worker
+        - Compose development stack
+        - Helm chart
+        - Documentation
+    validations: { required: true }
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: >
+        Relevant service log lines with timestamps, the `X-Request-ID` from the
+        response, and the JSON from any `scripts/ai/check-*` command you ran.
+        Remember that exit code 2 is BLOCKED, not a pass.
+      render: text
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      value: |
+        - Commit or version:
+        - How it runs (Compose / Helm / other):
+        - Docker version:
+        - NetBox version:
+    validations: { required: true }
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Confirmation
+      options:
+        - label: This is not a security vulnerability.
+          required: true
+        - label: I have removed real credentials, account IDs, and production addresses.
+          required: true

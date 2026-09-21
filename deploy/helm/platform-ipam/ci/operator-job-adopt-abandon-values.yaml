@@ -1,0 +1,36 @@
+# CI-only overlay for scripts/ai/checks.py's helm() check (work-plan package
+# H7): operatorJob's mode: adopt, command: abandon combination -- the one
+# adopt subcommand that takes NO reviewed table (ADR 0012). operatorJob.input
+# is deliberately left at its chart defaults (both fields empty): abandon's
+# flags arrive entirely through args, and templates/operator-job.yaml fails
+# the render if a table is supplied for this command.
+#
+# identity.existingConfigMap IS set here, deliberately, alongside plan/apply's
+# own combos that need it -- work-plan package H9 asserts the abandon Job
+# still carries no IPAM_IDENTITY_FILE and mounts nothing for it even so
+# (identity_forbidden in scripts/ai/checks.py's _OPERATOR_JOB_COMBOS). See
+# ci/operator-job-adopt-abandon-no-identity-values.yaml for the render that
+# proves the render SUCCEEDS with no identity.existingConfigMap at all.
+identity:
+  existingConfigMap: platform-ipam-identities-ci
+operatorJob:
+  enabled: true
+  mode: adopt
+  command: abandon
+  args:
+    - "--allocation-id"
+    - "ci-allocation"
+    - "--operator"
+    - "ci-operator"
+    - "--reason"
+    - "ci reason for abandon"
+  runId: ci-adopt-abandon
+# The chart-wide egress list (what api and worker get: the database, AWS, the
+# OIDC issuer). Set here only so the helm check can tell it from onboard's own
+# list: onboard's NetworkPolicy must never contain it, adopt's must equal the
+# worker's -- abandon runs as mode: adopt like plan/apply, so it must too.
+networkPolicy:
+  egress:
+    - cidr: 10.0.99.0/24
+      ports:
+        - {protocol: TCP, port: 5432}

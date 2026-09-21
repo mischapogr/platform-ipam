@@ -1,0 +1,13 @@
+# Every change is reviewed by the maintainer.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+*                       @mischapogr
+
+# Allocation correctness, the ledger, and the adapters carry the safety
+# properties this project exists to hold. Called out so a future co-maintainer
+# arrangement has to name them explicitly rather than inherit them silently.
+/internal/service/      @mischapogr
+/internal/storage/      @mischapogr
+/internal/netbox/       @mischapogr
+/internal/cloud/        @mischapogr
+/api/openapi.yaml       @mischapogr
+/docs/decisions/        @mischapogr

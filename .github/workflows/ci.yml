@@ -1,0 +1,89 @@
+name: platform-ipam CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+          cache: true
+      - name: Go tests
+        run: go test ./...
+      - name: Helper syntax
+        run: python3 -B -m py_compile deploy/compose/seed-netbox.py
+      - name: Compose configuration
+        run: scripts/ai/check-compose
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.17.3
+      - name: Helm chart validation
+        run: scripts/ai/check-helm
+
+  aws-inventory:
+    name: AWS inventory and overlap assessment
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+          cache: true
+      - name: Build platform-ipam (for the assess end-to-end test, avoiding a per-call container build)
+        run: go build -o /tmp/platform-ipam ./cmd/platform-ipam
+      - name: Collector and assess end-to-end tests (tests/aws)
+        env:
+          PLATFORM_IPAM_BIN: /tmp/platform-ipam
+        run: scripts/ai/check-aws
+
+  end-to-end:
+    name: End-to-end suite
+    runs-on: ubuntu-latest
+    needs: validate
+    # NetBox migrations dominate the run; the suite itself takes under a
+    # minute. Bounded so a wedged stack fails rather than burning the job.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create development environment file
+        run: deploy/compose/create-env.sh deploy/compose/.env
+      - name: Run the end-to-end suite
+        run: ./tests/e2e/run-e2e.sh
+      - name: Collect service logs on failure
+        if: failure()
+        run: |
+          cd deploy/compose
+          docker compose --env-file .env -f compose.yaml -f compose.netbox.yaml \
+            logs --tail=200 api worker migrate netbox || true
+      - name: Tear down
+        if: always()
+        run: |
+          cd deploy/compose
+          docker compose --env-file .env -f compose.yaml -f compose.netbox.yaml \
+            down -v --remove-orphans || true
+
+  image:
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build release image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: release
+          push: false
+          tags: platform-ipam:ci

@@ -1,0 +1,212 @@
+deploymentEnvironment: stage
+
+image:
+  repository: registry.example.com/platform/platform-ipam
+  digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+api:
+  replicas: 2
+  serviceAccount:
+    create: true
+    name: platform-ipam-api
+    annotations: {}
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+worker:
+  replicas: 1
+  serviceAccount:
+    create: true
+    name: platform-ipam-worker
+    annotations: {}
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+database:
+  existingSecret: platform-ipam-database
+  secretKey: DATABASE_URL
+
+netbox:
+  url: https://netbox.stage.example.com
+  existingSecret: platform-ipam-netbox
+  secretKey: NETBOX_TOKEN
+
+auth:
+  mode: oidc
+  issuer: https://identity.example.com
+  audience: platform-ipam-stage
+
+aws:
+  mode: live
+
+identity:
+  existingConfigMap: ""
+
+policy:
+  configMapName: platform-ipam-pools
+  data: {}
+
+ingress:
+  enabled: true
+  className: internal
+  host: ipam.stage.example.com
+  tlsSecretName: platform-ipam-tls
+  annotations: {}
+
+ui:
+  inventoryLinksEnabled: true
+  netboxBaseURL: https://netbox.stage.example.com
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+networkPolicy:
+  enabled: true
+  apiIngress:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: ingress-nginx
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/name: ingress-nginx
+  dns:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: kube-system
+    podSelector:
+      matchLabels:
+        k8s-app: kube-dns
+  # Add reviewed destination CIDRs and only the ports needed by the database,
+  # NetBox, OIDC issuer, and AWS endpoints. An empty list denies non-DNS egress.
+  egress: []
+
+podDisruptionBudget:
+  enabled: true
+  apiMinAvailable: 1
+  workerMinAvailable: 1
+
+migration:
+  backoffLimit: 2
+  activeDeadlineSeconds: 900
+
+# Optional reverse proxy: the only published path to an EXTERNAL NetBox UI
+# (ADR 0006, docs/GUI_AUTHENTICATION.md). This chart never deploys NetBox --
+# `upstream` must point at another team's NetBox release, and that release
+# must be reachable ONLY through this proxy for header trust to hold. See
+# deploy/helm/platform-ipam/README.md before enabling this. Disabled by
+# default; byte-identical to no uiProxy block at all when left disabled.
+uiProxy:
+  enabled: false
+  image:
+    # Same pinned Caddy tag as deploy/compose/ui-proxy (compose.netbox.yaml).
+    repository: docker.io/caddy
+    tag: 2.11.4-alpine
+    digest: ""
+  replicas: 1
+  resources:
+    requests: {cpu: 50m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+  # Only "basic" is implemented (work-plan package A7). "entra" (A4) and
+  # "ldap" (A5) are separate, not-yet-built packages; the schema enum stays
+  # ["basic"] only until they land, so an unsupported mode fails validation
+  # instead of silently rendering the wrong Caddyfile.
+  mode: basic
+  # The external NetBox's reachable URL, e.g.
+  # https://netbox.netbox.svc.cluster.local:8443. Required (and must be
+  # https://) when uiProxy.enabled is true in stage/prod.
+  upstream: ""
+  basicAuth:
+    # Name of a Secret this chart does NOT create, holding keys "username"
+    # and "passwordHash" -- a bcrypt HASH from `caddy hash-password`, never a
+    # plaintext password. Required when uiProxy.enabled is true.
+    existingSecret: ""
+  ingress:
+    enabled: false
+    className: ""
+    host: ""
+    tlsSecretName: ""
+    annotations: {}
+  networkPolicy:
+    ingress:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    # Add the reviewed destination CIDR and port for the external NetBox
+    # named in uiProxy.upstream. An empty list denies non-DNS egress.
+    egress: []
+
+# Opt-in Job that runs `platform-ipam adopt` or `platform-ipam onboard`
+# inside the cluster (work-plan package H3; see
+# deploy/runbooks/ADOPTION.md section 3 and deploy/helm/platform-ipam/README.md).
+# Disabled by default; disabled, this renders NOTHING -- no Job, no extra
+# ServiceAccount, no extra NetworkPolicy.
+operatorJob:
+  enabled: false
+  # "adopt" or "onboard". Anything else fails the render with a clear
+  # message (templates/operator-job.yaml).
+  mode: adopt
+  # The subcommand. REQUIRED when enabled, and validated against an explicit
+  # allow-list per mode (work-plan package H7, templates/operator-job.yaml):
+  # "plan", "apply" or "abandon" for mode: adopt; "plan" or "apply" for
+  # mode: onboard. Anything else fails the render with a clear message. Every
+  # allow-listed command except "abandon" takes exactly one positional
+  # table-path argument, which this chart mounts from `input` below and
+  # appends automatically; "abandon" (ADR 0012) takes NO table at all -- see
+  # `args` below. A subcommand outside the allow-list (e.g. "onboard drift",
+  # "onboard parse", "onboard render-config") is not supported by this
+  # template; run it as a one-off invocation instead.
+  command: ""
+  # Extra arguments appended after the mode, the subcommand and (for every
+  # command except "abandon") the mounted table path. For "plan"/"apply" this
+  # is where --operator <subject> (adopt apply), --domain <id> (onboard
+  # plan/apply) or --batch <name> (onboard apply) go. For "abandon" this is
+  # the ONLY place its flags come from -- --allocation-id, --operator and
+  # --reason are REQUIRED here (each must be followed by a non-empty value;
+  # the render fails otherwise), and --operation-id/--dry-run are optional.
+  args: []
+  # REQUIRED when enabled. Part of the Job's name, so every run is a new,
+  # immutable Job: a `helm upgrade` that leaves this block enabled with the
+  # SAME runId changes nothing (Kubernetes refuses to mutate an existing
+  # Job's pod template), and changing the input table without changing
+  # runId fails loudly at apply time (re-running the SAME Job is refused)
+  # rather than silently repeating a write. See this chart's README.
+  runId: ""
+  input:
+    # The reviewed table, mounted read-only. This chart NEVER generates it
+    # -- create the ConfigMap yourself, e.g.:
+    #   kubectl create configmap platform-ipam-adopt-records \
+    #     --from-file=records.csv=./records.csv
+    # REQUIRED for every command except "abandon" (ADR 0012), which takes no
+    # table -- leave both fields empty for "abandon"; the render fails if
+    # either is set (a table handed to a command that takes none is a
+    # mistake worth stopping).
+    existingConfigMap: ""
+    # The key inside existingConfigMap holding the table, e.g. "records.csv"
+    # or "table.json" -- also the file name it is mounted under, and the
+    # path passed to the command as its table argument. See existingConfigMap
+    # above for why this must be empty when command is "abandon".
+    key: ""
+  ttlSecondsAfterFinished: 86400
+  activeDeadlineSeconds: 1800
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+  networkPolicy:
+    # mode: onboard only -- NetBox's destination CIDR and port. (mode: adopt
+    # reuses networkPolicy.egress above, the same list -worker gets.) An
+    # empty list denies all non-DNS egress.
+    egress: []

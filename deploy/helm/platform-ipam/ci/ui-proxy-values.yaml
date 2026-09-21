@@ -1,0 +1,24 @@
+# CI-only overlay for scripts/ai/checks.py's helm() check. Every real
+# deploy/environments/*/values.yaml ships uiProxy disabled (work-plan
+# package A7 leaves it off by default), so this file is layered ON TOP of
+# each environment's values with an extra `-f` to additively validate the
+# enabled path -- schema, `helm lint --strict`, and `helm template`
+# rendering -- without ever changing what actually gets deployed.
+#
+# Not a deployment environment. Never referenced by deploy/environments/*
+# or by the application; only by scripts/ai/check-helm.
+uiProxy:
+  enabled: true
+  upstream: https://netbox.ci.example.com
+  basicAuth:
+    existingSecret: platform-ipam-ui-proxy-basic-ci
+  ingress:
+    enabled: true
+    className: internal
+    host: netbox-ui.ci.example.com
+    tlsSecretName: platform-ipam-ui-proxy-ci-tls
+  networkPolicy:
+    egress:
+      - cidr: 10.0.0.0/16
+        ports:
+          - {protocol: TCP, port: 443}

@@ -1,0 +1,233 @@
+{{- /*
+operator-job.yaml: an OPT-IN Job that runs the "adopt" or "onboard" process
+mode inside the cluster (docs/WORK_PLAN.md package H3; replaces the gap
+deploy/runbooks/ADOPTION.md section 3 used to describe -- "there is no Helm
+Job ... for adopt or onboard").
+
+Disabled by default (operatorJob.enabled: false). With the default value this
+template renders NOTHING: no Job, no ServiceAccount, no NetworkPolicy -- so a
+release with the block left at its default is byte-identical to one with no
+operator-job support at all (scripts/ai/checks.py's helm check asserts this).
+
+NOT a Helm hook ("helm.sh/hook"): a hook re-runs on every `helm upgrade` that
+touches the release and its result gates the release. `adopt apply` and
+`onboard apply` are one-shot, human-reviewed operator actions -- they must
+never silently re-run because an unrelated value (an ingress host, a replica
+count) changed in the same `helm upgrade`. Instead this Job is named with
+operatorJob.runId, so it is a new, immutable object every time: Kubernetes
+refuses to mutate an existing Job's pod template, so a `helm upgrade` that
+leaves the block enabled with the *same* runId changes nothing, and changing
+the input table without changing runId fails loudly (the apply is refused)
+rather than silently repeating a write. See this chart's README for the full
+runId/immutability rule and the least-privilege table per mode.
+
+The command list is an explicit ALLOW-LIST per mode (work-plan package H7):
+adopt supports "plan", "apply" and "abandon"; onboard supports "plan" and
+"apply". Before H7 this template assumed every command took exactly one
+positional table-path argument, which stopped being true the day
+`adopt abandon` (ADR 0012, package H2c) shipped -- it takes NO table at all,
+only `--allocation-id`/`--operator`/`--reason` through operatorJob.args. An
+unrecognized command can no longer be assumed to take a table, so it now
+fails the render instead of being handed one anyway. A subcommand that takes
+no reviewed table and is not "abandon" (e.g. "onboard drift", "onboard
+parse", "onboard render-config") is still not supported by this template --
+see this chart's README for why and what to run instead.
+*/ -}}
+{{- if .Values.operatorJob.enabled }}
+{{- $root := . -}}
+{{- $job := $root.Values.operatorJob -}}
+{{- if not (or (eq $job.mode "adopt") (eq $job.mode "onboard")) }}
+{{- fail (printf "operatorJob.mode must be \"adopt\" or \"onboard\", got %q." $job.mode) }}
+{{- end }}
+{{- if not $job.runId }}
+{{- fail "operatorJob.runId is required when operatorJob.enabled is true: it names the Job so every run is a new, immutable object (see deploy/helm/platform-ipam/README.md)." }}
+{{- end }}
+{{- if not $job.command }}
+{{- fail "operatorJob.command is required when operatorJob.enabled is true, e.g. \"plan\" or \"apply\"." }}
+{{- end }}
+{{- $allowedCommands := dict "adopt" (list "plan" "apply" "abandon") "onboard" (list "plan" "apply") -}}
+{{- if not (has $job.command (index $allowedCommands $job.mode)) }}
+{{- fail (printf "operatorJob.command %q is not supported for operatorJob.mode %q by this template; supported commands are %s. A subcommand that takes no reviewed table (\"onboard drift\" and similar read-only subcommands) cannot run through this Job -- see this chart's README." $job.command $job.mode (join ", " (index $allowedCommands $job.mode))) }}
+{{- end }}
+{{- $isAbandon := eq $job.command "abandon" -}}
+{{- if $isAbandon }}
+{{- /* abandon (ADR 0012) acts on one --allocation-id, not a table: a table
+handed to a command that takes none is a mistake worth stopping, and
+internal/adoptcmd's own CheckArgs would refuse a positional argument before
+the container even opens the ledger, so this Job must never mount one. */}}
+{{- if or $job.input.existingConfigMap $job.input.key }}
+{{- fail "operatorJob.input.existingConfigMap and operatorJob.input.key must not be set when operatorJob.command is \"abandon\": abandon (ADR 0012) takes no reviewed table -- pass --allocation-id/--operator/--reason through operatorJob.args instead." }}
+{{- end }}
+{{- range list "--allocation-id" "--operator" "--reason" }}
+{{- $flag := . -}}
+{{- $found := false -}}
+{{- range $i, $a := $job.args }}
+{{- if and (eq $a $flag) (lt (add1 $i) (len $job.args)) }}
+{{- if ne (index $job.args (add1 $i)) "" }}
+{{- $found = true }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if not $found }}
+{{- fail (printf "operatorJob.args must contain %q followed by a non-empty value when operatorJob.command is \"abandon\": adopt abandon reads --allocation-id, --operator and --reason from args, not a table (--operation-id and --dry-run are optional). A Job that can only exit with a usage error is not worth creating." $flag) }}
+{{- end }}
+{{- end }}
+{{- else }}
+{{- if not $job.input.existingConfigMap }}
+{{- fail "operatorJob.input.existingConfigMap is required when operatorJob.enabled is true and operatorJob.command is not \"abandon\": this chart never generates the reviewed table -- mount the ConfigMap that holds it." }}
+{{- end }}
+{{- if not $job.input.key }}
+{{- fail "operatorJob.input.key is required when operatorJob.enabled is true and operatorJob.command is not \"abandon\": the key inside operatorJob.input.existingConfigMap that holds the reviewed table." }}
+{{- end }}
+{{- end }}
+{{- /* Work-plan package H9: this requirement is per-command, not per-mode.
+"plan" and "apply" resolve their acting principal from the identity file
+(internal/adoptcmd/principal.go's resolvePrincipal), so they still fail to
+render without one. "abandon" calls neither: runAbandon
+(internal/adoptcmd/abandon.go) never receives cfg at all, and
+Service.AbandonAdoption takes no domain.Principal (ADR 0012) -- proved
+against the code, not assumed, because internal/config.Settings.Validate("adopt")
+also never requires IPAM_IDENTITY_FILE (internal/config/config.go). H7 left
+this check unconditional on mode=adopt as a "conservative choice"; H9 removes
+that for abandon only. */}}
+{{- if and (eq $job.mode "adopt") (not $isAbandon) (not $root.Values.identity.existingConfigMap) }}
+{{- fail "operatorJob.mode=adopt requires identity.existingConfigMap for \"plan\" and \"apply\": adopt resolves its acting principal from the identity file (the one identity whose tenant/account/environment/region scope covers each record), and with none configured every record is refused for having no covering identity. Configure identity.existingConfigMap before enabling operatorJob in adopt mode with command plan or apply. (\"abandon\" needs no identity file at all -- work-plan package H9 -- so this check does not apply to it.)" }}
+{{- end }}
+{{- $tablePath := "" }}
+{{- if not $isAbandon }}
+{{- $tablePath = printf "/var/run/platform-ipam/input/%s" $job.input.key }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "platform-ipam.fullname" $root }}-operator-{{ $job.runId }}
+  labels:
+    {{- include "platform-ipam.labels" $root | nindent 4 }}
+spec:
+  # An apply is never retried automatically: a person reads the pod log
+  # (stdout carries the JSON report; the exit code is the Job's result -- an
+  # onboard/adopt refusal such as exit 3 fails the Job visibly) and decides
+  # whether to fix the input and run a new Job under a new runId.
+  backoffLimit: 0
+  activeDeadlineSeconds: {{ $job.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ $job.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "platform-ipam.labels" $root | nindent 8 }}
+        app.kubernetes.io/component: operator-job
+    spec:
+      restartPolicy: Never
+      {{- if eq $job.mode "onboard" }}
+      # Least privilege per mode (work-plan package H3, requirement 5): onboard
+      # never opens the ledger and never builds a cloud observer
+      # (cmd/platform-ipam/main.go dispatches it before storage.NewPostgresLedger
+      # is even constructed, exactly like "client"), so it gets a dedicated
+      # ServiceAccount that carries no IRSA/workload-identity annotation and no
+      # mounted token -- see templates/serviceaccount.yaml.
+      serviceAccountName: {{ include "platform-ipam.fullname" $root }}-operator-job
+      automountServiceAccountToken: false
+      {{- else }}
+      # mode: adopt opens the ledger and builds a live cloud observer exactly
+      # as worker does (cmd/platform-ipam/main.go: "if mode == \"worker\" ||
+      # mode == \"adopt\""), for all three adopt commands -- plan, apply and
+      # abandon alike -- so it runs as the worker's own ServiceAccount -- the
+      # one carrying the cluster's cloud read-role annotation, if any.
+      serviceAccountName: {{ include "platform-ipam.serviceAccountName" (dict "root" $root "workload" $root.Values.worker "name" "worker") }}
+      automountServiceAccountToken: true
+      {{- end }}
+      securityContext:
+        {{- toYaml $root.Values.podSecurityContext | nindent 8 }}
+      {{- with $root.Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: operator
+          image: {{ include "platform-ipam.image" $root | quote }}
+          imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+          # The mounted table is the third argument, after the process mode
+          # and the subcommand, for every command except "abandon" (ADR 0012,
+          # package H2c), which takes no table at all -- its
+          # --allocation-id/--operator/--reason/--operation-id/--dry-run
+          # flags arrive entirely through operatorJob.args below. See this
+          # chart's README for the full allow-list of supported commands.
+          args:
+            - {{ $job.mode | quote }}
+            - {{ $job.command | quote }}
+            {{- if not $isAbandon }}
+            - {{ $tablePath | quote }}
+            {{- end }}
+            {{- range $job.args }}
+            - {{ . | quote }}
+            {{- end }}
+          securityContext:
+            {{- toYaml $root.Values.containerSecurityContext | nindent 12 }}
+          env:
+            {{- if eq $job.mode "onboard" }}
+            # onboard's own settings (internal/onboardcmd/onboardcmd.go
+            # loadSettings): pools configuration, environment, and NetBox
+            # credentials only. No IPAM_DATABASE_URL: onboard never opens the
+            # ledger. No IPAM_AWS_MODE/IPAM_AUTH_MODE/IPAM_OIDC_*: those are
+            # never read outside config.Settings.Validate, which onboard does
+            # not call (it validates only what it uses, in its own
+            # unexported `settings` type).
+            - name: IPAM_CONFIG_FILE
+              value: /etc/platform-ipam/config/pools.yaml
+            - name: IPAM_ENVIRONMENT
+              value: {{ $root.Values.deploymentEnvironment | quote }}
+            - name: IPAM_NETBOX_URL
+              value: {{ $root.Values.netbox.url | quote }}
+            - name: IPAM_NETBOX_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $root.Values.netbox.existingSecret }}
+                  key: {{ $root.Values.netbox.secretKey }}
+            {{- if $root.Values.identity.existingConfigMap }}
+            - name: IPAM_IDENTITY_FILE
+              value: /etc/platform-ipam/identity/identities.yaml
+            {{- end }}
+            {{- else }}
+            {{- /* work-plan packages H5/H7: adopt authenticates no HTTP
+            caller and never listens, in any of its three subcommands, so its
+            Job gets the smaller ("full: false") variable set -- one
+            definition shared with the api/worker Deployments'
+            "full: true" set, in platform-ipam.workloadEnv (_helpers.tpl),
+            never a second copy that could drift. work-plan package H9:
+            "abandon" additionally gets identity: false -- it resolves no
+            principal from an identity file at all, so IPAM_IDENTITY_FILE is
+            never handed to it even when identity.existingConfigMap is set
+            chart-wide for plan/apply's own Jobs. */}}
+            {{- include "platform-ipam.workloadEnv" (dict "root" $root "full" false "identity" (not $isAbandon)) | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml $job.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "platform-ipam.policyVolumeMount" $root | nindent 12 }}
+            {{- include "platform-ipam.tmpVolumeMount" $root | nindent 12 }}
+            {{- /* work-plan package H9: "abandon" mounts no identity file --
+            it resolves no domain.Principal (see the fail guard above) -- even
+            when identity.existingConfigMap is set chart-wide for plan/apply. */}}
+            {{- if and (not $isAbandon) $root.Values.identity.existingConfigMap }}
+            {{- include "platform-ipam.identityVolumeMount" $root | nindent 12 }}
+            {{- end }}
+            {{- if not $isAbandon }}
+            - name: input
+              mountPath: /var/run/platform-ipam/input
+              readOnly: true
+            {{- end }}
+      volumes:
+        {{- include "platform-ipam.policyVolume" $root | nindent 8 }}
+        {{- include "platform-ipam.tmpVolume" $root | nindent 8 }}
+        {{- if and (not $isAbandon) $root.Values.identity.existingConfigMap }}
+        {{- include "platform-ipam.identityVolume" $root | nindent 8 }}
+        {{- end }}
+        {{- if not $isAbandon }}
+        - name: input
+          configMap:
+            name: {{ $job.input.existingConfigMap }}
+            items:
+              - key: {{ $job.input.key }}
+                path: {{ $job.input.key }}
+        {{- end }}
+{{- end }}

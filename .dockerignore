@@ -1,0 +1,13 @@
+.git
+.gitignore
+.codex
+.agents
+.setting.app
+.setting.shop
+deploy/compose/.env
+_tmp
+**/*_test.go
+**/node_modules
+**/.terraform
+**/*.tfstate*
+**/vendor

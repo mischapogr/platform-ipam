@@ -1,0 +1,34 @@
+# Optional overlay: builds the pinned NetBox image with netbox-aws-vpc-plugin
+# installed (package N2, docs/WORK_PLAN.md Track N; evaluation:
+# docs/NETBOX_AWS_PLUGIN.md) instead of pulling the published
+# netboxcommunity/netbox image. Layer this file after compose.netbox.yaml;
+# without it nothing changes:
+#
+#   docker compose --env-file .env \
+#     -f compose.yaml -f compose.netbox.yaml -f compose.netbox-plugin.yaml \
+#     up --build -d
+#
+# All three services below share one `image:` tag so Compose builds the
+# image once (from deploy/compose/netbox/plugin/Dockerfile) and reuses it,
+# rather than building it three times.
+x-netbox-plugin-image: &netbox-plugin-image
+  image: platform-ipam/netbox-plugin:local
+  build:
+    context: ./netbox/plugin
+    dockerfile: Dockerfile
+
+services:
+  netbox:
+    <<: *netbox-plugin-image
+    volumes:
+      - ./netbox/plugin/plugins.py:/etc/netbox/config/plugins.py:ro
+
+  netbox-worker:
+    <<: *netbox-plugin-image
+    volumes:
+      - ./netbox/plugin/plugins.py:/etc/netbox/config/plugins.py:ro
+
+  netbox-bootstrap:
+    <<: *netbox-plugin-image
+    volumes:
+      - ./netbox/plugin/plugins.py:/etc/netbox/config/plugins.py:ro

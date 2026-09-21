@@ -1,0 +1,60 @@
+deploymentEnvironment: prod
+image:
+  repository: registry.example.com/platform/platform-ipam
+  digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+api:
+  replicas: 3
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: 1, memory: 1Gi}
+worker:
+  replicas: 2
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: 1, memory: 1Gi}
+database:
+  existingSecret: platform-ipam-prod-database
+netbox:
+  url: https://netbox.prod.example.com
+  existingSecret: platform-ipam-prod-netbox
+auth:
+  mode: oidc
+  issuer: https://identity.example.com
+  audience: platform-ipam-prod
+aws:
+  mode: live
+policy:
+  configMapName: platform-ipam-prod-pools
+  data: {}
+ingress:
+  host: ipam.prod.example.com
+  tlsSecretName: platform-ipam-prod-tls
+ui:
+  inventoryLinksEnabled: true
+  netboxBaseURL: https://netbox.prod.example.com
+# Optional ui-proxy (work-plan package A7, ADR 0006, deploy/helm/platform-ipam/README.md).
+# Disabled. Enabling it is only meaningful once the prod NetBox at netbox.url
+# above is reachable ONLY through this proxy (header trust) and has
+# REMOTE_AUTH_ENABLED/REMOTE_AUTH_HEADER=HTTP_X_REMOTE_USER/auto-create/
+# default-group configured per docs/GUI_AUTHENTICATION.md -- both are the
+# prod NetBox operator's responsibility, not something this chart enforces.
+uiProxy:
+  enabled: false
+  # To turn it on: flip enabled to true and uncomment/fill in the rest --
+  # upstream is the prod NetBox's internal https:// URL,
+  # basicAuth.existingSecret is a Secret with "username" and a bcrypt
+  # "passwordHash" from `caddy hash-password`, and ingress needs a host and
+  # tlsSecretName (TLS is required whenever uiProxy.ingress.enabled is true).
+  # upstream: https://netbox.prod.example.com
+  # basicAuth:
+  #   existingSecret: platform-ipam-prod-ui-proxy-basic
+  # ingress:
+  #   enabled: true
+  #   className: internal
+  #   host: netbox-ui.prod.example.com
+  #   tlsSecretName: platform-ipam-prod-ui-proxy-tls
+  # networkPolicy:
+  #   egress:
+  #     - cidr: 10.0.0.0/16
+  #       ports:
+  #         - {protocol: TCP, port: 443}

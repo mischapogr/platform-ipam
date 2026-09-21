@@ -1,0 +1,78 @@
+{
+  "Fixture": "networks.csv",
+  "Report": {
+    "Writes": [
+      {
+        "Kind": "prefix",
+        "CIDR": "10.1.0.0/16",
+        "StartAddress": "",
+        "EndAddress": "",
+        "SourceRows": [
+          2
+        ]
+      },
+      {
+        "Kind": "prefix",
+        "CIDR": "10.1.1.0/24",
+        "StartAddress": "",
+        "EndAddress": "",
+        "SourceRows": [
+          3
+        ]
+      }
+    ],
+    "Findings": null
+  }
+}
+{
+  "Fixture": "networks_semicolon.csv",
+  "Report": {
+    "Writes": [
+      {
+        "Kind": "prefix",
+        "CIDR": "10.2.0.0/16",
+        "StartAddress": "",
+        "EndAddress": "",
+        "SourceRows": [
+          2
+        ]
+      },
+      {
+        "Kind": "prefix",
+        "CIDR": "10.2.1.0/24",
+        "StartAddress": "",
+        "EndAddress": "",
+        "SourceRows": [
+          3
+        ]
+      }
+    ],
+    "Findings": null
+  }
+}
+{
+  "Fixture": "confluence_paste.txt",
+  "Report": {
+    "Writes": [
+      {
+        "Kind": "prefix",
+        "CIDR": "10.3.0.0/16",
+        "StartAddress": "",
+        "EndAddress": "",
+        "SourceRows": [
+          2
+        ]
+      },
+      {
+        "Kind": "prefix",
+        "CIDR": "10.3.1.0/24",
+        "StartAddress": "",
+        "EndAddress": "",
+        "SourceRows": [
+          2
+        ]
+      }
+    ],
+    "Findings": null
+  }
+}

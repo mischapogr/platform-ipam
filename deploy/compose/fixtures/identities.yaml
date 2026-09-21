@@ -1,0 +1,23 @@
+identities:
+  - subject: developer
+    tenant_id: developer
+    accounts: ["000000000000"]
+    environments: [development]
+    regions: [eu-central-1]
+  # Second local development identity (package G3c, IPAM_LOCAL_EXTRA_CREDENTIALS
+  # in deploy/compose/compose.yaml). Tenant "ops" appears in no pool in
+  # fixtures/pools.yaml -- eligible for no pool, on purpose.
+  - subject: ops-observer
+    tenant_id: ops
+    accounts: ["000000000000"]
+    environments: [development]
+    regions: [eu-central-1]
+  # The operator identity (package G3b1, IPAM_LOCAL_EXTRA_CREDENTIALS in
+  # deploy/compose/compose.yaml): a principal with NO tenant. It carries only
+  # subject and role -- tenant_id, accounts, environments and regions are
+  # forbidden for an operator (internal/config.Validate) -- and starts from
+  # deny-everything (ADR 0011): every existing tenant comparison in
+  # internal/service refuses it before any new code runs. This release grants
+  # it nothing yet; later packages (G3b2-G3b5) grant specific reads.
+  - subject: ops-operator
+    role: operator

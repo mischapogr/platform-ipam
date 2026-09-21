@@ -1,0 +1,159 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Cross-account read-only role for platform-ipam. Grants exactly the EC2
+  Describe actions the worker's reconciliation adapter needs to observe VPC,
+  subnet and availability-zone inventory in approved regions, plus an
+  optional ec2:DescribeRegions statement used only by the one-off
+  organization inventory procedure (docs/AWS_ORGANIZATION_INVENTORY.md).
+  No write, tagging, or AWS Organizations permission is ever granted.
+  Deploy as a service-managed StackSet; see README.md in this directory.
+  Nothing in this template has been deployed or validated against a live
+  AWS account.
+
+Parameters:
+  RoleName:
+    Type: String
+    Default: PlatformIpamReadOnly
+    MinLength: 1
+    MaxLength: 64
+    AllowedPattern: "[\\w+=,.@-]+"
+    Description: >-
+      Name of the IAM role created in each target account. Keep it identical
+      across accounts so the worker's base-role trust policy can reference a
+      single role name.
+
+  AllowedRegions:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma-delimited list of AWS regions (e.g. eu-central-1,eu-west-1) the
+      role may be used to observe. There is no safe default: set this to the
+      exact reviewed region list for the target account before deploying.
+      Generate it from reviewed coverage, not from every region AWS offers
+      (docs/AWS_INTEGRATION.md section 5).
+
+  EnableRegionDiscovery:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >-
+      When "true", additionally grants ec2:DescribeRegions. This action is
+      needed only by the one-off organization inventory procedure
+      (docs/AWS_ORGANIZATION_INVENTORY.md section 1) and is not required by
+      the worker's steady-state reconciliation adapter. Leave "false" for
+      roles deployed solely for the worker.
+
+  TrustedPrincipalArn:
+    Type: String
+    AllowedPattern: "^arn:aws:iam::[0-9]{12}:role/.+$"
+    ConstraintDescription: >-
+      Must be the ARN of an IAM role (the worker's base role, or the
+      inventory operator's role) — never a wildcard or account root.
+    Description: >-
+      ARN of the single IAM role allowed to assume this role. This is either
+      the platform-ipam worker's base role or, for a role deployed to
+      support the one-off organization inventory procedure, the inventory
+      operator's own role.
+
+  EksClusterArn:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional. When set, restricts AssumeRole to sessions carrying the
+      Pod Identity session tag aws:PrincipalTag/eks-cluster-arn equal to
+      this value (docs/AWS_INTEGRATION.md section 5). Leave empty to omit
+      this condition, e.g. when TrustedPrincipalArn is the inventory
+      operator's role rather than the EKS worker's base role.
+
+  KubernetesNamespace:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional. When set, restricts AssumeRole to sessions carrying the
+      Pod Identity session tag aws:PrincipalTag/kubernetes-namespace equal
+      to this value. Leave empty to omit this condition.
+
+  KubernetesServiceAccount:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional. When set, restricts AssumeRole to sessions carrying the
+      Pod Identity session tag aws:PrincipalTag/kubernetes-service-account
+      equal to this value. Leave empty to omit this condition.
+
+Conditions:
+  EnableRegionDiscoveryCondition: !Equals [!Ref EnableRegionDiscovery, "true"]
+  HasEksClusterArn: !Not [!Equals [!Ref EksClusterArn, ""]]
+  HasKubernetesNamespace: !Not [!Equals [!Ref KubernetesNamespace, ""]]
+  HasKubernetesServiceAccount: !Not [!Equals [!Ref KubernetesServiceAccount, ""]]
+
+Resources:
+  ReadOnlyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: >-
+        platform-ipam cross-account read-only observation role. Read-only
+        EC2 inventory in approved regions; no write, tagging, or
+        Organizations permission.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TrustConfiguredPrincipal
+            Effect: Allow
+            Principal:
+              AWS: !Ref TrustedPrincipalArn
+            Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Condition:
+              StringEquals:
+                aws:PrincipalTag/eks-cluster-arn: !If
+                  - HasEksClusterArn
+                  - !Ref EksClusterArn
+                  - !Ref "AWS::NoValue"
+                aws:PrincipalTag/kubernetes-namespace: !If
+                  - HasKubernetesNamespace
+                  - !Ref KubernetesNamespace
+                  - !Ref "AWS::NoValue"
+                aws:PrincipalTag/kubernetes-service-account: !If
+                  - HasKubernetesServiceAccount
+                  - !Ref KubernetesServiceAccount
+                  - !Ref "AWS::NoValue"
+      Policies:
+        - PolicyName: PlatformIpamReadOnlyInventory
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement: !If
+              - EnableRegionDiscoveryCondition
+              - - Sid: ObserveVpcSubnetAndZoneInventory
+                  Effect: Allow
+                  Action:
+                    - ec2:DescribeVpcs
+                    - ec2:DescribeSubnets
+                    - ec2:DescribeAvailabilityZones
+                  Resource: "*"
+                  Condition:
+                    StringEquals:
+                      ec2:Region: !Ref AllowedRegions
+                - Sid: DiscoverRegionsForInventoryProcedure
+                  Effect: Allow
+                  Action: ec2:DescribeRegions
+                  Resource: "*"
+              - - Sid: ObserveVpcSubnetAndZoneInventory
+                  Effect: Allow
+                  Action:
+                    - ec2:DescribeVpcs
+                    - ec2:DescribeSubnets
+                    - ec2:DescribeAvailabilityZones
+                  Resource: "*"
+                  Condition:
+                    StringEquals:
+                      ec2:Region: !Ref AllowedRegions
+
+Outputs:
+  RoleArn:
+    Description: ARN of the deployed PlatformIpamReadOnly role.
+    Value: !GetAtt ReadOnlyRole.Arn

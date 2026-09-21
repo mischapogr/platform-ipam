@@ -1,0 +1,122 @@
+name: ${COMPOSE_PROJECT_NAME:-platform-ipam-dev}
+
+services:
+  platform-db:
+    image: docker.io/postgres:17.5-alpine
+    environment:
+      POSTGRES_USER: ${PLATFORM_DB_USER:-platform_ipam}
+      POSTGRES_PASSWORD: ${PLATFORM_DB_PASSWORD:-platform_ipam_dev_password}
+      POSTGRES_DB: ${PLATFORM_DB_NAME:-platform_ipam}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - platform-db-data:/var/lib/postgresql/data
+
+  cloud-fake:
+    image: docker.io/alpine:3.22.1
+    command: ["sh", "-c", "sleep infinity"]
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - ./fixtures:/etc/platform-ipam/fixtures:ro
+
+  migrate:
+    build:
+      context: ../..
+      target: release
+    command: ["migrate"]
+    environment: &platform-env
+      IPAM_DATABASE_URL: postgresql://${PLATFORM_DB_USER:-platform_ipam}:${PLATFORM_DB_PASSWORD:-platform_ipam_dev_password}@platform-db:5432/${PLATFORM_DB_NAME:-platform_ipam}?sslmode=disable
+      IPAM_CONFIG_FILE: ${IPAM_CONFIG_FILE:-/etc/platform-ipam/config/pools.yaml}
+      IPAM_ENVIRONMENT: ${IPAM_ENVIRONMENT:-development}
+      IPAM_AUTH_MODE: ${IPAM_AUTH_MODE:-local}
+      IPAM_LOCAL_TOKEN: ${IPAM_LOCAL_TOKEN:-local-development-token-123456}
+      IPAM_LOCAL_SUBJECT: ${IPAM_LOCAL_SUBJECT:-developer}
+      IPAM_LOCAL_EXTRA_CREDENTIALS: ops-observer:${IPAM_OPS_TOKEN:-local-ops-development-token-123456},ops-operator:${IPAM_OPERATOR_TOKEN:-local-operator-development-token-123456}
+      IPAM_NETBOX_URL: ${IPAM_NETBOX_URL:-http://host.docker.internal:18000}
+      IPAM_NETBOX_TOKEN: ${IPAM_NETBOX_TOKEN:-local-netbox-development-token}
+      IPAM_AWS_MODE: ${IPAM_AWS_MODE:-fake}
+      IPAM_LISTEN_ADDR: ${IPAM_LISTEN_ADDR:-:8080}
+      IPAM_OIDC_ISSUER: ${IPAM_OIDC_ISSUER:-}
+      IPAM_OIDC_AUDIENCE: ${IPAM_OIDC_AUDIENCE:-}
+      IPAM_IDENTITY_FILE: ${IPAM_IDENTITY_FILE:-/etc/platform-ipam/identity/identities.yaml}
+      IPAM_FAKE_CLOUD_FILE: /etc/platform-ipam/fixtures/cloud.json
+    depends_on:
+      platform-db:
+        condition: service_healthy
+    volumes:
+      - ./fixtures:/etc/platform-ipam/fixtures:ro
+      - ./fixtures/pools.yaml:/etc/platform-ipam/config/pools.yaml:ro
+      - ./fixtures/identities.yaml:/etc/platform-ipam/identity/identities.yaml:ro
+
+  api:
+    build:
+      context: ../..
+      target: release
+    command: ["api"]
+    environment: *platform-env
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      platform-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${IPAM_API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - ./fixtures/pools.yaml:/etc/platform-ipam/config/pools.yaml:ro
+      - ./fixtures:/etc/platform-ipam/fixtures:ro
+      - ./fixtures/identities.yaml:/etc/platform-ipam/identity/identities.yaml:ro
+
+  worker:
+    build:
+      context: ../..
+      target: release
+    command: ["worker"]
+    environment: *platform-env
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      platform-db:
+        condition: service_healthy
+      cloud-fake:
+        condition: service_healthy
+    volumes:
+      - ./fixtures:/etc/platform-ipam/fixtures:ro
+      - ./fixtures/pools.yaml:/etc/platform-ipam/config/pools.yaml:ro
+      - ./fixtures/identities.yaml:/etc/platform-ipam/identity/identities.yaml:ro
+
+  seed:
+    profiles: [bootstrap]
+    image: docker.io/python:3.13.5-alpine
+    command: ["python", "/seed/seed-netbox.py"]
+    environment:
+      NETBOX_URL: ${IPAM_NETBOX_URL:-http://host.docker.internal:18000}
+      NETBOX_TOKEN: ${IPAM_NETBOX_TOKEN:-local-netbox-development-token}
+      IPAM_ENVIRONMENT: ${IPAM_ENVIRONMENT:-development}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./seed-netbox.py:/seed/seed-netbox.py:ro
+
+volumes:
+  platform-db-data:

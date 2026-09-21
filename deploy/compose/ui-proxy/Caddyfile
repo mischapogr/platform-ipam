@@ -1,0 +1,67 @@
+# ui-proxy: the only published path to the NetBox UI (ADR 0006,
+# docs/GUI_AUTHENTICATION.md section 2). `basic` mode: this proxy verifies an
+# HTTP Basic credential against a bcrypt hash and tells NetBox who
+# authenticated through a trusted header. NetBox's own port is never
+# published; only this one is (deploy/compose/compose.netbox.yaml).
+#
+# NETBOX_UI_USER and NETBOX_UI_PASSWORD_HASH are supplied by entrypoint.sh,
+# which computes the bcrypt hash from the plaintext NETBOX_UI_PASSWORD at
+# container start (see that file for why).
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	# A single `route` block so these steps run in exactly the order written --
+	# Caddy's default directive ordering must not be relied on for a
+	# security-sensitive sequence like this one.
+	route {
+		# Unauthenticated healthcheck target for the Compose healthcheck below.
+		# It never reaches NetBox and needs no credential.
+		@health path /healthz
+		respond @health 200
+
+		# Rule 2: delete any client-supplied identity header BEFORE
+		# authentication ever runs, so a spoofed header can never reach
+		# NetBox, authenticated or not.
+		request_header -X-Remote-User
+		request_header -X-Remote-User-Group
+		# The same names spelled with underscores. A WSGI server builds
+		# HTTP_X_REMOTE_USER by upper-casing the name and turning dashes into
+		# underscores, so "X_Remote_User" lands in the very same variable and
+		# would slip past a filter that only knows the dashed spelling.
+		request_header -X_Remote_User
+		request_header -X_Remote_User_Group
+
+		# Rule 3: this proxy serves browsers only. NetBox's REST and GraphQL
+		# API stay reachable solely on the internal network, where the
+		# platform adapter talks to http://netbox:8080 directly and never
+		# crosses this proxy. Checked before authentication so an API caller
+		# gets a plain 403, not a login prompt.
+		@blocked path /api/* /graphql/*
+		respond @blocked 403
+
+		# Matrix-parameter spelling of the same paths: "/api;x=1/..." has the
+		# first segment "api;x=1", which the glob above does not match. NetBox
+		# answers it with a 404 today, but a block that holds only because the
+		# backend happens not to route a path is not a block. Found by the
+		# package A6 bypass tests.
+		@blocked_params path_regexp (?i)^/+(api|graphql);
+		respond @blocked_params 403
+
+		# Verifies the Basic credential against the bcrypt hash. No
+		# credential, or a wrong one, gets a 401 with WWW-Authenticate here --
+		# the request goes no further.
+		basic_auth bcrypt {
+			{$NETBOX_UI_USER} {$NETBOX_UI_PASSWORD_HASH}
+		}
+
+		# Only after authentication succeeds does NetBox learn who the user
+		# is, from the name the proxy itself just verified -- never from
+		# anything the client sent.
+		request_header X-Remote-User {http.auth.user.id}
+
+		reverse_proxy netbox:8080
+	}
+}

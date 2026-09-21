@@ -1,0 +1,108 @@
+# ui-proxy: `entra` mode (package A4, ADR 0006, docs/GUI_AUTHENTICATION.md
+# section 2). Same guarantees as ui-proxy/Caddyfile's `basic` mode, in the
+# same single ordered `route` block -- Caddy's default directive ordering
+# must not be relied on for a security-sensitive sequence like this one --
+# but authentication here is verified by oauth2-proxy against an OIDC issuer
+# instead of a bcrypt credential this file checks itself. NetBox's own port
+# is never published; only this one is (deploy/compose/compose.netbox.yaml,
+# unchanged by the compose.ui-entra.yaml overlay that mounts this file).
+#
+# forward_auth to oauth2-proxy's /oauth2/auth, with its X-Auth-Request-User
+# response header renamed to X-Remote-User on the way upstream, is the
+# preferred shape (package A4 contract): NetBox then sees the identical
+# X-Remote-User header `basic` mode sets, so no REMOTE_AUTH_* setting differs
+# between modes -- "one NetBox configuration" covered by one set of security
+# tests.
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	route {
+		# Unauthenticated healthcheck target for the Compose healthcheck
+		# (deploy/compose/compose.netbox.yaml, unchanged by the overlay). It
+		# never reaches NetBox or oauth2-proxy and needs no credential.
+		@health path /healthz
+		respond @health 200
+
+		# Rule 2: strip every identity/auth header a client could send,
+		# before authentication ever runs -- both the header NetBox trusts
+		# and the ones oauth2-proxy sets internally, in both the dashed and
+		# WSGI-mapped underscore spellings (a WSGI server upper-cases a
+		# header name and turns dashes into underscores to build its
+		# HTTP_-prefixed variable, so "X_Remote_User" lands in the very same
+		# variable as "X-Remote-User" and must be stripped too). Checked
+		# first so nothing a client sends can be mistaken, later in this
+		# chain, for what oauth2-proxy itself verified.
+		request_header -X-Remote-User
+		request_header -X-Remote-User-Group
+		request_header -X_Remote_User
+		request_header -X_Remote_User_Group
+		request_header -X-Auth-Request-User
+		request_header -X-Auth-Request-Email
+		request_header -X-Auth-Request-Preferred-Username
+		request_header -X-Auth-Request-Groups
+		request_header -X-Auth-Request-Access-Token
+		request_header -X_Auth_Request_User
+		request_header -X_Auth_Request_Email
+		request_header -X_Auth_Request_Preferred_Username
+		request_header -X_Auth_Request_Groups
+		request_header -X_Auth_Request_Access_Token
+		request_header -X-Forwarded-User
+		request_header -X-Forwarded-Email
+		request_header -X-Forwarded-Groups
+		request_header -X_Forwarded_User
+		request_header -X_Forwarded_Email
+		request_header -X_Forwarded_Groups
+
+		# Rule 3: this proxy serves browsers only. NetBox's REST and GraphQL
+		# API stay reachable solely on the internal network, where the
+		# platform adapter talks to http://netbox:8080 directly and never
+		# crosses this proxy. Checked before authentication so an API caller
+		# gets a plain 403, not a login redirect.
+		@blocked path /api/* /graphql/*
+		respond @blocked 403
+
+		# Matrix-parameter spelling of the same paths ("/api;x=1/..."), which
+		# the glob above does not match. Kept identical to the basic-mode
+		# Caddyfile, where the package A6 bypass tests found it.
+		@blocked_params path_regexp (?i)^/+(api|graphql);
+		respond @blocked_params 403
+
+		# oauth2-proxy's own endpoints (/oauth2/start, /oauth2/callback,
+		# /oauth2/sign_out, ...) must stay reachable without going through
+		# forward_auth below, or beginning the login flow would itself
+		# require being already logged in.
+		handle /oauth2/* {
+			reverse_proxy oauth2-proxy:4180
+		}
+
+		# Verifies the session against oauth2-proxy (which verified it
+		# against the OIDC issuer and, via --allowed-group, that the user is
+		# in the admitted group -- docs/GUI_AUTHENTICATION.md, package A4
+		# contract). No session, or an expired one, gets redirected to
+		# /oauth2/start, which begins the OIDC flow; the request goes no
+		# further here. `rd` is a path only (never an absolute URL), so this
+		# redirect stays same-origin without needing oauth2-proxy's
+		# --whitelist-domain.
+		forward_auth oauth2-proxy:4180 {
+			uri /oauth2/auth
+			copy_headers {
+				X-Auth-Request-User>X-Remote-User
+			}
+			@error status 401
+			handle_response @error {
+				redir * /oauth2/start?rd={uri} 302
+			}
+		}
+
+		# Only after oauth2-proxy verifies the session does NetBox learn who
+		# the user is, from the header copy_headers just set above -- never
+		# from anything the client sent. No group header is set: this mode
+		# ships without NetBox group sync (see compose.ui-entra.yaml), so
+		# every authenticated user relies on the same
+		# REMOTE_AUTH_DEFAULT_GROUPS=platform-operators `basic` mode does.
+		reverse_proxy netbox:8080
+	}
+}

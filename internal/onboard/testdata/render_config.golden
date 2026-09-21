@@ -1,0 +1,30 @@
+# This is a fragment for review. Nothing has been written to the repository.
+# Changing cloud_coverage requires advancing coverage_generation, which invalidates absence evidence.
+# IPAM_IDENTITY_FILE replaces the identity list wholesale, so a partial identities file silently removes existing principals.
+
+cloud_coverage:
+  - account_id: "000000000001"
+    role_arn: arn:aws:iam::000000000001:role/PlatformIpamReadOnly
+    regions:
+      - eu-central-1
+      - us-east-1
+  - account_id: "000000000002"
+    role_arn: arn:aws:iam::000000000002:role/CustomProdRole
+    regions:
+      - us-west-2
+
+eligible_accounts:
+  - "000000000001"
+  - "000000000002"
+
+identities:
+  - subject: "REPLACE_WITH_AUTHENTICATED_SUBJECT"
+    tenant_id: "developer"
+    accounts: ["000000000001"]
+    environments: ["development"]
+    regions: ["eu-central-1", "us-east-1"]
+  - subject: "REPLACE_WITH_AUTHENTICATED_SUBJECT"
+    tenant_id: "production"
+    accounts: ["000000000002"]
+    environments: ["production"]
+    regions: ["us-west-2"]

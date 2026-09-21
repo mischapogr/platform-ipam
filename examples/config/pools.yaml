@@ -1,0 +1,64 @@
+# Proposed configuration schema, not a deployable NetBox/Helm configuration.
+# All CIDRs, accounts, role names, and backend IDs are illustrative.
+schema_version: 1
+policy_version: "2026-09-07.1"
+
+overlap_domains:
+  - id: corporate-connected
+    description: All networks that may connect through corporate transit
+    coverage_generation: "2026-09-07.1"
+    inventory_backend:
+      type: netbox
+      vrf_id: 10
+      require_unique_prefixes: true
+    cloud_coverage:
+      - account_id: "123456789012"
+        role_arn: arn:aws:iam::123456789012:role/PlatformIpamReadOnly
+        regions: [eu-central-1]
+    # Expand coverage before enabling another connected account or region.
+    # Any membership change advances coverage_generation and resets absence evidence.
+    # Removing a target needs audited proof its occupancy cannot affect the domain.
+
+pools:
+  - id: pool_prod_euc1
+    overlap_domain: corporate-connected
+    cidr: 10.64.0.0/16
+    address_family: ipv4
+    scope: vpc
+    environment: prod
+    region: eu-central-1
+    eligible_tenants: [orders-team]
+    eligible_accounts: ["123456789012"]
+    allowed_prefix_lengths: [20, 22]
+    excluded_cidrs: [10.64.240.0/20]
+    # Bootstrap represents exclusions as reserved managed inventory objects.
+    max_unreclaimed_allocations_per_tenant: 8
+    inventory_backend:
+      parent_prefix_id: 100
+      # Must resolve to exactly 10.64.0.0/16 in VRF 10 before admission.
+
+subnet_policy:
+  require_parent_scope: vpc
+  inherit_parent_target: true
+  allowed_prefix_lengths: [24, 26]
+  max_unreclaimed_children: 12
+  allow_nested_subnets: false
+
+lifecycle:
+  reservation_expiry_enabled: false
+  reservation_age_alert_hours: 24
+  quarantine_hours: 168
+  required_complete_absence_scans: 2
+  minimum_scan_spacing_seconds: 300
+  maximum_observation_age_seconds: 600
+
+reconciliation:
+  full_scan_interval_seconds: 300
+  include_untagged_resources: true
+  include_all_vpc_cidr_associations: true
+  unknown_coverage_blocks_reuse: true
+
+ui:
+  inventory_links_enabled: false
+  # Set only when NetBox UI access and tenant permissions are configured.
+  netbox_base_url: https://netbox.example.com

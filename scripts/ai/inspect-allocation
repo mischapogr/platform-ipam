@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Summarize a platform API allocation; never infer or authorize CIDR reuse."""
+
+import argparse
+import ipaddress
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+MAX_BYTES = 1024 * 1024
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def read_document(stream):
+    raw = stream.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
+        raise ValueError("Allocation response exceeds the 1 MiB inspection limit")
+    document = json.loads(raw)
+    if not isinstance(document, dict):
+        raise ValueError("Expected an allocation JSON object")
+    return document
+
+
+def endpoint(base, allow_local_http):
+    parsed = urllib.parse.urlsplit(base)
+    if not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("PLATFORM_IPAM_URL must be an origin/base path without credentials, query, or fragment")
+    local = parsed.hostname == "localhost"
+    try:
+        local = local or ipaddress.ip_address(parsed.hostname).is_loopback
+    except ValueError:
+        pass
+    if parsed.scheme != "https" and not (parsed.scheme == "http" and allow_local_http and local):
+        raise ValueError("HTTPS is required; local HTTP needs PLATFORM_IPAM_ALLOW_LOCAL_HTTP=1")
+    return base.rstrip("/")
+
+
+def summarize(document, allocation_id):
+    if document.get("id") != allocation_id:
+        raise ValueError("Response allocation ID does not match the requested ID")
+    if document.get("state") not in {"RESERVED", "ACTIVE", "QUARANTINED", "RELEASED"}:
+        raise ValueError("Expected a committed allocation, not an operation/error response")
+    blockers = document.get("release_blockers")
+    if blockers is not None and not isinstance(blockers, list):
+        raise ValueError("release_blockers must be a list when present")
+    return {
+        "allocation_id": allocation_id,
+        "state": document["state"],
+        "cidr": document.get("cidr"),
+        "scope": document.get("scope"),
+        "account_id": document.get("account_id"),
+        "region": document.get("region"),
+        "inventory_sync": document.get("inventory_sync", "UNKNOWN"),
+        "last_observed_at": document.get("last_observed_at"),
+        "quarantine_until": document.get("quarantine_until"),
+        "release_blockers": blockers,
+        "aws_coverage": "NOT_PROVIDED_BY_ALLOCATION_READ",
+        "reuse_decision": "NOT_EVALUATED",
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("allocation_id")
+    parser.add_argument("--input", type=Path, help="Read a saved allocation response instead of making any network request")
+    args = parser.parse_args()
+    if not re.fullmatch(r"alloc_[A-Za-z0-9_-]{1,128}", args.allocation_id):
+        raise ValueError("Expected an opaque alloc_ ID")
+    if args.input:
+        with args.input.open("rb") as stream:
+            document = read_document(stream)
+    else:
+        base = endpoint(os.environ.get("PLATFORM_IPAM_URL", ""),
+                        os.environ.get("PLATFORM_IPAM_ALLOW_LOCAL_HTTP") == "1")
+        token = os.environ.get("PLATFORM_IPAM_TOKEN", "")
+        if not token:
+            raise ValueError("PLATFORM_IPAM_TOKEN is required for an API read")
+        request = urllib.request.Request(f"{base}/v1/allocations/{args.allocation_id}",
+                                         headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                                         method="GET")
+        with urllib.request.build_opener(NoRedirect).open(request, timeout=10) as response:
+            document = read_document(response)
+    print(json.dumps(summarize(document, args.allocation_id)))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except urllib.error.HTTPError as error:
+        print(json.dumps({"status": "BLOCKED", "http_status": error.code,
+                          "detail": "API read failed; response body omitted"}))
+        sys.exit(2)
+    except (OSError, ValueError, TypeError) as error:
+        print(json.dumps({"status": "BLOCKED", "detail": str(error)}))
+        sys.exit(2)

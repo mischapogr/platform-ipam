@@ -1,0 +1,19 @@
+apiVersion: v2
+name: platform-ipam
+description: Platform IP address allocation API and reconciliation worker
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/mischapogr/platform-ipam
+sources:
+  - https://github.com/mischapogr/platform-ipam
+keywords:
+  - ipam
+  - networking
+  - aws
+  - vpc
+  - netbox
+maintainers:
+  - name: Mischa Pogrebnyak
+    url: https://github.com/mischapogr

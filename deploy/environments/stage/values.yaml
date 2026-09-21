@@ -1,0 +1,54 @@
+deploymentEnvironment: stage
+image:
+  repository: registry.example.com/platform/platform-ipam
+  digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+api:
+  replicas: 2
+worker:
+  replicas: 1
+database:
+  existingSecret: platform-ipam-stage-database
+netbox:
+  url: https://netbox.stage.example.com
+  existingSecret: platform-ipam-stage-netbox
+auth:
+  mode: oidc
+  issuer: https://identity.example.com
+  audience: platform-ipam-stage
+aws:
+  mode: live
+policy:
+  configMapName: platform-ipam-stage-pools
+  data: {}
+ingress:
+  host: ipam.stage.example.com
+  tlsSecretName: platform-ipam-stage-tls
+ui:
+  inventoryLinksEnabled: true
+  netboxBaseURL: https://netbox.stage.example.com
+# Optional ui-proxy (work-plan package A7, ADR 0006, deploy/helm/platform-ipam/README.md).
+# Disabled. Enabling it is only meaningful once the stage NetBox at netbox.url
+# above is reachable ONLY through this proxy (header trust) and has
+# REMOTE_AUTH_ENABLED/REMOTE_AUTH_HEADER=HTTP_X_REMOTE_USER/auto-create/
+# default-group configured per docs/GUI_AUTHENTICATION.md -- both are the
+# stage NetBox operator's responsibility, not something this chart enforces.
+uiProxy:
+  enabled: false
+  # To turn it on: flip enabled to true and uncomment/fill in the rest --
+  # upstream is the stage NetBox's internal https:// URL,
+  # basicAuth.existingSecret is a Secret with "username" and a bcrypt
+  # "passwordHash" from `caddy hash-password`, and ingress needs a host and
+  # tlsSecretName (TLS is required whenever uiProxy.ingress.enabled is true).
+  # upstream: https://netbox.stage.example.com
+  # basicAuth:
+  #   existingSecret: platform-ipam-stage-ui-proxy-basic
+  # ingress:
+  #   enabled: true
+  #   className: internal
+  #   host: netbox-ui.stage.example.com
+  #   tlsSecretName: platform-ipam-stage-ui-proxy-tls
+  # networkPolicy:
+  #   egress:
+  #     - cidr: 10.0.0.0/16
+  #       ports:
+  #         - {protocol: TCP, port: 443}

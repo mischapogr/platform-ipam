@@ -1,0 +1,36 @@
+# CI-only overlay for scripts/ai/checks.py's helm() check (work-plan package
+# H3). Layered on top of a real environment values file with an extra -f, so
+# operatorJob's mode: onboard, command: plan path is additively validated on
+# every run without ever changing what actually gets deployed.
+#
+# Deliberately does NOT set identity.existingConfigMap: onboard plan/apply
+# never reads cfg.Identities (only `onboard drift` does, and drift takes no
+# table argument, so it is out of scope for this template -- see this
+# chart's README), so this combination demonstrates the least-privilege
+# claim that onboard needs no identity file.
+#
+# Not a deployment environment. Never referenced by deploy/environments/* or
+# by the application; only by scripts/ai/check-helm.
+operatorJob:
+  enabled: true
+  mode: onboard
+  command: plan
+  args: ["--domain", "core"]
+  runId: ci-onboard-plan
+  input:
+    existingConfigMap: platform-ipam-onboard-table-ci
+    key: table.json
+  networkPolicy:
+    egress:
+      - cidr: 10.0.20.0/24
+        ports:
+          - {protocol: TCP, port: 443}
+# The chart-wide egress list (what api and worker get: the database, AWS, the
+# OIDC issuer). Set here only so the helm check can tell it from onboard's own
+# list: onboard's NetworkPolicy must never contain it, adopt's must equal the
+# worker's.
+networkPolicy:
+  egress:
+    - cidr: 10.0.99.0/24
+      ports:
+        - {protocol: TCP, port: 5432}

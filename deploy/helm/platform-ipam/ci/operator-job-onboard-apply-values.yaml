@@ -1,0 +1,28 @@
+# CI-only overlay for scripts/ai/checks.py's helm() check (work-plan package
+# H3): operatorJob's mode: onboard, command: apply combination. See
+# operator-job-onboard-plan-values.yaml for why identity.existingConfigMap
+# is deliberately left unset. Not a deployment environment; only used by
+# scripts/ai/check-helm.
+operatorJob:
+  enabled: true
+  mode: onboard
+  command: apply
+  args: ["--domain", "core", "--batch", "ci-import"]
+  runId: ci-onboard-apply
+  input:
+    existingConfigMap: platform-ipam-onboard-table-ci
+    key: table.json
+  networkPolicy:
+    egress:
+      - cidr: 10.0.20.0/24
+        ports:
+          - {protocol: TCP, port: 443}
+# The chart-wide egress list (what api and worker get: the database, AWS, the
+# OIDC issuer). Set here only so the helm check can tell it from onboard's own
+# list: onboard's NetworkPolicy must never contain it, adopt's must equal the
+# worker's.
+networkPolicy:
+  egress:
+    - cidr: 10.0.99.0/24
+      ports:
+        - {protocol: TCP, port: 5432}

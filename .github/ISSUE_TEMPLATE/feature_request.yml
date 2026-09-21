@@ -1,0 +1,39 @@
+name: Feature or change proposal
+description: Propose a change to behaviour, contract, or scope.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [`docs/decisions/`](../blob/main/docs/decisions/) first. If your
+        proposal contradicts a decision record, say so — revisiting a decision
+        is fine, doing it silently is not.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What cannot be done today, and who is blocked by it. Not the solution yet.
+    validations: { required: true }
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What you want to happen, and which surface it touches.
+    validations: { required: true }
+
+  - type: textarea
+    id: safety
+    attributes:
+      label: Effect on allocation safety
+      description: >
+        Does this change who may allocate, how a CIDR is chosen, when space may
+        be reused, or what counts as evidence of absence? If it touches none of
+        those, say so explicitly.
+    validations: { required: true }
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

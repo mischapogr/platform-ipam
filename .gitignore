@@ -1,0 +1,50 @@
+.env
+**/.env
+**/__pycache__/
+*.pyc
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+bin/
+coverage.out
+deploy/compose/runtime/
+
+# Machine-local MCP registration (absolute paths to the shared launcher)
+.mcp.json
+
+# e2e scratch workspace (built provider binary, generated Terraform config)
+tests/e2e/.workspace/
+
+# --- Local tooling and machine state; never part of a published checkout ---
+# Editor and IDE configuration.
+.idea/
+.vscode/
+.fleet/
+*.swp
+
+# Per-machine agent configuration. .agents/skills/ is deliberately NOT ignored:
+# those skills are project documentation referenced from AGENTS.md.
+.claude/
+.codex/
+
+# MCP server logs. These name unrelated local projects and must not ship.
+.setting.*/
+*.log
+
+# Shell and tool dotfiles that some sandboxes mount into the working directory
+# as zero-byte character devices. They are not project files, and `git add -A`
+# fails on them.
+/.bashrc
+/.bash_profile
+/.zshrc
+/.zprofile
+/.profile
+/.gitconfig
+/.gitmodules
+/.ripgreprc
+/.vscode
+
+# Output of the organization inventory procedure: account names and network layout.
+inventory/

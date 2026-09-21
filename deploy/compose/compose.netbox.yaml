@@ -1,0 +1,193 @@
+# Local NetBox is an independent inventory release. Its database and queues
+# are deliberately separate from the platform ledger and worker.
+services:
+  netbox:
+    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    environment:
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
+      REDIS_CACHE_PASSWORD: ${NETBOX_CACHE_PASSWORD:-netbox_cache_dev_password}
+      SECRET_KEY: ${NETBOX_SECRET_KEY:-local-development-secret-key-change-me-0123456789abcdef0123456789abcdef}
+      API_TOKEN_PEPPER_1: ${NETBOX_API_TOKEN_PEPPER:-local-development-api-token-pepper-0123456789abcdef0123456789abcdef}
+      DB_WAIT_DEBUG: ${NETBOX_DB_WAIT_DEBUG:-0}
+    env_file:
+      - ./netbox/netbox.env
+    depends_on:
+      netbox-db:
+        condition: service_healthy
+      netbox-redis:
+        condition: service_healthy
+      netbox-redis-cache:
+        condition: service_healthy
+    # Not published. ui-proxy below is the only published path to this
+    # service (ADR 0006, docs/GUI_AUTHENTICATION.md rule 1): header trust in
+    # `basic` mode is only safe when the proxy is the sole way in.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/login/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    volumes:
+      - netbox-media-files:/opt/netbox/netbox/media
+      - netbox-reports-files:/opt/netbox/netbox/reports
+      - netbox-scripts-files:/opt/netbox/netbox/scripts
+
+  # The only published path to the NetBox UI (ADR 0006,
+  # docs/GUI_AUTHENTICATION.md). `basic` mode: verifies an HTTP Basic
+  # credential against a bcrypt hash computed at start (ui-proxy/entrypoint.sh)
+  # from NETBOX_UI_PASSWORD, deletes any inbound X-Remote-User(-Group) header
+  # before authenticating, then sets X-Remote-User to the authenticated user.
+  # Refuses /api/ and /graphql/ -- the platform adapter keeps using
+  # http://netbox:8080 internally and never crosses this proxy.
+  ui-proxy:
+    image: docker.io/caddy:2.11.4-alpine
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    environment:
+      NETBOX_UI_USER: ${NETBOX_UI_USER:-operator}
+      NETBOX_UI_PASSWORD: ${NETBOX_UI_PASSWORD:?a development ui-proxy password is required}
+    depends_on:
+      netbox:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${NETBOX_PORT:-18000}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+    volumes:
+      - ./ui-proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./ui-proxy/entrypoint.sh:/entrypoint.sh:ro
+
+  netbox-worker:
+    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    environment:
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
+      REDIS_CACHE_PASSWORD: ${NETBOX_CACHE_PASSWORD:-netbox_cache_dev_password}
+      SECRET_KEY: ${NETBOX_SECRET_KEY:-local-development-secret-key-change-me-0123456789abcdef0123456789abcdef}
+      API_TOKEN_PEPPER_1: ${NETBOX_API_TOKEN_PEPPER:-local-development-api-token-pepper-0123456789abcdef0123456789abcdef}
+      DB_WAIT_DEBUG: ${NETBOX_DB_WAIT_DEBUG:-0}
+    env_file:
+      - ./netbox/netbox.env
+    command: ["/opt/netbox/venv/bin/python", "/opt/netbox/netbox/manage.py", "rqworker"]
+    depends_on:
+      netbox:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ps -aux | grep -v grep | grep -q rqworker"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    volumes:
+      - netbox-media-files:/opt/netbox/netbox/media
+      - netbox-reports-files:/opt/netbox/netbox/reports
+      - netbox-scripts-files:/opt/netbox/netbox/scripts
+
+  netbox-db:
+    image: docker.io/postgres:17.5-alpine
+    environment:
+      POSTGRES_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
+    env_file:
+      - ./netbox/postgres.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - netbox-db-data:/var/lib/postgresql/data
+
+  netbox-redis:
+    image: docker.io/valkey/valkey:9.1-alpine
+    environment:
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
+    env_file:
+      - ./netbox/redis.env
+    command: ["sh", "-c", "valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD"]
+    healthcheck: &netbox-redis-healthcheck
+      test: ["CMD-SHELL", "valkey-cli --pass \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 8
+    volumes:
+      - netbox-redis-data:/data
+
+  netbox-redis-cache:
+    image: docker.io/valkey/valkey:9.1-alpine
+    environment:
+      REDIS_PASSWORD: ${NETBOX_CACHE_PASSWORD:-netbox_cache_dev_password}
+    env_file:
+      - ./netbox/redis-cache.env
+    command: ["sh", "-c", "valkey-server --requirepass $$REDIS_PASSWORD"]
+    healthcheck: *netbox-redis-healthcheck
+    volumes:
+      - netbox-redis-cache-data:/data
+
+  api:
+    environment:
+      IPAM_NETBOX_URL: http://netbox:8080
+    depends_on:
+      netbox:
+        condition: service_healthy
+
+  worker:
+    environment:
+      IPAM_NETBOX_URL: http://netbox:8080
+    depends_on:
+      netbox:
+        condition: service_healthy
+
+  seed:
+    environment:
+      NETBOX_URL: http://netbox:8080
+    depends_on:
+      netbox:
+        condition: service_healthy
+
+  # Creates the development superuser and the v1 API token the platform's
+  # NetBox adapter authenticates with. The image's own SUPERUSER_* bootstrap
+  # only issues v2 tokens, which use a different Authorization header. Also
+  # creates the read-only operator groups (package A2, docs/GUI_AUTHENTICATION.md)
+  # and, when NETBOX_E2E_VIEWER_TOKEN is set, a development viewer user for
+  # tests/e2e/test_e2e_netbox_roles.py.
+  netbox-bootstrap:
+    profiles: [bootstrap]
+    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py shell --no-startup --interface python < /bootstrap/bootstrap-token.py &&
+        /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py shell --no-startup --interface python < /bootstrap/bootstrap-groups.py
+    environment:
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
+      REDIS_CACHE_PASSWORD: ${NETBOX_CACHE_PASSWORD:-netbox_cache_dev_password}
+      SECRET_KEY: ${NETBOX_SECRET_KEY:-local-development-secret-key-change-me-0123456789abcdef0123456789abcdef}
+      API_TOKEN_PEPPER_1: ${NETBOX_API_TOKEN_PEPPER:-local-development-api-token-pepper-0123456789abcdef0123456789abcdef}
+      IPAM_ENVIRONMENT: ${IPAM_ENVIRONMENT:-development}
+      IPAM_NETBOX_TOKEN: ${IPAM_NETBOX_TOKEN:?a 40-character development NetBox token is required}
+      NETBOX_SUPERUSER_NAME: ${NETBOX_SUPERUSER_NAME:-admin}
+      NETBOX_SUPERUSER_EMAIL: ${NETBOX_SUPERUSER_EMAIL:-admin@example.invalid}
+      NETBOX_SUPERUSER_PASSWORD: ${NETBOX_SUPERUSER_PASSWORD:?a development NetBox superuser password is required}
+      NETBOX_E2E_VIEWER_TOKEN: ${NETBOX_E2E_VIEWER_TOKEN:?a 40-character development NetBox viewer token is required}
+    env_file:
+      - ./netbox/netbox.env
+    depends_on:
+      netbox:
+        condition: service_healthy
+    volumes:
+      - ./netbox/bootstrap-token.py:/bootstrap/bootstrap-token.py:ro
+      - ./netbox/bootstrap-groups.py:/bootstrap/bootstrap-groups.py:ro
+
+volumes:
+  netbox-db-data:
+  netbox-redis-data:
+  netbox-redis-cache-data:
+  netbox-media-files:
+  netbox-reports-files:
+  netbox-scripts-files:

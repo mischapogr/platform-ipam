@@ -1,0 +1,64 @@
+# ui-proxy, `ldap` mode (package A5, ADR 0006, docs/GUI_AUTHENTICATION.md
+# section 2, "LDAP mode (package A5)"). Unlike Caddyfile (`basic` mode), this
+# proxy authenticates NO ONE: NetBox's own LDAP backend (AUTH_LDAP_* in
+# compose.ui-ldap.yaml) binds to the directory itself when a user submits
+# NetBox's login form. This file only routes, terminates TLS at the network
+# edge in a real deployment, and keeps the same two safety rules basic mode
+# has, in the same order, for the same reasons -- a client can send whatever
+# it likes; neither rule depends on who (if anyone) it claims to be:
+#
+#   1. any client-supplied identity header is deleted before the request
+#      reaches NetBox, in both spellings, exactly as Caddyfile does. NetBox
+#      never trusts one here anyway (REMOTE_AUTH_ENABLED=false in this mode
+#      disables the header middleware entirely -- see the doc section), but
+#      stripping it is defense in depth and keeps this file's shape
+#      comparable to Caddyfile's for review.
+#   2. /api/ and /graphql/ stay 403 through this proxy. The platform adapter
+#      keeps using http://netbox:8080 internally and never crosses it.
+#
+# NETBOX_UI_USER / NETBOX_UI_PASSWORD_HASH do not apply to this file -- there
+# is no basic_auth directive, and deploy/compose/ui-proxy/entrypoint-ldap.sh
+# never computes a hash.
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	# A single `route` block so these steps run in exactly the order written,
+	# matching Caddyfile.
+	route {
+		# Unauthenticated healthcheck target for the Compose healthcheck below.
+		# It never reaches NetBox and needs no credential.
+		@health path /healthz
+		respond @health 200
+
+		# Delete any client-supplied identity header before the request is
+		# ever proxied. NetBox does not consult this header in ldap mode, but a
+		# stripped header can never become a future bypass if that ever
+		# changes, so it is removed here exactly as in Caddyfile.
+		request_header -X-Remote-User
+		request_header -X-Remote-User-Group
+		# The same names spelled with underscores -- see Caddyfile for why a
+		# WSGI server treats both spellings identically.
+		request_header -X_Remote_User
+		request_header -X_Remote_User_Group
+
+		# This proxy serves browsers only. NetBox's REST and GraphQL API stay
+		# reachable solely on the internal network. Checked before the request
+		# is proxied so an API caller gets a plain 403.
+		@blocked path /api/* /graphql/*
+		respond @blocked 403
+
+		# Matrix-parameter spelling of the same paths ("/api;x=1/..."), which
+		# the glob above does not match. Kept identical to the basic-mode
+		# Caddyfile, where the package A6 bypass tests found it.
+		@blocked_params path_regexp (?i)^/+(api|graphql);
+		respond @blocked_params 403
+
+		# No basic_auth directive and no X-Remote-User is set here -- ldap
+		# mode's entire point is that NetBox's login form and its own LDAP
+		# backend do the authenticating, not this proxy.
+		reverse_proxy netbox:8080
+	}
+}

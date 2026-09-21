@@ -1,0 +1,169 @@
+# Optional overlay: `ldap` mode of the operator UI (package A5, ADR 0006,
+# docs/GUI_AUTHENTICATION.md section 2 and "LDAP mode (package A5)"). In this
+# mode NetBox authenticates against a directory ITSELF through its own LDAP
+# backend -- ui-proxy only routes and terminates TLS; it never verifies a
+# credential or trusts an identity header, unlike `basic` mode
+# (compose.netbox.yaml, ui-proxy/Caddyfile). Layer this file after
+# compose.netbox.yaml; without it nothing changes:
+#
+#   docker compose --env-file .env \
+#     -f compose.yaml -f compose.netbox.yaml -f compose.ui-ldap.yaml \
+#     up -d netbox-db netbox-redis netbox-redis-cache netbox ui-proxy openldap
+#
+# Brings up a pinned OpenLDAP test directory (osixia/openldap:1.5.0 -- widely
+# used specifically for testing LDAP-backed application logins, with a
+# well-documented custom-LDIF bootstrap mechanism this file relies on; not
+# actively released, but it wraps stock OpenLDAP with no behaviour of its own
+# to go stale, and it never runs anywhere but this throw-away development
+# overlay. The obvious "actively maintained" alternative, bitnami/openldap,
+# is not usable here: as of August 2025 Bitnami stopped publishing free
+# OpenLDAP images) seeded from deploy/compose/openldap/bootstrap.ldif with
+# three users:
+#   viewer     -- member of platform-operators only (read-only)
+#   maintainer -- member of platform-operators AND
+#                 platform-inventory-maintainers (read + write)
+#   outsider   -- member of neither; AUTH_LDAP_REQUIRE_GROUP_DN below must
+#                 refuse this user's login outright
+#
+# Group mapping, without any custom NetBox code: the test directory's two
+# groups are named EXACTLY platform-operators / platform-inventory-
+# maintainers -- the same names deploy/compose/netbox/bootstrap-groups.py
+# already creates in NetBox with their ObjectPermissions attached.
+# AUTH_LDAP_MIRROR_GROUPS then does nothing more than add each authenticated
+# user to the existing NetBox group of the same name; no
+# AUTH_LDAP_USER_FLAGS_BY_GROUP mapping or plugin code is needed to grant
+# write access. A real Active Directory cannot be renamed to match a
+# convention like this, so it needs the opposite approach -- see the doc
+# section this package appends for what that requires.
+#
+# Header trust OFF in this mode: REMOTE_AUTH_ENABLED=false below disables
+# NetBox's RemoteUserMiddleware entirely (it short-circuits before looking at
+# any header when that setting is false -- read from
+# /opt/netbox/netbox/netbox/middleware.py:156 in the pinned image), so
+# nothing -- not a forged header, not a stale basic-mode setting inherited
+# from netbox.env -- can log a user in from a header while this overlay is
+# active. REMOTE_AUTH_BACKEND is also narrowed to LDAPBackend only, which
+# drops RemoteUserBackend out of NetBox's AUTHENTICATION_BACKENDS list
+# (settings.py:581-584) as a second, independent way the same trust is
+# turned off.
+services:
+  netbox:
+    environment:
+      # -- turn off basic mode's header trust ------------------------------
+      REMOTE_AUTH_ENABLED: "false"
+      REMOTE_AUTH_BACKEND: netbox.authentication.LDAPBackend
+      REMOTE_AUTH_AUTO_CREATE_USER: "false"
+      REMOTE_AUTH_DEFAULT_GROUPS: ""
+      # -- LDAP bind and search (names verified in the image, package A1;
+      #    docs/GUI_AUTHENTICATION.md "Verified in image (A1)") -------------
+      AUTH_LDAP_SERVER_URI: ldap://openldap:389
+      AUTH_LDAP_BIND_DN: cn=admin,dc=platform-ipam,dc=dev
+      AUTH_LDAP_BIND_PASSWORD: ${NETBOX_LDAP_ADMIN_PASSWORD:-local-ldap-admin-dev-password}
+      AUTH_LDAP_USER_SEARCH_BASEDN: ou=people,dc=platform-ipam,dc=dev
+      # sAMAccountName (the image's Active Directory default) does not exist
+      # on this OpenLDAP tree; its users are keyed by uid.
+      AUTH_LDAP_USER_SEARCH_ATTR: uid
+      AUTH_LDAP_GROUP_SEARCH_BASEDN: ou=groups,dc=platform-ipam,dc=dev
+      # "group" (the image's Active Directory default) is not a class this
+      # OpenLDAP tree has; groupOfNames/member is deploy/compose/openldap/
+      # bootstrap.ldif's actual schema.
+      AUTH_LDAP_GROUP_SEARCH_CLASS: groupOfNames
+      AUTH_LDAP_GROUP_TYPE: GroupOfNamesType
+      # Login is refused outright for anyone not in this group (django-auth-
+      # ldap's AUTH_LDAP_REQUIRE_GROUP) -- this is what refuses `outsider`.
+      AUTH_LDAP_REQUIRE_GROUP_DN: cn=platform-operators,ou=groups,dc=platform-ipam,dc=dev
+      # Maps this user's LDAP group memberships onto NetBox groups of the
+      # same name -- see the mapping note above.
+      AUTH_LDAP_MIRROR_GROUPS: "true"
+      # AUTH_LDAP_IS_ADMIN_DN / AUTH_LDAP_IS_SUPERUSER_DN are deliberately
+      # NOT set here (docs/GUI_AUTHENTICATION.md "Verified in image (A1)":
+      # "leave unset"; ADR 0006: "no header may grant superuser"). The
+      # pinned image's ldap_config.py always builds
+      # AUTH_LDAP_USER_FLAGS_BY_GROUP once AUTH_LDAP_REQUIRE_GROUP_DN is set,
+      # filling is_staff/is_superuser from these two variables -- left
+      # unset, environ.get(..., '') supplies '', an empty DN no real LDAP
+      # group entry can ever match, so no LDAP group can grant either flag.
+      # is_staff goes further still: this NetBox version's User model
+      # (users/models/users.py:113) is AbstractBaseUser+PermissionsMixin,
+      # not Django's AbstractUser, so it has no is_staff FIELD at all
+      # (confirmed empirically) -- is_superuser is the only elevation flag
+      # that exists here. Proven empirically, via NetBox's own ORM (neither
+      # flag is visible through its REST or GraphQL APIs), by
+      # tests/e2e/run-ui-ldap.sh after tests/e2e/ui_mode_ldap.py's suite
+      # passes.
+    depends_on:
+      openldap:
+        condition: service_healthy
+
+  # ldap mode: pass-through only, no basic_auth, no X-Remote-User -- see
+  # Caddyfile.ldap. entrypoint-ldap.sh never computes a bcrypt hash, so it
+  # never reads NETBOX_UI_USER/NETBOX_UI_PASSWORD even though
+  # compose.netbox.yaml still declares NETBOX_UI_PASSWORD as required
+  # (unused in this mode, but still needed at `docker compose config` time
+  # for that file's own variable interpolation).
+  ui-proxy:
+    entrypoint: ["/bin/sh", "/entrypoint-ldap.sh"]
+    volumes:
+      - ./ui-proxy/Caddyfile.ldap:/etc/caddy/Caddyfile.ldap:ro
+      - ./ui-proxy/entrypoint-ldap.sh:/entrypoint-ldap.sh:ro
+
+  # Development-only LDAP directory (see the file-header comment above for
+  # the image choice). Not published to the host -- same rule as NetBox
+  # itself (ADR 0006 rule 1): nothing outside this Compose network may reach
+  # it directly, only NetBox's own LDAP bind can.
+  openldap:
+    image: docker.io/osixia/openldap:1.5.0
+    # --copy-service: the image's own startup scripts rewrite (sed -i) and
+    # then delete the custom-bootstrap LDIF directory as part of loading it;
+    # both operations fail with "Device or resource busy" when that
+    # directory is itself the bind-mount target below. --copy-service makes
+    # the image copy /container/service (bootstrap.ldif included) into a
+    # writable, non-mounted location first and run from there instead.
+    command: ["--copy-service"]
+    environment:
+      LDAP_ORGANISATION: platform-ipam (dev/test)
+      LDAP_DOMAIN: platform-ipam.dev
+      LDAP_BASE_DN: dc=platform-ipam,dc=dev
+      LDAP_ADMIN_PASSWORD: ${NETBOX_LDAP_ADMIN_PASSWORD:-local-ldap-admin-dev-password}
+      # This is a throw-away, network-isolated test directory (never
+      # published, torn down with the rest of the project); the image's
+      # self-signed TLS listener is not needed for that threat model and
+      # only adds startup time and cert-trust noise to the test.
+      LDAP_TLS: "false"
+    volumes:
+      # :ro, and paired with --copy-service above: without --copy-service,
+      # the image's startup script chown(1)s and sed(1)s (in place -- write
+      # new file, rename over the original) each custom LDIF file, and then
+      # DELETES the whole custom directory once its contents are loaded, as
+      # ordinary bootstrap cleanup. Against a writable bind mount, that
+      # cleanup step deletes this repository's own bootstrap.ldif from the
+      # working tree -- it did, once, while this overlay was being built.
+      # --copy-service makes the image copy /container/service to a
+      # writable, non-mounted location first and do all of that -- rewrite,
+      # rename, delete -- against the copy instead, so mounting the real
+      # source read-only here is both correct (chown/rename no longer touch
+      # it) and safe (nothing the image does can remove it).
+      - ./openldap/bootstrap.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/bootstrap.ldif:ro
+    healthcheck:
+      # Authenticated, not anonymous: this OpenLDAP tree's default ACL
+      # refuses anonymous read (confirmed empirically -- an anonymous
+      # ldapsearch against the base DN answers "no such object", not because
+      # the entry is missing, but because an unauthenticated bind cannot see
+      # it), which is the correct default for the same reason the design
+      # never lets ui-proxy see this directory (ADR 0006). LDAP_ADMIN_PASSWORD
+      # is already this container's own environment variable, so CMD-SHELL is
+      # used to expand it at container runtime -- the exec-form CMD below
+      # never sees a shell. `$$` (not `$`) so Compose's OWN variable
+      # interpolation, which runs first while parsing this YAML file, leaves
+      # a literal `$LDAP_BASE_DN` for the container's shell to expand later,
+      # instead of substituting an empty string from the host's own
+      # environment right now.
+      test:
+        [
+          "CMD-SHELL",
+          "ldapsearch -x -H ldap://localhost -D cn=admin,$$LDAP_BASE_DN -w \"$$LDAP_ADMIN_PASSWORD\" -b $$LDAP_BASE_DN -s base >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s

@@ -1,0 +1,12 @@
+{{- if .Values.uiProxy.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "platform-ipam.fullname" . }}-ui-proxy
+  labels:
+    {{- include "platform-ipam.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui-proxy
+data:
+  Caddyfile: |-
+    {{- include "platform-ipam.uiProxy.caddyfile" . | nindent 4 }}
+{{- end }}

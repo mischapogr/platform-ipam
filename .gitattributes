@@ -1,0 +1,3 @@
+# Reader fixtures are byte-exact on purpose: CRLF line endings, a byte-order
+# mark and non-breaking spaces are the things under test.
+internal/onboard/testdata/** -text

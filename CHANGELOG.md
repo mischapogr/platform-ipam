@@ -138,6 +138,13 @@ between minor versions.
   unless `IPAM_MEASURE=1`), that counts `persistState`'s round trips per `Ledger.Update` against a
   counting fake of `pgx.Tx`, confirming ADR 0017's formula `9 + 3A + O + P + R + D + F + C + E`
   exactly at every swept size; it ships no production change (ADR 0017, package M4d).
+- `internal/storage`'s `PostgresLedger.Update` no longer re-offers or decodes the ledger's full audit
+  history: `persistState` inserts only the events a transaction's own closure appended, and `Update`'s
+  `loadState` call skips `audit_events` entirely, removing a write and read cost that grew with the
+  ledger's age rather than its size. `View` is unchanged, still loading events eagerly, so this is a
+  partial read-side win, roughly half of a reservation's audit-decode cost; measured before/after at
+  100 and ~1,000 committed allocations in `docs/DEPLOYMENT.md`'s dated measurement section (ADR 0017,
+  package M4e).
 
 ### Fixed
 

@@ -616,6 +616,71 @@ func TestPostgresCancellingAReservationDropsItsRowsAndFreesItsKey(t *testing.T) 
 	}
 }
 
+// TestPostgresUpdateDoesNotLoadAuditHistory is package M4e's read-side proof,
+// against a real database: Update no longer decodes audit_events at all, so
+// a closure's st.Events is empty at the start of every Update regardless of
+// how much history the ledger already carries -- while View, deliberately
+// left unchanged, still sees the whole history. It exists to catch the
+// mutation "events loaded eagerly again" (reverting Update's loadState call
+// to includeEvents=true).
+func TestPostgresUpdateDoesNotLoadAuditHistory(t *testing.T) {
+	db := requireIsolatedPostgres(t)
+	ledger := db.openLedger()
+	if err := ledger.Migrate(db.ctx); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	// Seed history the way a real ledger accumulates it, across two Updates.
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		state.Events = append(state.Events, domain.Event{
+			ID: "evt_hist_1", AllocationID: "alloc_history", TenantID: "tenant-a",
+			Action: "RESERVE_PLANNED", At: time.Now().UTC(),
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed first historical event: %v", err)
+	}
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		state.Events = append(state.Events, domain.Event{
+			ID: "evt_hist_2", AllocationID: "alloc_history", TenantID: "tenant-a",
+			Action: "RESERVE_COMMITTED", At: time.Now().UTC(),
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed second historical event: %v", err)
+	}
+
+	// A later Update's closure must not see that history: this is the read
+	// change. It never touches state.Events itself, exactly like every real
+	// service closure -- append-only or nothing at all.
+	var sawAtStart int
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		sawAtStart = len(state.Events)
+		return nil
+	}); err != nil {
+		t.Fatalf("unrelated update: %v", err)
+	}
+	if sawAtStart != 0 {
+		t.Fatalf("Update's closure saw %d historical audit events; want 0 -- Update must not load audit_events", sawAtStart)
+	}
+
+	// View, unchanged, still sees the full history: this is what every other
+	// test in this file that reads events back (TestPostgresAuditEventsRemainAppendOnly
+	// and both drops-its-rows-and-frees-its-key tests) relies on, unmodified.
+	if err := ledger.View(db.ctx, func(state *domain.State) error {
+		seen := map[string]bool{}
+		for _, e := range state.Events {
+			seen[e.ID] = true
+		}
+		if !seen["evt_hist_1"] || !seen["evt_hist_2"] || len(seen) != 2 {
+			return fmt.Errorf("View did not see the full audit history: %#v", state.Events)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPostgresAuditEventsRemainAppendOnly(t *testing.T) {
 	db := requireIsolatedPostgres(t)
 	ledger := db.openLedger()

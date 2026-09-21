@@ -854,3 +854,48 @@ weakest form, two client loops against one replica rather than the configured
 topology. On these numbers the owner and the lead took M4e first and M4f after
 it on the harness, and set the projection package M4g aside as not urgent, a
 pass being bound by NetBox requests at every size measured.
+
+Built on 2026-09-22 by package M4e, the first store package of the cut above.
+`persistState` inserts only the events a transaction's own closure appended;
+a transaction knows which ones those are because `loadState` now returns,
+beside the state, the set of event ids it actually loaded, and an `Update`
+transaction loads none, so its set is always empty and nothing it appends is
+ever "already loaded" to filter out. `ON CONFLICT DO NOTHING` stays as the
+brace. `loadState` stops decoding `audit_events` on `Update`, and M4d's own
+review note is why: it is a read cost as well as a write one. `View` keeps
+loading events, unchanged and on purpose, because no production `View`
+closure reads them (every reader of `State.Events` in `internal/service` was
+found to be either an append or a test) and because the opt-in PostgreSQL
+tests that read audit history back, above all
+`TestPostgresAuditEventsRemainAppendOnly`, do so through `View` and had to
+keep passing unmodified. The consequence is a partial, honestly stated win
+on the read side: M4d's counting test now measures a flat two `audit_events`
+inserts per `Update` regardless of ledger age, from zero to a thousand
+historical events, where it once measured one insert per historical event;
+and a re-run of M4d's idle- and during-pass reservation-latency measurement
+at the same two sizes found roughly half the cost gone, not all of it --
+median idle latency at a thousand allocations fell from 4.85s to 2.646s, and
+during-pass from 5.72s to 2.844s, matching what leaving `View` untouched
+predicts, since a reservation pays the audit decode twice (`reserve`'s
+`View` pre-check and its planning `Update`) and only one of the two no
+longer does. M4c's differential harness passed unmodified, comparing all
+nine tables after every one of 150 generated steps, against a throw-away
+`postgres:17.5-alpine`; every existing test in
+`internal/storage/postgres_test.go` passed unmodified alongside it,
+including the append-only test. Four mutations were applied to a scratch
+copy and each was killed: an appended event dropped (caught by the
+differential harness and three separate tests), a loaded event re-offered
+(caught by a dedicated unit test built for exactly this, since a real
+`Update`'s always-empty loaded set cannot exercise it on its own), a loaded
+event deleted (caught by the append-only test), and `Update` reverted to
+load events eagerly (caught by a new, dedicated test asserting an `Update`
+closure's `State.Events` is empty at the start). A fifth named mutation, a
+read returning another allocation's events, does not apply: no
+per-allocation event reader was added, because none exists in production to
+need one -- `api/openapi.yaml`, every CLI verb under `cmd/`, and
+`internal/transport` were all checked and none lists an allocation's events
+today. The whole end-to-end suite ran in two halves against
+`platform-ipam-dev`, 70 then 53 tests, both `OK`; the main stack was left
+healthy and untouched throughout. M4f, the diff for the remaining eight
+tables, is the package that still carries the record's stated risk and is
+next; M4e touched one table only, by a stop, not a diff.

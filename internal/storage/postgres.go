@@ -122,7 +122,20 @@ func (l *PostgresLedger) View(ctx context.Context, fn func(*domain.State) error)
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, coordinationLock); err != nil {
 		return fmt.Errorf("lock ledger read: %w", err)
 	}
-	s, err := loadState(ctx, tx)
+	// View still loads the audit table, unlike Update below (package M4e).
+	// Nothing in internal/service ever reads a View closure's st.Events -- the
+	// callers that need the whole state (reserve's pre-check, List, Findings,
+	// capacity, the worker's per-domain and per-operation scans) all read
+	// Allocations, Operations, Requests, Observations or Findings, never
+	// Events -- so this eager load costs a View closure nothing it uses today.
+	// It stays because View never writes (persistState is never called from a
+	// View transaction, so there is no write-amplification term for it to
+	// remove) and because the opt-in Postgres integration tests read audit
+	// history back through exactly this method
+	// (TestPostgresAuditEventsRemainAppendOnly and the two
+	// drops-its-rows-and-frees-its-key tests): keeping View's eager load
+	// unchanged is what lets those tests pass without being touched.
+	s, _, err := loadState(ctx, tx, true)
 	if err != nil {
 		return err
 	}
@@ -144,14 +157,32 @@ func (l *PostgresLedger) Update(ctx context.Context, fn func(*domain.State) erro
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, coordinationLock); err != nil {
 		return fmt.Errorf("lock ledger update: %w", err)
 	}
-	s, err := loadState(ctx, tx)
+	// Update does not load the audit table (package M4e). Every reader of
+	// State.Events in internal/service and internal/transport was checked
+	// (grepping every ".Events" and "st.Events" site): the only production
+	// uses are appends -- reserve's plan and commit closures
+	// (service.go:366, service.go:435), Patch (service.go:602), finishBinding
+	// (service.go:752), Release's release-requested event (service.go:802),
+	// the worker's adoption-commit and reconciliation events (worker.go:260,
+	// worker.go:670), abandon's fence event (abandon.go:187) and cancel's
+	// fence event (cancel.go:165) -- and every one of them only appends to
+	// st.Events; none reads its prior content to decide anything. There is no
+	// transport endpoint or CLI verb that lists an allocation's events today
+	// (grepped api/openapi.yaml, internal/transport and cmd/: no match), so
+	// there is no production reader that would see an empty slice and
+	// conclude wrongly. An Update closure that appends therefore starts from
+	// an empty st.Events and ends with exactly the events it appended this
+	// transaction -- nothing "loaded" ever needs filtering out, which is what
+	// the empty loadedEvents set below both records and lets persistState
+	// prove rather than assume.
+	s, loadedEvents, err := loadState(ctx, tx, false)
 	if err != nil {
 		return err
 	}
 	if err = fn(s); err != nil {
 		return err
 	}
-	if err = persistState(ctx, tx, s); err != nil {
+	if err = persistState(ctx, tx, s, loadedEvents); err != nil {
 		return err
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -166,160 +197,182 @@ type queryer interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
-func loadState(ctx context.Context, q queryer) (*domain.State, error) {
+// loadState decodes the ledger's tables into a *domain.State. includeEvents
+// controls whether it also decodes audit_events (package M4e): View passes
+// true, and Update passes false because no Update closure in this repository
+// reads State.Events for anything but appending. The second return value is
+// the set of audit event ids this call actually loaded -- empty when
+// includeEvents is false -- carried beside the state for exactly one
+// transaction and never stored globally, so persistState can tell an event a
+// closure appended this transaction from one it merely re-offered because it
+// was already sitting in State.Events when the closure started.
+func loadState(ctx context.Context, q queryer, includeEvents bool) (*domain.State, map[string]struct{}, error) {
 	s := domain.NewState()
+	loadedEvents := map[string]struct{}{}
 	rows, err := q.Query(ctx, `SELECT id,payload FROM allocations`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for rows.Next() {
 		var id string
 		var b []byte
 		if err = rows.Scan(&id, &b); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		var v domain.Allocation
 		if err = json.Unmarshal(b, &v); err != nil {
 			rows.Close()
-			return nil, fmt.Errorf("decode allocation %s: %w", id, err)
+			return nil, nil, fmt.Errorf("decode allocation %s: %w", id, err)
 		}
 		s.Allocations[id] = v
 	}
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	rows, err = q.Query(ctx, `SELECT id,payload FROM operations`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for rows.Next() {
 		var id string
 		var b []byte
 		if err = rows.Scan(&id, &b); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		var v domain.Operation
 		if err = json.Unmarshal(b, &v); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		s.Operations[id] = v
 	}
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	rows, err = q.Query(ctx, `SELECT request_id,payload FROM idempotency_requests`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for rows.Next() {
 		var id string
 		var b []byte
 		if err = rows.Scan(&id, &b); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		var v domain.Idempotency
 		if err = json.Unmarshal(b, &v); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		s.Requests[id] = v
 	}
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	rows, err = q.Query(ctx, `SELECT domain_id,payload FROM observations`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for rows.Next() {
 		var id string
 		var b []byte
 		if err = rows.Scan(&id, &b); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		var v []domain.Observation
 		if err = json.Unmarshal(b, &v); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		s.Observations[id] = v
 	}
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	rows, err = q.Query(ctx, `SELECT id,payload FROM findings`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for rows.Next() {
 		var id string
 		var b []byte
 		if err = rows.Scan(&id, &b); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		var v domain.Finding
 		if err = json.Unmarshal(b, &v); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		s.Findings[id] = v
 	}
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	rows, err = q.Query(ctx, `SELECT domain_id,generation FROM coverage`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for rows.Next() {
 		var id, gen string
 		if err = rows.Scan(&id, &gen); err != nil {
 			rows.Close()
-			return nil, err
+			return nil, nil, err
 		}
 		s.Coverage[id] = gen
 	}
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	rows, err = q.Query(ctx, `SELECT id,payload FROM audit_events ORDER BY id`)
-	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var id string
-		var b []byte
-		if err = rows.Scan(&id, &b); err != nil {
-			rows.Close()
-			return nil, err
+	// package M4e: only View asks for the audit history (includeEvents=true).
+	// An Update transaction skips this SELECT and its decode of every row in
+	// the ledger's lifetime entirely -- that is the read-side half of the fix
+	// (persistState below is the write-side half).
+	if includeEvents {
+		rows, err = q.Query(ctx, `SELECT id,payload FROM audit_events ORDER BY id`)
+		if err != nil {
+			return nil, nil, err
 		}
-		var v domain.Event
-		if err = json.Unmarshal(b, &v); err != nil {
-			rows.Close()
-			return nil, err
+		for rows.Next() {
+			var id string
+			var b []byte
+			if err = rows.Scan(&id, &b); err != nil {
+				rows.Close()
+				return nil, nil, err
+			}
+			var v domain.Event
+			if err = json.Unmarshal(b, &v); err != nil {
+				rows.Close()
+				return nil, nil, err
+			}
+			s.Events = append(s.Events, v)
+			loadedEvents[id] = struct{}{}
 		}
-		s.Events = append(s.Events, v)
+		rows.Close()
+		if err = rows.Err(); err != nil {
+			return nil, nil, err
+		}
 	}
-	rows.Close()
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	return s, nil
+	return s, loadedEvents, nil
 }
 
-func persistState(ctx context.Context, tx pgx.Tx, s *domain.State) error {
+// persistState writes s. loadedEvents is the set of audit event ids the
+// transaction's loadState call already found durably present (package M4e);
+// it may be nil or empty, which simply means every event in s.Events is
+// treated as newly appended. Every other table keeps being rewritten in
+// full -- that is M4f's cut, not this one.
+func persistState(ctx context.Context, tx pgx.Tx, s *domain.State, loadedEvents map[string]struct{}) error {
 	for _, table := range []string{"allocations", "allocation_keys", "operations", "idempotency_requests", "observations", "findings", "coverage", "holds", "operation_barriers"} {
 		if _, err := tx.Exec(ctx, "DELETE FROM "+table); err != nil {
 			return fmt.Errorf("clear %s: %w", table, err)
@@ -399,11 +452,25 @@ func persistState(ctx context.Context, tx pgx.Tx, s *domain.State) error {
 			return err
 		}
 	}
+	// audit_events is never in the DELETE list above -- that omission plus
+	// the ON CONFLICT DO NOTHING below are what make the table append-only
+	// (TestPostgresAuditEventsRemainAppendOnly). Before package M4e this loop
+	// re-offered every event loadState had just read back, one INSERT per
+	// historical row on every single Update; now it inserts only the events
+	// this transaction's closure actually appended -- the ones whose ids are
+	// not in loadedEvents, i.e. were not already known durable.
+	// ON CONFLICT DO NOTHING stays as the brace: if loadedEvents is wrong or
+	// stale for any reason, re-offering a row that already exists is a no-op,
+	// never a silent overwrite, so this loop fails towards writing one row
+	// too many rather than losing one.
 	for i := range s.Events {
 		if s.Events[i].ID == "" {
 			s.Events[i].ID = domain.NewID("evt")
 		}
 		v := s.Events[i]
+		if _, already := loadedEvents[v.ID]; already {
+			continue
+		}
 		b, err := json.Marshal(v)
 		if err != nil {
 			return err

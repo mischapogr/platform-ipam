@@ -349,6 +349,89 @@ production idle latency. The findings seeded (five, fixed) and the observation-d
 Part 2's throw-away stack; Part 1's per-axis sweep is exact regardless, because it measures the code
 directly rather than a scenario.
 
+### The audit table alone, re-measured (2026-09-22, package M4e)
+
+[ADR 0017](decisions/0017-PERSISTING_ONLY_WHAT_A_LEDGER_TRANSACTION_CHANGED.md)'s decision one, cut
+down to the audit table alone per M4d's recommendation: `internal/storage/postgres.go`'s `persistState`
+stops re-offering every historical audit event on every `Ledger.Update` (`ON CONFLICT DO NOTHING` stays
+as the brace), and `loadState` stops decoding `audit_events` on every `Update` transaction -- the read
+finding M4d's review note added to this package's scope, beyond decision one's original write-only
+claim. `View` is deliberately left loading events exactly as before: the opt-in PostgreSQL tests that
+read audit history back (`TestPostgresAuditEventsRemainAppendOnly` above all) do so through `View`, and
+no production `View` closure anywhere in `internal/service` reads `State.Events` either (every one of
+the 38 call sites was checked; see the package's own report for the list), so `View`'s unchanged eager
+load costs those closures nothing they use, while still letting every existing test pass with zero
+modification. The consequence, stated plainly: this package removes roughly half of the audit-decode
+cost a reservation pays (the planning `Update`'s share), not all of it (the pre-check `View`'s share
+remains) -- see "what was not done" below.
+
+**Part 1, no database: the write term.** `internal/storage/measure_update_test.go`'s
+`TestMeasureStatementsPerUpdate` (`IPAM_MEASURE=1`) was restructured to reproduce what a real post-M4e
+`Update` transaction actually sees: every event a swept size's synthetic history contains is marked
+"already loaded" (the way an `Update` closure's `State.Events` is now always empty at the start, so
+everything a real closure appends is by construction new), and a fixed two new events are appended the
+way one real transaction's plan-then-commit pair does. Sweeping the "events" axis from 0 to 1,000 while
+holding this fixed:
+
+| Historical events (E) | Measured `audit_events` inserts | Total measured `Exec` calls |
+| ---: | ---: | ---: |
+| 0 | 2 | 36 |
+| 100 | 2 | 36 |
+| 1,000 | 2 | 36 |
+
+Before this package, at the baseline sizes used elsewhere in this sweep, the same axis produced 3, 103
+and 1,033 `audit_events` inserts respectively (M4d's own table above, "audit events" row) -- one insert
+per historical row, every time. After, it is flat at 2 (`newEventsPerUpdate`, the fixed count this
+measurement appends) at every size swept, including 1,000. `E` is gone from the write, exactly as ADR
+0017's decision one and this package's brief asked for. Two always-on unit tests independent of
+`IPAM_MEASURE` (`TestPersistStateInsertsEveryNewEvent`, `TestPersistStateSkipsAlreadyLoadedEvents`) pin
+this behaviour directly, against `persistState` called with an explicit `loadedEvents` set, so the
+filter is proven correct on its own terms and not only as a side effect of `Update` never populating it.
+
+**Part 2, a throw-away second stack: the read term.** A disposable Compose project
+(`-p platform-ipam-m4e`, `IPAM_API_PORT=18082`, `NETBOX_PORT=18095`, its own volumes, `DOCKER_CONFIG`
+pointed at a scratch directory), brought up, bootstrapped and seeded exactly as M4d's own section
+describes, reusing M4d's own scratch scripts unmodified (`_tmp/m4d/seed_prefixes.py`,
+`_tmp/m4d/gen_ledger_sql.py`, `_tmp/m4d/latency_probe.sh` -- the schema this package changed nothing
+about, so M4d's seeding SQL generator needed no changes either), at the same two sizes M4d used, 100
+then +900 more (1,000 committed allocations plus a few dozen of the measurement's own reservations,
+exactly as M4d's own section notes for its equivalent row, growing to 1,011 allocations and 10,022 audit
+events by the end of this run), each allocation carrying one committed allocation row, one completed
+reservation operation, one idempotency record and ten audit events, matching M4d's seeding exactly.
+
+*Reservation latency, idle versus during a worker pass, before (M4d, post-M4a code) against after
+(this package):*
+
+| Committed allocations | Idle median / worst -- before | Idle median / worst -- after | During-pass median / worst -- before | During-pass median / worst -- after | Samples |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 1.03s / 1.63s | 0.588s / 0.669s | 1.06s / 1.46s | 0.609s / 0.921s | 5 idle, 5-6 during-pass |
+| ~1,000 | 4.85s / 5.02s | 2.646s / 2.940s | 5.72s / 6.23s | 2.844s / 3.079s | 5 idle, 5 during-pass |
+
+The read cost is not gone, but it fell by roughly half at every size and in both idle and during-pass
+conditions: idle median fell 43% at 100 (1.03s to 0.588s) and 45% at ~1,000 (4.85s to 2.646s);
+during-pass median fell 43% at 100 (1.06s to 0.609s) and 50% at ~1,000 (5.72s to 2.844s). This matches
+what the code predicts rather than a claim of eliminating the term: `reserve`'s pre-check `View`
+(`service.go:179-222`) and its planning `Update` (`service.go:271-376`) each paid `loadState`'s full
+audit-history decode before this package; only the `Update` half of that pair no longer does, so a
+two-transaction reservation should see close to half its audit-decode cost removed, which is what both
+rows above show, at both sizes and in both worker states. **This is the package's own considered
+trade-off, not an oversight**: extending the same fix to `View` would have required either changing
+`TestPostgresAuditEventsRemainAppendOnly` and the two drops-its-rows-and-frees-its-key tests (forbidden
+by this package's brief) or adding a second, additive read path solely to keep those three tests
+passing -- a larger change than the read finding on its own justified, and one this package's report
+flags as a decision for a follow-up rather than one it took unasked.
+
+**What was not re-measured.** Pass wall time itself: ADR 0017 states plainly that decision one "does not
+make a read cheaper" in general and "does not shorten a worker pass, because after M4a the pass is
+NetBox-bound" -- this package's write and read changes are both inside `internal/storage`, upstream of
+the worker's NetBox traffic, so M4a's and M4d's own pass-time numbers were not expected to move and were
+not re-taken. A production topology (three api, two worker replicas) and a genuine multi-replica
+two-writer run were not attempted here either, for the same reasons M4d's own caveats give.
+
+**Cleanup verified.** The second project's containers, network and every named volume were removed with
+`docker compose ... down -v`; `platform-ipam-dev` (the suite's own project) was never stopped and was
+confirmed healthy, on the same ten services, immediately afterward.
+
 Base Compose should be able to use an external development NetBox by configuration; the NetBox override adds the complete local stack. Verify upstream image-specific startup, migration, worker, Redis, and healthcheck settings rather than copying unpinned commands. Upstream provides a Docker-based NetBox deployment project. [NetBox Docker](https://github.com/netbox-community/netbox-docker).
 
 All dependencies need healthchecks; migration completion and actual readiness should gate startup. `depends_on` ordering by itself does not establish application readiness. Store generated local credentials in ignored local files or local secret mounts; commit variable names and placeholders only. Do not expose database or Redis ports by default.

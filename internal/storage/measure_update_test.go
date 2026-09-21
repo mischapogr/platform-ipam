@@ -23,6 +23,21 @@ package storage
 // parsed from the SQL text's own "INSERT INTO <table>" / "DELETE FROM <table>"
 // prefix (persistState issues no other statement shape; the parser is checked
 // against a table below, not trusted blindly).
+//
+// Updated for package M4e: persistState now takes a third argument,
+// loadedEvents, the set of audit event ids the transaction's loadState call
+// already found durably present. A real Update never populates it (M4e also
+// stops Update from loading audit_events at all -- see postgres.go's
+// loadState), so every event a real closure appends is, by construction,
+// absent from loadedEvents and gets inserted. This measurement reproduces
+// that shape rather than assuming it: for each swept "events" size it builds
+// a synthetic ledger's worth of historical events, marks every one of them
+// loaded (the way a real ledger's history would already be durable and
+// therefore never re-offered), and then appends a small, fixed number of new
+// events the way one real transaction actually does. The formula below drops
+// the E term entirely and replaces it with that fixed constant, which is
+// exactly M4e's claim: the write's cost no longer grows with the ledger's
+// audit history, however large.
 
 import (
 	"context"
@@ -254,15 +269,27 @@ func stateWithSizes(sz sizes) *domain.State {
 	return st
 }
 
+// newEventsPerUpdate is how many events one real Update transaction's closure
+// appends in this measurement -- a reservation's plan-then-commit pair is the
+// model (service.go:366, service.go:435), which is two. It replaces the old E
+// term in expectedRoundTrips below: after package M4e, a transaction's audit
+// write cost is the number of events IT appends, not the ledger's total
+// history, so sweeping "events" (the synthetic ledger's historical size) must
+// leave the formula's audit term unchanged at this fixed constant.
+const newEventsPerUpdate = 2
+
 // expectedRoundTrips reproduces ADR 0017's formula, 9 + 3A + O + P + R + D +
-// F + C + E, read from persistState itself (postgres.go:322-416): nine
-// DELETE statements, three writes per allocation (allocations,
-// allocation_keys, holds), one per operation, one per PENDING operation, one
-// per idempotency record, one per observation-carrying routing domain, one
-// per finding, one per coverage generation, and one per audit event.
+// F + C + E, read from persistState itself (postgres.go): nine DELETE
+// statements, three writes per allocation (allocations, allocation_keys,
+// holds), one per operation, one per PENDING operation, one per idempotency
+// record, one per observation-carrying routing domain, one per finding, one
+// per coverage generation -- and, since package M4e, newEventsPerUpdate
+// audit-event inserts rather than one per historical event, because Update no
+// longer loads (and persistState no longer re-offers) the events already
+// durably present when the transaction began.
 func expectedRoundTrips(sz sizes) int {
 	return 9 + 3*sz.allocations + sz.operations + sz.pendingOperations() +
-		sz.idempotency + sz.obsDomains + sz.findings + sz.coverage + sz.events
+		sz.idempotency + sz.obsDomains + sz.findings + sz.coverage + newEventsPerUpdate
 }
 
 func TestMeasureStatementsPerUpdate(t *testing.T) {
@@ -307,12 +334,36 @@ func TestMeasureStatementsPerUpdate(t *testing.T) {
 	}
 
 	t.Log("statements (round trips) per Ledger.Update, by swept state-map size, others held at " + fmt.Sprint(small))
-	t.Log("axis\tsize\tA\tO\tP\tR\tD\tF\tC\tE\tmeasured_exec_calls\tformula_9+3A+O+P+R+D+F+C+E\tmatch")
+	t.Log("axis\tsize\tA\tO\tP\tR\tD\tF\tC\tE(historical)\tmeasured_exec_calls\tformula_9+3A+O+P+R+D+F+C+newEventsPerUpdate\tmatch")
 	allMatch := true
 	for _, r := range rows {
 		ctx := context.Background()
 		fake := &countingTx{}
-		if err := persistState(ctx, fake, stateWithSizes(r.sz)); err != nil {
+		st := stateWithSizes(r.sz)
+		// Reproduce what a real post-M4e Update transaction sees: every event
+		// stateWithSizes generated for the swept "events" size stands in for
+		// the ledger's pre-existing history, which Update no longer loads --
+		// so mark all of it "loaded" (already durable) the way an empty
+		// st.Events at closure-start would make true by construction, then
+		// append newEventsPerUpdate fresh events the way one real closure
+		// does. Only the fresh ones should ever reach persistState's INSERT.
+		loaded := make(map[string]struct{}, len(st.Events))
+		for _, e := range st.Events {
+			loaded[e.ID] = struct{}{}
+		}
+		for i := 0; i < newEventsPerUpdate; i++ {
+			st.Events = append(st.Events, domain.Event{
+				ID:           fmt.Sprintf("evt-new-%07d", i),
+				AllocationID: "alloc-0000000",
+				TenantID:     "measure",
+				Actor:        "measure",
+				Action:       "reserved",
+				Reason:       "synthetic new-this-transaction event",
+				At:           time.Now().UTC(),
+				Revision:     1,
+			})
+		}
+		if err := persistState(ctx, fake, st, loaded); err != nil {
 			t.Fatalf("persistState(%s=%d): %v", r.axis, r.size, err)
 		}
 		measured := len(fake.execTables)
@@ -343,7 +394,7 @@ func TestMeasureStatementsPerUpdate(t *testing.T) {
 			"observations":         r.sz.obsDomains,
 			"findings":             r.sz.findings,
 			"coverage":             r.sz.coverage,
-			"audit_events":         r.sz.events,
+			"audit_events":         newEventsPerUpdate,
 		}
 		for tbl, want := range wantByTable {
 			// INSERT count = total Exec calls tagged with this table, minus
@@ -361,6 +412,66 @@ func TestMeasureStatementsPerUpdate(t *testing.T) {
 		}
 	}
 	if !allMatch {
-		t.Error("at least one row's measured Exec-call count disagreed with the record's formula 9 + 3A + O + P + R + D + F + C + E -- see the per-table breakdown above for which term is wrong")
+		t.Error("at least one row's measured Exec-call count disagreed with the formula 9 + 3A + O + P + R + D + F + C + newEventsPerUpdate -- see the per-table breakdown above for which term is wrong")
+	}
+}
+
+// TestPersistStateInsertsEveryNewEvent is an ordinary, always-on correctness
+// test (unlike TestMeasureStatementsPerUpdate above, it needs no
+// IPAM_MEASURE and no database): every event present in s.Events that is not
+// in loadedEvents must reach an INSERT. It exists to catch the mutation
+// "an appended event dropped" -- an off-by-one or an early continue in
+// persistState's events loop that silently skips a newly appended event.
+func TestPersistStateInsertsEveryNewEvent(t *testing.T) {
+	st := domain.NewState()
+	st.Events = []domain.Event{
+		{ID: "evt_a", AllocationID: "alloc_1", TenantID: "t", Action: "RESERVE_PLANNED"},
+		{ID: "evt_b", AllocationID: "alloc_1", TenantID: "t", Action: "RESERVE_COMMITTED"},
+		{ID: "evt_c", AllocationID: "alloc_2", TenantID: "t", Action: "RELEASE_REQUESTED"},
+	}
+	fake := &countingTx{}
+	if err := persistState(context.Background(), fake, st, nil); err != nil {
+		t.Fatalf("persistState: %v", err)
+	}
+	got := 0
+	for _, tbl := range fake.execTables {
+		if tbl == "audit_events" {
+			got++
+		}
+	}
+	if got != len(st.Events) {
+		t.Fatalf("persistState issued %d audit_events inserts for %d newly appended events, want %d (nothing was loaded, so nothing should be skipped)", got, len(st.Events), len(st.Events))
+	}
+}
+
+// TestPersistStateSkipsAlreadyLoadedEvents is the write-side proof of package
+// M4e's decision one, isolated from whether Update currently loads events at
+// all: given a loadedEvents set, persistState must insert only the events of
+// s.Events whose ids are absent from it. It exists to catch the mutation
+// "a loaded event re-offered" -- removing or weakening the
+// `if _, already := loadedEvents[v.ID]; already { continue }` check, which a
+// real Update transaction's own always-empty loadedEvents (Update no longer
+// loads audit_events, see postgres.go) would never exercise on its own, so
+// this direct call is the only thing that can catch that specific mutation.
+func TestPersistStateSkipsAlreadyLoadedEvents(t *testing.T) {
+	st := domain.NewState()
+	st.Events = []domain.Event{
+		{ID: "evt_old_1", AllocationID: "alloc_1", TenantID: "t", Action: "RESERVE_PLANNED"},
+		{ID: "evt_old_2", AllocationID: "alloc_1", TenantID: "t", Action: "RESERVE_COMMITTED"},
+		{ID: "evt_new", AllocationID: "alloc_1", TenantID: "t", Action: "RELEASE_REQUESTED"},
+	}
+	loaded := map[string]struct{}{"evt_old_1": {}, "evt_old_2": {}}
+	fake := &countingTx{}
+	if err := persistState(context.Background(), fake, st, loaded); err != nil {
+		t.Fatalf("persistState: %v", err)
+	}
+	got := 0
+	for _, tbl := range fake.execTables {
+		if tbl == "audit_events" {
+			got++
+		}
+	}
+	if got != 1 {
+		t.Fatalf("persistState issued %d audit_events inserts, want 1 (only evt_new, since evt_old_1 and evt_old_2 were already loaded)", got)
 	}
 }

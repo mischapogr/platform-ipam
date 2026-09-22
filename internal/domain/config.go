@@ -60,10 +60,11 @@ type Lifecycle struct {
 	MaxObservationAge        int  `yaml:"maximum_observation_age_seconds"`
 }
 type Reconciliation struct {
-	FullScanInterval    int  `yaml:"full_scan_interval_seconds"`
-	IncludeUntagged     bool `yaml:"include_untagged_resources"`
-	IncludeAssociations bool `yaml:"include_all_vpc_cidr_associations"`
-	UnknownBlocksReuse  bool `yaml:"unknown_coverage_blocks_reuse"`
+	FullScanInterval          int  `yaml:"full_scan_interval_seconds"`
+	ProjectionRefreshInterval int  `yaml:"projection_refresh_interval_seconds"`
+	IncludeUntagged           bool `yaml:"include_untagged_resources"`
+	IncludeAssociations       bool `yaml:"include_all_vpc_cidr_associations"`
+	UnknownBlocksReuse        bool `yaml:"unknown_coverage_blocks_reuse"`
 }
 type UI struct {
 	InventoryLinksEnabled bool   `yaml:"inventory_links_enabled"`

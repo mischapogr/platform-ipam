@@ -131,7 +131,11 @@ func run(ctx context.Context, args []string) error {
 	if cfg.UI.InventoryLinksEnabled && cfg.UI.NetBoxBaseURL == "" {
 		cfg.UI.NetBoxBaseURL = settings.NetBoxURL
 	}
-	inventory, err := netbox.New(netbox.Config{BaseURL: settings.NetBoxURL, Token: settings.NetBoxToken, Domains: cfg.Domains, Pools: cfg.Pools})
+	projectionRefresh := cfg.Reconciliation.ProjectionRefreshInterval
+	if projectionRefresh == 0 {
+		projectionRefresh = cfg.Reconciliation.FullScanInterval
+	}
+	inventory, err := netbox.New(netbox.Config{BaseURL: settings.NetBoxURL, Token: settings.NetBoxToken, Domains: cfg.Domains, Pools: cfg.Pools, ProjectionRefreshInterval: time.Duration(projectionRefresh) * time.Second})
 	if err != nil {
 		return fmt.Errorf("invalid inventory adapter configuration")
 	}

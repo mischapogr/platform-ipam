@@ -74,8 +74,11 @@ as `reconciliation.projection_refresh_interval_seconds`; zero defaults to the
 scan interval. Identity verification still performs a GET for every prefix,
 and lifecycle changes PATCH immediately. A failed observation remains stale;
 this display target does not change the ledger's admission or CIDR-reuse gates.
-The pilot pass and reservation-latency target still require measurement after
-M4g. See [ADR 0017](decisions/0017-PERSISTING_ONLY_WHAT_A_LEDGER_TRANSACTION_CHANGED.md).
+The pilot's local pass and during-pass reservation latency were measured after
+M4g at 1,000 synthetic allocations: 155 seconds when all required a PATCH,
+64 seconds when none did, and four successful reservations with a 1.833-second
+median. This is local timing evidence, not a stage/production guarantee. See
+[ADR 0017](decisions/0017-PERSISTING_ONLY_WHAT_A_LEDGER_TRANSACTION_CHANGED.md).
 
 Before M4g, the worker's `Tick` ran every `reconciliation.full_scan_interval_seconds`
 (30s in development; `cmd/platform-ipam/main.go`). Its last step,

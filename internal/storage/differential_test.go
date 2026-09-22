@@ -87,12 +87,19 @@ package storage
 //     sequence would fail on this ordering difference alone, on every sequence
 //     with more than one event, independent of any defect in persistState.
 //     This harness's state-normalisation step (normalizeState) therefore
-//     sorts both sides' Events by ID before comparing content: this still
-//     catches a dropped, duplicated or content-altered event (mutant 5 below),
-//     it just stops mistaking a legitimate ordering difference for one. This
+//     sorted both sides' Events by ID before comparing content: this still
+//     caught a dropped, duplicated or content-altered event (mutant 5 below),
+//     it just stopped mistaking a legitimate ordering difference for one. This
 //     is a normalisation the harness itself discovered running against the
 //     unmodified store, not one of ADR 0017's three; it is documented here for
-//     the same reason those are.
+//     the same reason those are. Package M4f superseded the mechanism, not
+//     the finding: normalizeState no longer touches Events at all (see its
+//     doc comment), because View stopped returning them on the Postgres
+//     side; the SAME ordering choice this item names now lives in the
+//     production port itself, as domain.Ledger.Events's contract ("ordered
+//     by when each event happened, id as a tiebreaker" -- see
+//     PostgresLedger.Events and MemoryLedger.Events, postgres.go and
+//     memory.go), and this harness compares through that method directly.
 //
 // The mutants that prove this harness can fail are not shipped in this file
 // -- carrying broken production code permanently defeats their purpose. They
@@ -123,7 +130,6 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"sort"
 	"testing"
 	"time"
 
@@ -759,8 +765,13 @@ func (m *genModel) genIntentionalRollback() *diffOp {
 }
 
 // generateSequence builds the fixed, seeded sequence this test replays. The
-// seed is constant so a failure is always reproducible.
-func generateSequence(t *testing.T) []*diffOp {
+// seed is constant so a failure is always reproducible. The second return
+// value is every allocation id the generator ever minted (m.order, copied
+// out before m goes out of scope), in creation order -- package M4f's
+// events-comparison block below queries Ledger.Events for each of them after
+// every step, which is the harness's one allowed accommodation of the
+// events-read change (see normalizeState's doc comment).
+func generateSequence(t *testing.T) ([]*diffOp, []string) {
 	t.Helper()
 	m := newGenModel(20260922)
 	kinds := []func() *diffOp{
@@ -801,7 +812,7 @@ func generateSequence(t *testing.T) []*diffOp {
 	for i := 0; i < 70; i++ {
 		seq = append(seq, m.genRecordObservationFor("domain-a"))
 	}
-	return seq
+	return seq, append([]string(nil), m.order...)
 }
 
 // ---------------------------------------------------------------------------
@@ -866,9 +877,29 @@ func normEvent(e domain.Event) domain.Event {
 // is comparing the two stores' actual content rather than incidental
 // representation: every time.Time forced to UTC (both stores already produce
 // UTC-located values by construction here, but this makes the comparison
-// robust rather than lucky), and Events sorted by id (exclusion 4 above) since
-// nothing in this repository depends on their order and the two stores
-// legitimately disagree on it.
+// robust rather than lucky).
+//
+// package M4f's one allowed change to this harness: out.Events is left at
+// its zero value (nil) on both sides, always, and is no longer compared
+// here at all. Before M4f, View loaded the whole audit history on both
+// stores (Postgres eagerly, in a lexical `ORDER BY id` this file's exclusion
+// 4 already had to sort around; memory, trivially, because it clones
+// everything), so comparing it as part of the reloaded state was
+// meaningful. Since M4f, Postgres's View no longer decodes audit_events at
+// all -- pg.View's returned state always carries Events == nil -- while the
+// memory store's View still returns the full history (package M4f left
+// MemoryLedger's View/Update unchanged; only the Postgres store's read cost
+// was the point). Comparing "always nil" against "the full history" would
+// not be catching a divergence, it would be asserting a difference the two
+// stores are now DELIBERATELY allowed to have, so it is removed from this
+// function rather than worked around. The event-history equivalence this
+// harness used to get from the reloaded-state comparison is now checked
+// directly, per allocation id, through the additive Ledger.Events method
+// both stores implement identically (see the events-comparison block in
+// TestDifferentialMemoryAndPostgresAgreeOverGeneratedSequences below) --
+// which is a STRICTER check than before, not a weaker one: it exercises the
+// one code path (Events) that is now the sole reader of audit_events, rather
+// than a code path (View) that no longer reads it.
 func normalizeState(s *domain.State) *domain.State {
 	out := domain.NewState()
 	for id, a := range s.Allocations {
@@ -889,12 +920,6 @@ func normalizeState(s *domain.State) *domain.State {
 	for id, gen := range s.Coverage {
 		out.Coverage[id] = gen
 	}
-	events := make([]domain.Event, len(s.Events))
-	for i, e := range s.Events {
-		events[i] = normEvent(e)
-	}
-	sort.Slice(events, func(i, j int) bool { return events[i].ID < events[j].ID })
-	out.Events = events
 	return out
 }
 
@@ -1165,8 +1190,8 @@ func TestDifferentialMemoryAndPostgresAgreeOverGeneratedSequences(t *testing.T) 
 	}
 	mem := NewMemoryLedger()
 
-	ops := generateSequence(t)
-	t.Logf("generated %d steps", len(ops))
+	ops, allocationIDs := generateSequence(t)
+	t.Logf("generated %d steps, %d distinct allocation ids", len(ops), len(allocationIDs))
 
 	for i, op := range ops {
 		beforeMem, err := mem.Snapshot(db.ctx)
@@ -1225,6 +1250,37 @@ func TestDifferentialMemoryAndPostgresAgreeOverGeneratedSequences(t *testing.T) 
 		for _, table := range nineTables {
 			if !reflect.DeepEqual(want[table], got[table]) {
 				t.Fatalf("step %d (%s): table %q diverged\nwant: %#v\ngot:  %#v", i, op.name, table, want[table], got[table])
+			}
+		}
+
+		// package M4f's one allowed accommodation of the events-read change
+		// (see normalizeState's doc comment above): audit history is no
+		// longer part of the reloaded-state comparison, because Postgres's
+		// View stopped returning it. It is instead compared here, per
+		// allocation id, through the additive Ledger.Events method both
+		// stores implement -- normalised to UTC (the two stores already
+		// agree on ordering, since both apply the SAME sortEvents function,
+		// memory.go, so no re-sort is needed here, unlike the old
+		// normalizeState which had to paper over two DIFFERENT orderings).
+		for _, id := range allocationIDs {
+			memEvents, err := mem.Events(db.ctx, id)
+			if err != nil {
+				t.Fatalf("step %d (%s): memory Events(%s): %v", i, op.name, id, err)
+			}
+			pgEvents, err := pg.Events(db.ctx, id)
+			if err != nil {
+				t.Fatalf("step %d (%s): postgres Events(%s): %v", i, op.name, id, err)
+			}
+			normMem := make([]domain.Event, len(memEvents))
+			for j, e := range memEvents {
+				normMem[j] = normEvent(e)
+			}
+			normPg := make([]domain.Event, len(pgEvents))
+			for j, e := range pgEvents {
+				normPg[j] = normEvent(e)
+			}
+			if !reflect.DeepEqual(normMem, normPg) {
+				t.Fatalf("step %d (%s): Events(%s) diverged\nmemory:   %+v\npostgres: %+v", i, op.name, id, normMem, normPg)
 			}
 		}
 	}

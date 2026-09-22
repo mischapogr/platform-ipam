@@ -24,20 +24,31 @@ package storage
 // prefix (persistState issues no other statement shape; the parser is checked
 // against a table below, not trusted blindly).
 //
-// Updated for package M4e: persistState now takes a third argument,
-// loadedEvents, the set of audit event ids the transaction's loadState call
-// already found durably present. A real Update never populates it (M4e also
-// stops Update from loading audit_events at all -- see postgres.go's
-// loadState), so every event a real closure appends is, by construction,
-// absent from loadedEvents and gets inserted. This measurement reproduces
-// that shape rather than assuming it: for each swept "events" size it builds
-// a synthetic ledger's worth of historical events, marks every one of them
+// Updated for package M4e: persistState now takes a loadedEvents argument,
+// the set of audit event ids the transaction's loadState call already found
+// durably present. A real Update never populates it (M4e also stops Update
+// from loading audit_events at all -- see postgres.go's loadState), so every
+// event a real closure appends is, by construction, absent from
+// loadedEvents and gets inserted. This measurement reproduces that shape
+// rather than assuming it: for each swept "events" size it builds a
+// synthetic ledger's worth of historical events, marks every one of them
 // loaded (the way a real ledger's history would already be durable and
 // therefore never re-offered), and then appends a small, fixed number of new
 // events the way one real transaction actually does. The formula below drops
 // the E term entirely and replaces it with that fixed constant, which is
 // exactly M4e's claim: the write's cost no longer grows with the ledger's
 // audit history, however large.
+//
+// Updated again for package M4f: persistState now also takes loaded, a
+// *domain.State snapshot of what the transaction's loadState call read for
+// the other eight tables (nil, as in every call in this file except
+// TestMeasureStatementsPerUpdateProportionalToChange below, means "nothing
+// was loaded" -- every row persistState sees is therefore classified
+// "added", which is why TestMeasureStatementsPerUpdate's own formula below
+// no longer has a constant term: pre-M4f, persistState opened every
+// transaction with nine unconditional `DELETE FROM <table>` statements
+// whether or not there was anything to delete; post-M4f, deletion is driven
+// by the loaded key set, so a transaction with nothing loaded issues none.
 
 import (
 	"context"
@@ -58,6 +69,13 @@ import (
 // so the panic path itself is evidence the fake matches the real call shape.
 type countingTx struct {
 	execTables []string
+	// execKinds is the leading keyword of each recorded statement ("INSERT"
+	// or "DELETE"), parallel to execTables. Added for package M4f: unlike
+	// the pre-M4f store, which always issued a fixed nine deletes before
+	// anything else, this store's DELETE count is itself part of what a
+	// measurement needs to see -- a cold Update (nothing loaded) should
+	// issue none at all.
+	execKinds []string
 }
 
 func (c *countingTx) Begin(context.Context) (pgx.Tx, error) {
@@ -91,6 +109,14 @@ func (c *countingTx) Conn() *pgx.Conn { return nil }
 
 func (c *countingTx) Exec(_ context.Context, sql string, _ ...any) (pgconn.CommandTag, error) {
 	c.execTables = append(c.execTables, tableFromSQL(sql))
+	kind := "OTHER"
+	switch {
+	case strings.HasPrefix(sql, "INSERT"):
+		kind = "INSERT"
+	case strings.HasPrefix(sql, "DELETE"):
+		kind = "DELETE"
+	}
+	c.execKinds = append(c.execKinds, kind)
 	return pgconn.CommandTag{}, nil
 }
 
@@ -278,17 +304,27 @@ func stateWithSizes(sz sizes) *domain.State {
 // leave the formula's audit term unchanged at this fixed constant.
 const newEventsPerUpdate = 2
 
-// expectedRoundTrips reproduces ADR 0017's formula, 9 + 3A + O + P + R + D +
-// F + C + E, read from persistState itself (postgres.go): nine DELETE
-// statements, three writes per allocation (allocations, allocation_keys,
+// expectedRoundTrips reproduces the COLD case of ADR 0017's formula -- every
+// row of a freshly-built *domain.State persisted against an empty loaded
+// snapshot (nil, meaning nothing durable yet), so every row is classified
+// "added": three writes per allocation (allocations, allocation_keys,
 // holds), one per operation, one per PENDING operation, one per idempotency
 // record, one per observation-carrying routing domain, one per finding, one
 // per coverage generation -- and, since package M4e, newEventsPerUpdate
 // audit-event inserts rather than one per historical event, because Update no
 // longer loads (and persistState no longer re-offers) the events already
 // durably present when the transaction began.
+//
+// Before package M4f the formula had a leading "9 +": persistState opened
+// every transaction, cold or not, with nine unconditional `DELETE FROM
+// <table>` statements. Package M4f's diff computes deletion from the loaded
+// key set, so a cold transaction (nothing loaded, as every call in this
+// sweep still is) issues none -- the constant is gone, not renamed.
+// TestMeasureStatementsPerUpdateProportionalToChange below is the
+// complementary WARM measurement M4f's own package specifically asked for:
+// a large, fully-loaded ledger with a small number of rows actually changed.
 func expectedRoundTrips(sz sizes) int {
-	return 9 + 3*sz.allocations + sz.operations + sz.pendingOperations() +
+	return 3*sz.allocations + sz.operations + sz.pendingOperations() +
 		sz.idempotency + sz.obsDomains + sz.findings + sz.coverage + newEventsPerUpdate
 }
 
@@ -363,7 +399,7 @@ func TestMeasureStatementsPerUpdate(t *testing.T) {
 				Revision:     1,
 			})
 		}
-		if err := persistState(ctx, fake, st, loaded); err != nil {
+		if err := persistState(ctx, fake, st, nil, loaded); err != nil {
 			t.Fatalf("persistState(%s=%d): %v", r.axis, r.size, err)
 		}
 		measured := len(fake.execTables)
@@ -397,17 +433,19 @@ func TestMeasureStatementsPerUpdate(t *testing.T) {
 			"audit_events":         newEventsPerUpdate,
 		}
 		for tbl, want := range wantByTable {
-			// INSERT count = total Exec calls tagged with this table, minus
-			// the one constant DELETE FROM <table> persistState issues for
-			// every one of the NINE tables it clears up front -- audit_events
-			// is deliberately excluded from that delete list (postgres.go:323)
-			// so its history survives, and gets no DELETE to subtract.
-			got := counts[tbl]
-			if tbl != "audit_events" {
-				got--
-			}
-			if got != want {
+			// Package M4f: every Exec call tagged with this table IS an
+			// INSERT (this sweep never loads anything, so nothing is ever
+			// classified "removed" and no DELETE is ever issued -- unlike
+			// the pre-M4f store, which cleared every one of the nine tables
+			// unconditionally before writing a single row).
+			if got := counts[tbl]; got != want {
 				t.Errorf("%s=%d: table %s got %d inserts, want %d", r.axis, r.size, tbl, got, want)
+			}
+		}
+		for _, kind := range fake.execKinds {
+			if kind == "DELETE" {
+				t.Errorf("%s=%d: a cold Update (nothing loaded) issued a DELETE statement; deletion must be driven by the loaded key set, which was empty here", r.axis, r.size)
+				break
 			}
 		}
 	}
@@ -430,7 +468,7 @@ func TestPersistStateInsertsEveryNewEvent(t *testing.T) {
 		{ID: "evt_c", AllocationID: "alloc_2", TenantID: "t", Action: "RELEASE_REQUESTED"},
 	}
 	fake := &countingTx{}
-	if err := persistState(context.Background(), fake, st, nil); err != nil {
+	if err := persistState(context.Background(), fake, st, nil, nil); err != nil {
 		t.Fatalf("persistState: %v", err)
 	}
 	got := 0
@@ -462,7 +500,7 @@ func TestPersistStateSkipsAlreadyLoadedEvents(t *testing.T) {
 	}
 	loaded := map[string]struct{}{"evt_old_1": {}, "evt_old_2": {}}
 	fake := &countingTx{}
-	if err := persistState(context.Background(), fake, st, loaded); err != nil {
+	if err := persistState(context.Background(), fake, st, nil, loaded); err != nil {
 		t.Fatalf("persistState: %v", err)
 	}
 	got := 0
@@ -473,5 +511,226 @@ func TestPersistStateSkipsAlreadyLoadedEvents(t *testing.T) {
 	}
 	if got != 1 {
 		t.Fatalf("persistState issued %d audit_events inserts, want 1 (only evt_new, since evt_old_1 and evt_old_2 were already loaded)", got)
+	}
+}
+
+// TestMeasureStatementsPerUpdateProportionalToChange is package M4f's own
+// measurement, explicitly asked for beside M4d's: unlike
+// TestMeasureStatementsPerUpdate above (which always measures the COLD case,
+// nothing loaded, everything added), this builds a full thousand-row ledger
+// on every one of the six diffed axes as the LOADED baseline, changes
+// exactly one row per axis, and counts. It needs no IPAM_MEASURE gate and no
+// database, and it is not a "measurement" in M4d's sense of an approximate,
+// machine-dependent number -- it is an exact, deterministic statement count,
+// so it runs as an always-on correctness test: a regression that makes
+// persistState start rewriting unchanged rows again would fail it directly.
+func TestMeasureStatementsPerUpdateProportionalToChange(t *testing.T) {
+	const big = 1000
+	base := sizes{allocations: big, operations: big, idempotency: big, findings: big, obsDomains: big, coverage: big}
+	loaded := stateWithSizes(base)
+	// cloneState (memory.go) is a full JSON round trip: current shares
+	// nothing mutable with loaded, so mutating current below cannot move
+	// loaded's own comparison baseline out from under it -- the same
+	// independence loadState itself buys by decoding each row's bytes twice
+	// (see loadState's doc comment in postgres.go).
+	current := cloneState(loaded)
+
+	// One changed row per axis, chosen to be isolated to that axis alone:
+	// alloc-0000000 is not itself a barrier-holder concern (changing an
+	// allocation only ever touches allocations/allocation_keys/holds, by
+	// package M4f's design), and op-0000999 is deliberately a DONE operation
+	// (i=999 >= pendingOperations()=500, see stateWithSizes), so changing it
+	// never touches operation_barriers -- this measurement is about the six
+	// primary tables' own diff, not the barrier derivation, which
+	// TestPersistStateBarrierFollowsItsWinningOperation below covers
+	// directly.
+	a := current.Allocations["alloc-0000000"]
+	a.Description = "changed for this measurement"
+	current.Allocations["alloc-0000000"] = a
+
+	o := current.Operations["op-0000999"]
+	if o.Status != "DONE" {
+		t.Fatalf("test setup: op-0000999 must be DONE (not a barrier-holder) so this measurement isolates the operations table alone; got %q", o.Status)
+	}
+	o.Result = map[string]string{"changed": "for this measurement"}
+	current.Operations["op-0000999"] = o
+
+	r := current.Requests["req-0000000"]
+	r.Hash = "changed-for-this-measurement"
+	current.Requests["req-0000000"] = r
+
+	obs := append([]domain.Observation(nil), current.Observations["obsdom-0000000"]...)
+	obs[0].Generation = "gen-2"
+	current.Observations["obsdom-0000000"] = obs
+
+	f := current.Findings["find-0000000"]
+	f.Status = "RESOLVED"
+	current.Findings["find-0000000"] = f
+
+	current.Coverage["covdom-0000000"] = "gen-2"
+
+	fake := &countingTx{}
+	if err := persistState(context.Background(), fake, current, loaded, nil); err != nil {
+		t.Fatalf("persistState: %v", err)
+	}
+
+	counts := map[string]int{}
+	for _, tbl := range fake.execTables {
+		counts[tbl]++
+	}
+	t.Logf("a %d-row-per-table ledger (%d rows total across six tables) with exactly one row changed on each of six axes: %d total Exec calls; per table: %v",
+		big, 6*big, len(fake.execTables), counts)
+
+	want := map[string]int{
+		"allocations":          1,
+		"allocation_keys":      1,
+		"holds":                1,
+		"operations":           1,
+		"idempotency_requests": 1,
+		"observations":         1,
+		"findings":             1,
+		"coverage":             1,
+	}
+	for tbl, w := range want {
+		if got := counts[tbl]; got != w {
+			t.Errorf("table %s: got %d statements, want %d (one row changed on this axis, %d unchanged rows on it)", tbl, got, w, big-1)
+		}
+	}
+	if got := counts["operation_barriers"]; got != 0 {
+		t.Errorf("operation_barriers: got %d statements, want 0 -- op-0000999 was DONE, never a barrier-holder", got)
+	}
+	if wantTotal := len(want); len(fake.execTables) != wantTotal {
+		t.Errorf("total Exec calls = %d, want %d (one statement per changed table, %d unchanged tables touched not at all)", len(fake.execTables), wantTotal, 0)
+	}
+	for _, kind := range fake.execKinds {
+		if kind != "INSERT" {
+			t.Errorf("a pure content change (no row added or removed on any axis) issued a %s statement; want only INSERT ... ON CONFLICT DO UPDATE", kind)
+		}
+	}
+}
+
+// TestPersistStateBarrierFollowsItsWinningOperation is the operation_barriers
+// counterpart to the measurement above: changing the CONTENT of the
+// operation that is currently a domain's pending barrier-holder must also
+// rewrite that domain's operation_barriers row (its payload column mirrors
+// the winning operation's own payload), even though the winning operation's
+// identity and the domain's PENDING/committed status do not change.
+func TestPersistStateBarrierFollowsItsWinningOperation(t *testing.T) {
+	loaded := domain.NewState()
+	loaded.Operations["op_pending"] = domain.Operation{ID: "op_pending", Type: "RESERVE", Status: "PENDING", DomainID: "dom-a", TenantID: "t"}
+	current := cloneState(loaded)
+	o := current.Operations["op_pending"]
+	o.Result = map[string]string{"touched": "yes"}
+	current.Operations["op_pending"] = o
+
+	fake := &countingTx{}
+	if err := persistState(context.Background(), fake, current, loaded, nil); err != nil {
+		t.Fatalf("persistState: %v", err)
+	}
+	counts := map[string]int{}
+	for _, tbl := range fake.execTables {
+		counts[tbl]++
+	}
+	if counts["operations"] != 1 {
+		t.Errorf("operations: got %d statements, want 1", counts["operations"])
+	}
+	if counts["operation_barriers"] != 1 {
+		t.Errorf("operation_barriers: got %d statements, want 1 -- the winning operation's content changed, so its barrier row's payload (a copy of that content) must be rewritten too", counts["operation_barriers"])
+	}
+}
+
+// TestPersistStateDeletesEveryRemovedRow exists because M4c's differential
+// harness, whose generator deliberately mirrors only the shapes
+// internal/service really produces, cannot exercise every removed-row path
+// this diff has to get right: no production closure ever deletes an
+// operation from State.Operations (an abandon or cancel marks it terminal
+// and keeps it -- checked, grepping every "delete(st.Operations" and
+// "delete(state.Operations" site in internal/service: none exist), so a
+// mutant that breaks operations' removed-loop specifically survives the
+// harness's 150-step run untouched (verified: it does). This test covers
+// every one of the nine tables' removed path directly and unconditionally,
+// independent of whether today's service ever happens to produce that
+// shape, because the diff itself promises the general property "a key
+// present in loaded and absent from the closure's result is deleted" for
+// every table, not just the ones service.go currently exercises.
+func TestPersistStateDeletesEveryRemovedRow(t *testing.T) {
+	loaded := domain.NewState()
+	loaded.Allocations["alloc_1"] = domain.Allocation{ID: "alloc_1", TenantID: "t", DomainID: "d", CIDR: "10.0.0.0/24", State: domain.Reserved, Request: domain.Request{AllocationKey: "k"}}
+	loaded.Operations["op_1"] = domain.Operation{ID: "op_1", TenantID: "t", DomainID: "d", Status: "PENDING"} // also this domain's operation_barriers row.
+	loaded.Requests["req_1"] = domain.Idempotency{TenantID: "t", Method: "POST", Path: "p", Key: "k1"}
+	loaded.Observations["obsdom_1"] = []domain.Observation{{DomainID: "obsdom_1"}}
+	loaded.Findings["find_1"] = domain.Finding{ID: "find_1", TenantID: "t", DomainID: "d"}
+	loaded.Coverage["covdom_1"] = "gen-1"
+
+	current := domain.NewState() // every row above is gone.
+
+	fake := &countingTx{}
+	if err := persistState(context.Background(), fake, current, loaded, nil); err != nil {
+		t.Fatalf("persistState: %v", err)
+	}
+
+	counts, deletes := map[string]int{}, map[string]int{}
+	for i, tbl := range fake.execTables {
+		counts[tbl]++
+		if fake.execKinds[i] == "DELETE" {
+			deletes[tbl]++
+		}
+	}
+	wantOneDelete := []string{"allocations", "allocation_keys", "holds", "operations", "operation_barriers", "idempotency_requests", "observations", "findings", "coverage"}
+	for _, tbl := range wantOneDelete {
+		if counts[tbl] != 1 {
+			t.Errorf("table %s: got %d Exec calls for a row that no longer exists, want exactly 1", tbl, counts[tbl])
+		}
+		if deletes[tbl] != 1 {
+			t.Errorf("table %s: the one statement issued was not a DELETE", tbl)
+		}
+	}
+	if len(fake.execTables) != len(wantOneDelete) {
+		t.Errorf("total Exec calls = %d, want %d (exactly one DELETE per table, nothing else)", len(fake.execTables), len(wantOneDelete))
+	}
+}
+
+// allocation_keys is keyed by tenant and allocation key, while allocations
+// is keyed by id. Swapping two keys in one Update used to leave the old
+// derived rows behind (or hit allocations' unique key before a removed row
+// was deleted). The loaded-state pass must clear both old identities before
+// either new one is written, preserving the old full-rewrite result.
+func TestPersistStateRekeysAllocationsBeforeWritingDerivedRows(t *testing.T) {
+	loaded := domain.NewState()
+	for id, key := range map[string]string{"alloc_1": "key_1", "alloc_2": "key_2"} {
+		loaded.Allocations[id] = domain.Allocation{
+			ID: id, TenantID: "tenant", DomainID: "domain", CIDR: "10.0.0.0/24",
+			State: domain.Reserved, Request: domain.Request{AllocationKey: key},
+		}
+	}
+	current := cloneState(loaded)
+	for id, key := range map[string]string{"alloc_1": "key_2", "alloc_2": "key_1"} {
+		a := current.Allocations[id]
+		a.AllocationKey = key
+		current.Allocations[id] = a
+	}
+
+	fake := &countingTx{}
+	if err := persistState(context.Background(), fake, current, loaded, nil); err != nil {
+		t.Fatalf("persistState: %v", err)
+	}
+	if len(fake.execKinds) != 12 {
+		t.Fatalf("Exec calls = %d, want six deletes then six inserts: %v %v", len(fake.execKinds), fake.execKinds, fake.execTables)
+	}
+	counts := map[string]map[string]int{}
+	for i, table := range fake.execTables {
+		kind := fake.execKinds[i]
+		if i < 6 && kind != "DELETE" || i >= 6 && kind != "INSERT" {
+			t.Errorf("Exec %d: %s %s, want all old identities deleted before any insert", i, kind, table)
+		}
+		if counts[table] == nil {
+			counts[table] = map[string]int{}
+		}
+		counts[table][kind]++
+	}
+	for _, table := range []string{"allocations", "allocation_keys", "holds"} {
+		if counts[table]["DELETE"] != 2 || counts[table]["INSERT"] != 2 {
+			t.Errorf("%s: got %v, want two deletes and two inserts", table, counts[table])
+		}
 	}
 }

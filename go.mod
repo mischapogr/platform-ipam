@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.329.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.49.0
 	github.com/coreos/go-oidc/v3 v3.21.0
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	go.yaml.in/yaml/v3 v3.0.5
 )
 

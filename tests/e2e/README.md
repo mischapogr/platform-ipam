@@ -20,8 +20,8 @@ needed on the host: both run from pinned images.
 | --- | --- | --- |
 | `test_e2e_allocation.py` | REST, CLI, NetBox inventory | alignment, containment, disjointness across sizes, idempotent replay, refused prefix lengths, capacity arithmetic, CLI/REST agreement, operator-visible markers, absence of unexplained inventory |
 | `test_e2e_terraform.py` | Terraform provider | plan reserves nothing, CIDR unknown until apply, apply commits, second plan is empty, destroy quarantines |
-| `test_e2e_netbox_roles.py` | NetBox REST, `platform-operators` group | the read-only operator group's `ObjectPermission` actually constrains a NetBox user (package A2) |
-| `test_e2e_ui_proxy.py` | `ui-proxy`, `basic` mode | minimum proof: no credential, a forged header, a valid credential, API block (package A3, 5 tests) |
+| `test_e2e_netbox_roles.py` | NetBox REST, operator and inventory maintainer groups | the viewer can read but cannot create; the maintainer can create and change a prefix but cannot delete it (package A2; maintainer case requires `NETBOX_E2E_MAINTAINER_TOKEN`) |
+| `test_e2e_ui_proxy.py` | `ui-proxy`, `basic` mode | minimum proof: no credential, a forged header, a valid credential, API block (package A3, 5 tests), plus package T2's quota canary as the module's sixth test |
 | `test_e2e_ui_auth.py` | `ui-proxy`, `basic` mode | full security matrix: wrong/unknown credential, both header spellings, forged group header, write-permission enforcement, `/api/`+`/graphql/` bypass attempts, healthcheck, NetBox port never published (package A6, 14 tests, 5 guard-removal mutations) |
 | `test_e2e_import.py` | `platform-ipam onboard` | onboarding import writes NetBox occupancy the allocator treats as taken but never selects (package C7) |
 | `test_e2e_cli_findings.py` | REST, CLI | `platform-ipam client findings` agrees with REST about the same list (package E1) |
@@ -59,6 +59,81 @@ runs last, after the tests and after the safety net that cancels any hold still
 pending. Both must, because the lent slots in `10.64.128.0/18` rotate with the
 run id: an unmanaged prefix left behind would sit in some later run's adopt slot
 on a long-lived development stack, and nothing but a person would ever clear it.
+
+## Quota budget
+
+`pool_dev_euc1`'s `max_unreclaimed_allocations_per_tenant`
+(`deploy/compose/fixtures/pools.yaml`; `domain.Pool.MaxAllocations` in
+`internal/domain/config.go`) is **32**, enforced per tenant per pool by
+`countTenant` (`internal/service/service.go`): every allocation whose state is
+not `RELEASED` counts, regardless of scope (`vpc` or `subnet`) and regardless
+of prefix length. A `release()` only quarantines a `RESERVED`/`ACTIVE`
+allocation — `countTenant` still counts a `QUARANTINED` row, because the
+suite never runs the worker's absence-scan reclaim path (`RequiredAbsenceScans`,
+real wall-clock spacing) that would eventually free it. Only two things ever
+return a slot outright: `adopt abandon` (its delete removes the allocation row
+— `internal/service/abandon.go`, `delete(st.Allocations, a.ID)`) when the
+freed key is never re-adopted, and `client cancel` (`internal/service/cancel.go`)
+of a genuinely stuck reservation.
+
+The table below is a per-module accounting of every allocation the suite
+creates in `pool_dev_euc1` and never truly reclaims (i.e. every slot still
+counted by `countTenant` once the module's own tests are done), read from the
+current test source, in the order `run-e2e.sh`'s two-half split actually runs
+them (files sorted alphabetically within each half; `unittest`'s
+`TestLoader` also sorts classes and test methods within a file
+alphabetically by name, not by definition order).
+
+### First half (`test_e2e_[a-i]*.py`)
+
+| Module | What spends a slot | Net slots held at suite end | Releases? |
+| --- | --- | --- | --- |
+| `test_e2e_adopt.py` | `AdoptAbandonE2ETest`: seeds a stuck adoption, abandons it (row deleted, slot returned), then adopts the same network again under the same key — the class's own `_release_everything` cleanup releases that re-adoption too | 1 | Quarantined — still counts (H2c's own precedent later reused by H8d: the abandon-then-re-adopt round trip is a net +1 either way, released or not) |
+| `test_e2e_adopt.py` | `AdoptE2ETest`: adopts one VPC, tags it to `ACTIVE`, releases it in `test_08`; `test_09` separately SQL-seeds a second, pending `ADOPT` (`recovery_cidr`/`alloc_id`) that the worker commits, also released in the class's `_release_everything` cleanup | 2 | Both quarantined — still count |
+| `test_e2e_adopt.py` | `AdoptVPCWithSubnetsE2ETest`: adopts one VPC and its one subnet; both are registered in the class's `_release_everything` cleanup | 2 | Both quarantined — still count |
+| `test_e2e_allocation.py` | Seven tests reserving eleven distinct keys, none released: `test_reserved_cidr_is_aligned_and_inside_its_pool` (1), `test_distinct_keys_receive_disjoint_ranges` (4), `test_mixed_sizes_never_overlap` (2 — one `/22`, one `/20`, the suite's only non-`/22` `vpc` allocation), `test_replaying_one_allocation_key_returns_one_allocation` (1, replay of the same key), `test_capacity_accounts_for_each_new_reservation` (1), `test_cli_and_rest_agree_about_one_allocation` (1, reserved once through the CLI then replayed through REST), `test_reservation_appears_in_netbox_with_its_platform_markers` (1) | 11 | No |
+| `test_e2e_cli_findings.py` | Reads findings and allocations; reserves nothing | 0 | n/a |
+| `test_e2e_import.py` | Three tests reserve real allocations beside imported occupancy to prove they never overlap it: `test_01_imported_network_is_never_allocated` (3×`/22` + 2×`/20`), `test_07_row_overlapping_a_live_allocation_is_refused` (1×`/22`), `test_11_range_inside_pool_is_avoided_a_range_spanning_the_pool_is_refused` (3×`/22`). None released. (Every ADR 0016 test, `test_13`–`test_23`, including M9b4's removal demonstration, writes only NetBox occupancy — never a ledger allocation — so it spends nothing here.) | 9 | No |
+
+**First-half subtotal: 25 of 32.**
+
+### Second half (`test_e2e_[j-z]*.py`)
+
+| Module | What spends a slot | Net slots held at suite end | Releases? |
+| --- | --- | --- | --- |
+| `test_e2e_netbox_roles.py` | No allocations | 0 | n/a |
+| `test_e2e_operator_gate.py` | No allocations (reads only) | 0 | n/a |
+| `test_e2e_operator_role.py` | One class-wide allocation, released in `addClassCleanup` | 1 | Quarantined — still counts |
+| `test_e2e_reservation_stuck.py` | `ReservationStuckE2ETest` (H4): one seeded stuck `RESERVE`, quarantined by the module's own cleanup rather than freed | 1 | Quarantined — still counts |
+| `test_e2e_reservation_stuck.py` | `ReservationCancelE2ETest` (H8d): two seeded stuck holds, both cancelled outright (slots returned in full — a cancel deletes the row, unlike release); `test_05`'s fresh re-reservation under the freed key is left committed rather than released | 1 | The net +1 is the re-reservation; the two cancels cost nothing lasting |
+| `test_e2e_second_identity.py` | One class-wide allocation, released in `addClassCleanup` | 1 | Quarantined — still counts |
+| `test_e2e_terraform.py` | `test_plan_reserves_nothing_and_apply_is_stable` (one allocation, never destroyed) + `test_destroy_releases_the_allocation_without_freeing_it_immediately` (one allocation, destroyed) | 2 | One committed, one quarantined — both still count |
+| `test_e2e_ui_auth.py` | No allocations | 0 | n/a |
+| `test_e2e_ui_proxy.py` | No allocations of its own | 0 | n/a |
+
+**Second-half subtotal: 6 of 32.**
+
+**Suite total from the current source: 31 of 32** (25 + 6), which matches
+`docs/WORK_PLAN.md`'s H8d and M9b4 review notes ("31 of 32 slots after a full
+run") exactly. `test_e2e_reservation_stuck.py`'s own module docstring instead
+puts the running total at "about 32 of 32" after `ReservationCancelE2ETest`;
+that number is explicitly hedged ("about") and was never checked by a runtime
+assertion against a real ledger, so it is left as written rather than edited
+to agree — this table's own count is one below it. Whichever of the two is
+exactly right at any given moment, both leave at most one free slot, which is
+exactly the situation this package's assertion (below) exists to catch: it
+reads the true count from the running stack rather than trusting any static
+count on this page, so a future package that adds or removes an allocation is
+told at once if the real number drifts, instead of the next module simply
+failing with a mysterious `quota_exceeded`.
+
+The lent, rotating slots in `10.64.128.0/18` (`test_e2e_adopt.py`'s
+`_QUARTER_BASE_OCTET`/`_SLOT_COUNT`, indices `SLOT_RESERVATION_STUCK` /
+`SLOT_RESERVATION_STUCK_PROBE` lent to `test_e2e_reservation_stuck.py`, and
+`SLOT_REMOVAL` lent to `test_e2e_import.py`) are address-space slot
+*indices*, not allocation-quota slots: borrowing one only fixes which CIDR a
+module's own reservation/adoption lands on, so it is already counted above
+under whichever module actually reserves or adopts that CIDR.
 
 ## Running parts of it
 
@@ -120,6 +195,38 @@ own scripts:
 ./tests/e2e/run-ui-entra.sh   # entra mode, against a mock OIDC issuer
 ./tests/e2e/run-ui-ldap.sh    # ldap mode, against an OpenLDAP test directory
 ```
+
+The additional local simulation gates are opt-in and use separate projects:
+
+```sh
+./tests/e2e/run-ui-samba-ad.sh up
+./tests/e2e/run-ui-samba-ad.sh wait
+./tests/e2e/run-ui-samba-ad.sh bootstrap
+./tests/e2e/run-ui-samba-ad.sh test
+./tests/e2e/run-ui-samba-ad.sh stop
+
+./tests/e2e/run-aws-moto.sh up
+./tests/e2e/run-aws-moto.sh test
+./tests/e2e/run-aws-moto.sh stop
+```
+
+These `stop` phases retain volumes. The Samba AD test requires a privileged
+container; its directory port is not published. Moto proves SDK EC2/STS
+request compatibility, not real AWS policy or inventory authority. See
+[local simulation](../../docs/LOCAL_SIMULATION.md).
+
+For the separate provider installation path, run
+`sh tests/e2e/run-provider-mirror.sh`. It packages a temporary local mirror
+artifact, runs normal Terraform initialization, checks the lock file and
+provider schema, then verifies rejection of a changed package. It needs
+Docker, `zip`, `rg` and Python 3 on the host, and does not publish a provider.
+
+To probe the next NetBox 4.6 patch image without changing the default pin, run
+`sh tests/e2e/run-netbox-compat.sh up`, then repeat `wait` until it succeeds,
+followed by `bootstrap`, `test` and `stop`. A fresh image's migrations can outlast
+one health window. The runner uses a separate Compose project and host ports,
+generates a fresh allocation run ID for each test invocation, and retains its
+volumes on stop. It targets `v4.6.10-5.0.2` only.
 
 Both are **phased** (`init`/`up`, a repeatable bounded health-wait,
 `bootstrap`, `test`, `down`, or `all`/no argument for every phase in one

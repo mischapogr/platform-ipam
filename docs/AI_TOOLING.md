@@ -12,6 +12,21 @@ scripts/ai/codex
 
 The authoritative project configuration is [.codex/config.toml](../.codex/config.toml). Codex loads it natively in a trusted checkout, including when launched directly with `codex -C /path/to/platform-ipam`. The [launcher](../scripts/ai/codex) selects this checkout and forwards the caller's arguments unchanged. It supplies no MCP configuration overrides and does not rewrite global configuration, credentials, model, sandbox, or approval settings. Unrelated project settings can coexist in the native file. The former invocation overlay has been removed.
 
+This machine's project config now defaults to GPT-6 Sol at medium effort, workspace-write, and `on-request` approvals with automatic review. The config is machine-local (`.codex/` is ignored by Git); it leaves `~/.codex/config.toml` unchanged. A fresh Codex session is needed for the defaults. Automatic review assesses eligible boundary requests but does not grant Docker access or change the sandbox. Model and effort flags from the work-plan runner take precedence for that run.
+
+## Run the work-plan queue
+
+```bash
+scripts/ai/run-work-plan --tool codex --list  # route and state; no model turn
+scripts/ai/run-work-plan --tool claude --list # the same queue, Claude models
+scripts/ai/run-work-plan --tool codex        # first pending item only
+scripts/ai/run-work-plan --tool claude --all # all pending items; stop on failure/blocker
+```
+
+The [queue](../scripts/ai/work-plan-queue.json) names each item, tier, prompt and external checks explicitly. It deliberately does not parse the large [work plan](WORK_PLAN.md), whose historical table reuses N4. Select `--tool codex` or `--tool claude` explicitly; the tool choice is not inferred from the current chat. Codex routes S/M/L/X to Luna-low/Sol-medium/Sol-high/Astra-high. Claude Code routes them to Haiku-low/Sonnet-medium/Sonnet-high/Opus-high. One failed external check allows one stronger repair turn. Claude's `auto` permission mode is the default when supported; `--claude-permission-mode acceptEdits` is an explicit fallback. For a new L package, put its mandatory X review immediately after it as a separate queue item. The current integration item checks the staged A2, M4f, N4 seed, M9c and T2 changes **before** spending model tokens. A clean check completes it without either agent. New code items must include their applicable checks, including the end-to-end suite required by the work plan.
+
+The runner keeps shared local state and full logs under ignored `.work-plan-runs/`, prints compact JSON, and stops with exit `2` for an incomplete check or unavailable capability, exit `1` for a failed check after repair, and exit `0` only when every selected gate passes. Queue completion is evidence for updating the work plan; it does not silently rewrite its historical status. The current queue item explicitly permits the existing staged baseline. Other items refuse a dirty tree unless the queue explicitly allows one; use a separate worktree for independent changes. Claude Code reads [CLAUDE.md](../CLAUDE.md), which points to the same [AGENTS.md](../AGENTS.md) and work plan used by Codex.
+
 `--check-config` starts a fresh Codex app-server, reads `config/read` with layers, and requires this checkout's active project layer. It compares every declared MCP setting, including the AWS endpoint and Terraform image/arguments, with the effective configuration. It also runs native `codex mcp list --json` to validate registrations and flags. No `-c` overrides are used. A missing/disabled project layer cannot pass even if inherited flags happen to match. This checks configuration loading, not server connectivity.
 
 `--check-skills` uses `skills/list` with `forceReload` in a fresh app-server process. It requires each of the five named skills exactly once, enabled, with repository scope and its expected native path. Neither diagnostic starts a model turn or calls MCP tools. Run diagnostics alone; combining them with command-line overrides is rejected so overrides cannot conceal a native-loading failure.

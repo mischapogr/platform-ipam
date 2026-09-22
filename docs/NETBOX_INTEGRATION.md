@@ -62,11 +62,11 @@ NetBox container utilization measures child-prefix occupancy, while ordinary Pre
 ## 4. Adapter boundary and version gate
 
 [ADR 0019](decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md) qualifies exact image
-releases. `v4.6.10-5.0.2` passed the full 126-test isolated Compose suite and
-the optional plugin build, migrations and API probe. It remains a promotion
-candidate until the Entra-shaped and LDAP-shaped UI runs on that exact image
-and the 4.6.7-to-4.6.10 backup/restore upgrade rehearsal pass. NetBox 4.7 is a
-separate qualification target.
+releases. `v4.6.10-5.0.2` passed the full 126-test isolated Compose suite,
+optional plugin build/migrations/API probe, mock-Entra and OpenLDAP UI gates,
+and a 4.6.7 backup/restore forward-upgrade rehearsal. Its digest is pinned in
+the local Compose release. Stage and production still need their own NetBox
+image promotion and restore evidence; NetBox 4.7 is a separate target.
 
 The adapter exposes methods such as read domain inventory, find by allocation marker, create exact prefix, update owned metadata, and delete verified managed prefix. It translates those calls to the pinned NetBox REST API. Business logic never imports NetBox response structs outside this boundary.
 

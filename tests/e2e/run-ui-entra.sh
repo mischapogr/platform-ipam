@@ -64,12 +64,22 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 COMPOSE_DIR="$ROOT/deploy/compose"
 cd "$COMPOSE_DIR"
 
-PROJECT=platform-ipam-a4
-WORK_ENV="${TMPDIR:-/tmp}/a4.env"
+case "${IPAM_NETBOX_CANDIDATE:-0}" in
+  0) PROJECT=platform-ipam-a4; UI_PORT=18084 ;;
+  1) PROJECT=platform-ipam-a4-4610; UI_PORT=18104 ;;
+  *) echo "IPAM_NETBOX_CANDIDATE must be 0 or 1" >&2; exit 2 ;;
+esac
+WORK_ENV="${TMPDIR:-/tmp}/${PROJECT}.env"
 
 compose() {
-  docker compose --env-file "$WORK_ENV" -p "$PROJECT" \
-    -f compose.yaml -f compose.netbox.yaml -f compose.ui-entra.yaml "$@"
+  if [ "${IPAM_NETBOX_CANDIDATE:-0}" = 1 ]; then
+    docker compose --env-file "$WORK_ENV" -p "$PROJECT" \
+      -f compose.yaml -f compose.netbox.yaml -f compose.ui-entra.yaml \
+      -f compose.netbox-compat-4_6_10.yaml "$@"
+  else
+    docker compose --env-file "$WORK_ENV" -p "$PROJECT" \
+      -f compose.yaml -f compose.netbox.yaml -f compose.ui-entra.yaml "$@"
+  fi
 }
 
 phase_init() {
@@ -88,9 +98,9 @@ phase_init() {
     echo "COMPOSE_PROJECT_NAME=${PROJECT}" >>"$WORK_ENV"
   fi
   if grep -q '^NETBOX_PORT=' "$WORK_ENV"; then
-    sed -i.bak 's/^NETBOX_PORT=.*/NETBOX_PORT=18084/' "$WORK_ENV" && rm -f "$WORK_ENV.bak"
+    sed -i.bak "s/^NETBOX_PORT=.*/NETBOX_PORT=${UI_PORT}/" "$WORK_ENV" && rm -f "$WORK_ENV.bak"
   else
-    echo "NETBOX_PORT=18084" >>"$WORK_ENV"
+    echo "NETBOX_PORT=${UI_PORT}" >>"$WORK_ENV"
   fi
 
   # shellcheck disable=SC1090
@@ -195,6 +205,10 @@ phase_down() {
   rm -f "$WORK_ENV"
 }
 
+phase_stop() {
+  compose stop
+}
+
 case "${1:-all}" in
   init) phase_init ;;
   up) phase_up ;;
@@ -202,6 +216,7 @@ case "${1:-all}" in
   bootstrap) phase_bootstrap ;;
   wait-issuer) phase_wait_issuer ;;
   test) phase_test ;;
+  stop) phase_stop ;;
   down) phase_down ;;
   all)
     # One-shot mode: every phase in order, tearing down on any failure too.
@@ -223,7 +238,7 @@ case "${1:-all}" in
     phase_test
     ;;
   *)
-    echo "usage: $0 [init|up|wait-netbox|bootstrap|wait-issuer|test|down|all]" >&2
+    echo "usage: $0 [init|up|wait-netbox|bootstrap|wait-issuer|test|stop|down|all]" >&2
     exit 2
     ;;
 esac

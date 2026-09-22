@@ -2,7 +2,7 @@
 # are deliberately separate from the platform ledger and worker.
 services:
   netbox:
-    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8
     environment:
       DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
       REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
@@ -62,7 +62,7 @@ services:
       - ./ui-proxy/entrypoint.sh:/entrypoint.sh:ro
 
   netbox-worker:
-    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8
     environment:
       DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
       REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
@@ -157,7 +157,7 @@ services:
   # users for tests/e2e/test_e2e_netbox_roles.py.
   netbox-bootstrap:
     profiles: [bootstrap]
-    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >

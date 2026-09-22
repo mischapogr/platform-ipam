@@ -61,7 +61,7 @@ The implementation plan is the delivery authority. The API document is the behav
 
 ## Validation status
 
-Updated 2026-09-08. Alongside the Go unit tests and the static OpenAPI,
+Updated 2026-09-23. Alongside the Go unit tests and the static OpenAPI,
 documentation-link, Compose and Helm checks, the local Compose stack now runs
 end to end and is verified by [`tests/e2e`](../tests/e2e/README.md): reservation
 through REST, through the first-party CLI, and through the Terraform provider,
@@ -80,9 +80,10 @@ apply fail. These are fixed; see the decision records for the reasoning behind
 the environment they were found in.
 
 Still unverified: live AWS, a stage/production Kubernetes rollout, published
-provider distribution and installation, and promotion of an exact NetBox
-support image. The default stack pins 4.6.7; an isolated 4.6.10 patch probe
-passed the full 126-test suite, while 4.7 remains untested. The optional
+provider distribution and installation, and stage/production promotion of the
+exact NetBox support image. The local Compose stack now pins the qualified
+4.6.10 digest after full-suite, identity and restore rehearsals; 4.7 remains
+untested. The optional
 [`run-provider-mirror.sh`](../tests/e2e/run-provider-mirror.sh) now exercises
 local filesystem-mirror installation, checksums and a lock file; the main
 development suite still uses a CLI development override.

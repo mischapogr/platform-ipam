@@ -395,9 +395,10 @@ def compose(report, args):
     moto = directory / "compose.aws-moto.yaml"
     if moto.exists():
         combinations.append(("compose-aws-moto", [base, moto]))
-    netbox_compat = directory / "compose.netbox-compat-4_6_10.yaml"
-    if netbox_compat.exists() and netbox.exists():
-        combinations.append(("compose-netbox-compat-4_6_10", [base, netbox, netbox_compat]))
+    for version in ("4_6_7", "4_6_10"):
+        netbox_compat = directory / f"compose.netbox-compat-{version}.yaml"
+        if netbox_compat.exists() and netbox.exists():
+            combinations.append((f"compose-netbox-compat-{version}", [base, netbox, netbox_compat]))
     for name, files in combinations:
         command = ["docker", "compose"]
         if args.env_file:

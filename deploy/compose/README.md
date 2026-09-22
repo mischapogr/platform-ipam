@@ -168,8 +168,11 @@ Neither overlay changes the default fake-cloud development stack. See
 [local simulation](../../docs/LOCAL_SIMULATION.md) for the evidence boundary.
 
 `platform-db` is the application ledger. NetBox has its own PostgreSQL and
-Valkey data volumes, and its image is pinned to
-`docker.io/netboxcommunity/netbox:v4.6.7-5.0.2` (netbox-docker release 5.0.2).
+Valkey data volumes, and its image is pinned to exact NetBox/netbox-docker
+`v4.6.10-5.0.2` digest `sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8`.
+The former 4.6.7 image remains available through
+`compose.netbox-compat-4_6_7.yaml` for isolated upgrade rehearsals; see
+[ADR 0019](../../docs/decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md).
 The fake cloud observation file is `fixtures/cloud.json` and is mounted
 read-only into the platform services.
 
@@ -262,9 +265,10 @@ docker compose --env-file .env \
 
 For an isolated candidate build, set `NETBOX_PLUGIN_BASE_IMAGE` to an exact
 NetBox image digest and `NETBOX_PLUGIN_IMAGE_TAG` to a separate local tag before
-running the same overlay's `build netbox`. The defaults above remain the pinned
-4.6.7 image and `platform-ipam/netbox-plugin:local`. A successful build alone
-does not qualify the plugin's migrations or API on the candidate release.
+running the same overlay's `build netbox`. The defaults above use the qualified
+4.6.10 digest and `platform-ipam/netbox-plugin:local`. The local candidate
+build, migrations and API probe are recorded in ADR 0019; stage/production
+need separate checks.
 
 The plugin's migrations run automatically at NetBox startup, the same as
 NetBox's own; verified against a throwaway Compose project on 2026-09-18 (five

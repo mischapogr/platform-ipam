@@ -1,0 +1,31 @@
+{
+  "samba-container-config": "v0",
+  "configs": {
+    "demo": {
+      "instance_features": ["addc"],
+      "domain_settings": "ipam",
+      "instance_name": "dc1"
+    }
+  },
+  "domain_settings": {
+    "ipam": {
+      "realm": "IPAM.TEST",
+      "short_domain": "IPAM",
+      "admin_password": "LocalAdAdminPassw0rd!"
+    }
+  },
+  "domain_groups": {
+    "ipam": [
+      {"name": "platform-operators"},
+      {"name": "platform-inventory-maintainers"},
+      {"name": "nested-viewers"}
+    ]
+  },
+  "domain_users": {
+    "ipam": [
+      {"name": "viewer", "password": "LocalViewerPassw0rd!", "member_of": ["nested-viewers"]},
+      {"name": "maintainer", "password": "LocalMaintainerPassw0rd!", "member_of": ["nested-viewers", "platform-inventory-maintainers"]},
+      {"name": "outsider", "password": "LocalOutsiderPassw0rd!"}
+    ]
+  }
+}

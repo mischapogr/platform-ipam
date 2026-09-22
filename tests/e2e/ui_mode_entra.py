@@ -23,10 +23,10 @@ The mock issuer's login page (deploy/compose/compose.ui-entra.yaml's
 JSON_CONFIG) is a single HTML form that POSTs a `username` field back to the
 exact URL it was served from, and returns a `groups` claim for that username
 from its own static configuration -- no interactive browser or `claims` form
-field is needed here, only the same two identities the overlay defines:
-  * ALLOWED_USER ("operator-alice", or any username except DENIED_USER) --
-    groups=[platform-entra-operators], the group oauth2-proxy admits.
-  * DENIED_USER ("denied-bob") -- groups=[contractors], outside it.
+field is needed here. The overlay defines three claim shapes:
+  * ALLOWED_USER ("operator-alice") -- the allowed Entra-style group UUID.
+  * DENIED_USER ("denied-bob") -- a different group UUID.
+  * OVERAGE_USER ("overage-carol") -- an overage pointer but no groups list.
 
 Covers the package A4 "Done when" list from docs/WORK_PLAN.md:
   * an unauthenticated request is redirected to the issuer, not served.
@@ -55,6 +55,7 @@ NETBOX_ADMIN_TOKEN = os.environ.get("IPAM_NETBOX_TOKEN", "")
 
 ALLOWED_USER = "operator-alice"
 DENIED_USER = "denied-bob"
+OVERAGE_USER = "overage-carol"
 
 MOCK_ISSUER_LOGIN_MARKER = "Mock OAuth2 Server Sign-in"
 
@@ -302,6 +303,17 @@ class UIEntraE2ETest(unittest.TestCase):
         self.assertNotIn("NetBox", final.text())
         self.assertIsNone(_netbox_user(DENIED_USER),
                            "a user outside the allowed group must never reach/create a NetBox user")
+
+    def test_group_overage_without_lookup_is_refused(self):
+        opener = _new_session()
+        final = _login(opener, OVERAGE_USER)
+        self.assertEqual(
+            final.status, 403,
+            f"an overage pointer without a groups list must fail closed: "
+            f"status={final.status} body={final.text()[:300]!r}",
+        )
+        self.assertIsNone(_netbox_user(OVERAGE_USER),
+                          "an overage user must never reach/create a NetBox user")
 
 
 if __name__ == "__main__":

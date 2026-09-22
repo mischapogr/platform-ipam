@@ -61,9 +61,9 @@ UI_BASE_URL = os.environ.get("NETBOX_UI_LDAP_BASE_URL", "http://ui-proxy:8080")
 NETBOX_BASE_URL = os.environ.get("NETBOX_INTERNAL_URL", "http://netbox:8080")
 NETBOX_ADMIN_TOKEN = os.environ.get("IPAM_NETBOX_TOKEN", "")
 
-VIEWER = ("viewer", "viewer-ldap-dev-password")
-MAINTAINER = ("maintainer", "maintainer-ldap-dev-password")
-OUTSIDER = ("outsider", "outsider-ldap-dev-password")
+VIEWER = ("viewer", os.environ.get("NETBOX_UI_LDAP_VIEWER_PASSWORD", "viewer-ldap-dev-password"))
+MAINTAINER = ("maintainer", os.environ.get("NETBOX_UI_LDAP_MAINTAINER_PASSWORD", "maintainer-ldap-dev-password"))
+OUTSIDER = ("outsider", os.environ.get("NETBOX_UI_LDAP_OUTSIDER_PASSWORD", "outsider-ldap-dev-password"))
 
 CSRF_INPUT_RE = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
 
@@ -268,7 +268,11 @@ class UILdapE2ETest(unittest.TestCase):
         netbox_maintainer = _netbox_user(MAINTAINER[0])
         self.assertIsNotNone(netbox_maintainer)
         groups = {group["name"] for group in netbox_maintainer.get("groups") or []}
-        self.assertEqual(groups, {"platform-operators", "platform-inventory-maintainers"},
+        expected = {"platform-operators", "platform-inventory-maintainers"}
+        extra = os.environ.get("NETBOX_UI_LDAP_EXTRA_GROUP")
+        if extra:
+            expected.add(extra)
+        self.assertEqual(groups, expected,
                          f"maintainer's mirrored NetBox groups do not match its LDAP memberships: {groups}")
 
     # -- API/GraphQL stay blocked regardless of session ------------------------

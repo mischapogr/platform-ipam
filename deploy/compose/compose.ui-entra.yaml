@@ -90,7 +90,9 @@ services:
       # group sync there would need a NetBox group literally named after a
       # GUID. That is exactly the condition the package A4 contract says to
       # ship the first choice under, so this overlay does.
-      - --allowed-group=platform-entra-operators
+      # Entra group claims contain object IDs. This fixed UUID is a local
+      # stand-in for the reviewed tenant's security-group object ID.
+      - --allowed-group=11111111-2222-4333-8444-555555555555
       - --skip-provider-button=true
       - --reverse-proxy=true
       - --set-xauthrequest=true
@@ -111,11 +113,12 @@ services:
   # optional claims override) that POSTs back to the same authorize URL, so
   # tests/e2e/run-ui-entra.sh drives the whole OIDC round trip with curl and
   # a cookie jar. Two identities are configured below:
-  #   * any username except "denied-bob" -- groups=[platform-entra-operators],
-  #     the allowed group oauth2-proxy admits (an "unmapped" operator: NetBox
-  #     still only ever grants REMOTE_AUTH_DEFAULT_GROUPS).
-  #   * "denied-bob" -- groups=[contractors], outside the allowed group, so
-  #     oauth2-proxy refuses at the callback and NetBox never sees the login.
+  #   * any username except "denied-bob" or "overage-carol" -- groups contains
+  #     the allowed group's UUID (an unmapped operator: NetBox still only ever
+  #     grants REMOTE_AUTH_DEFAULT_GROUPS).
+  #   * "denied-bob" -- groups contains a different UUID.
+  #   * "overage-carol" -- no groups list; an Entra-style overage pointer
+  #     must fail closed when no Graph lookup has been implemented.
   mock-oidc:
     image: ghcr.io/navikt/mock-oauth2-server:6.0.2
     environment:
@@ -133,7 +136,18 @@ services:
                     "email": "denied-bob@mock.invalid",
                     "email_verified": true,
                     "preferred_username": "denied-bob",
-                    "groups": ["contractors"]
+                    "groups": ["aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"]
+                  }
+                },
+                {
+                  "requestParam": "subject",
+                  "match": "overage-carol",
+                  "claims": {
+                    "email": "overage-carol@mock.invalid",
+                    "email_verified": true,
+                    "preferred_username": "overage-carol",
+                    "_claim_names": {"groups": "src1"},
+                    "_claim_sources": {"src1": {"endpoint": "https://graph.microsoft.com/v1.0/me/getMemberObjects"}}
                   }
                 },
                 {
@@ -143,7 +157,7 @@ services:
                     "email": "$${subject}@mock.invalid",
                     "email_verified": true,
                     "preferred_username": "$${subject}",
-                    "groups": ["platform-entra-operators"]
+                    "groups": ["11111111-2222-4333-8444-555555555555"]
                   }
                 }
               ]

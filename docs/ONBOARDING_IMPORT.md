@@ -57,7 +57,7 @@ One file may hold one table. The table type is decided by which columns resolve:
 | `networks` | `cidr`, `account_id`, `region` | `type` (`vpc`\|`subnet`), `resource_id`, `parent_id`, `az_id`, `name`, `environment`, `state`, `primary` |
 | `ranges` | `cidr` *or* `start_address`+`end_address` | `description`, `owner`, `source` |
 
-Headers are matched case-insensitively after stripping punctuation, through an alias table, because real tables say "Account ID", "Account-Nr.", "AWS Konto", "CIDR Block", "IP Range", "Netz", "Network". An unresolvable required column is an error naming the headers that were seen. Unknown columns are kept and appended to the description; they are never dropped silently.
+Headers are matched case-insensitively after stripping punctuation, through an alias table, because real tables say "Account ID", "Account-Nr.", "AWS Konto", "CIDR Block", "IP Range", "Netz", "Network". An unresolvable required column is an error naming the headers that were seen. Unknown columns are retained by the parser and included in the description where space allows. A new networks prefix truncates a description beyond 200 runes with an ellipsis and fingerprint; consult the source table for text beyond that limit.
 
 ## 4. Normalization
 
@@ -124,7 +124,7 @@ The report is JSON plus a readable summary, and exits non-zero on any error, fol
 
 One NetBox prefix per surviving CIDR, in the domain's VRF (a prefix in any other VRF is invisible to the allocator):
 
-- status `active`; description built from name, account, resource id and any preserved columns
+- status `active`; for a new networks prefix, a description built from the table's name, description and preserved columns, with a short fingerprint suffix; account and resource IDs are kept in `platform_import_contributors` instead. Range descriptions keep their existing format.
 - tag `platform-ipam-imported`
 - custom fields `platform_import_batch`, `platform_import_source`, and the existing `platform_aws_account_id`, `platform_aws_region`, `platform_aws_resource_id` where known
 - custom field `platform_import_contributors`, the structured record of which cloud resources occupy this prefix (see below)
@@ -165,7 +165,7 @@ A **degenerate identity** — the one no `resource_id` column produces — can o
 
 The field is **unowned**: `ownedFields` never names it, so an adoption preserves it and an abandonment leaves it alone, exactly as the import tag, batch and source already survive both.
 
-The description is unchanged by this package and still names the accounts and resource ids, so it still grows with every sharer and a CIDR shared by enough VPCs still fails the import at the 200-rune limit. ADR 0016 separates that fix into its own package because it changes golden files and end-to-end assertions written against today's string.
+Package M9c subsequently changed the create path for networks prefixes. A new description no longer rolls up every account and resource ID: those are in the structured contributor list. It uses the table's name, description and preserved columns, truncates at NetBox's 200-rune limit with an ellipsis, and ends with an eight-hex-digit fingerprint of the stored body. A CIDR shared by fifty VPCs can therefore be imported as one prefix. This applies only on create; `apply --refresh` and a re-import leave an existing description untouched. The fingerprint checks for an ordinary edit to the stored description during `onboard remove`; it is a self-consistency check, not an authenticated record of the original text.
 
 `platform_import_contributors` must exist in NetBox before an import runs, exactly like the `platform-ipam-imported` tag: `deploy/compose/seed-netbox.py` creates it as a `json` custom field on `ipam.prefix`, and an import against a NetBox that lacks it fails at the first entry with a NetBox `400` and writes nothing.
 
@@ -227,7 +227,7 @@ Each is independently refusable, and the dry run evaluates all of them (and ever
 - No `platform-ipam-imported` tag (`not_imported`) — not ours to remove.
 - A configured pool's own CIDR, or a prefix that contains one as an ancestor (`pool_prefix`).
 - An empty (but present) contributor list (`empty_contributor_list`) — "an empty list is not an argument that nothing contributes; it is a list nobody wrote" (ADR 0016).
-- A description that does not contain what the import would generate from the contributor list (`description_edited`) — an operator wrote something there. `domain.Contributor` carries no `Name` and no per-row free-text description, so this check reconstructs and verifies only the `account(s) …`/`resource id(s) …` segments of `mergeNetworkDescription`'s output are still present verbatim; it cannot see an edit confined to the name or free-text portions, and says so in its own refusal message. This is the narrowest honest rule the stored data supports, and it errs toward refusing, never toward silently allowing.
+- A description that fails the import's available check (`description_edited`). For a prefix created by M9c or later, `remove` checks the suffix against the stored description body; truncation performed on create still passes. For an older prefix without that suffix, it checks that the account and resource-ID segments reconstructed from its contributors remain in the description. The older check cannot detect edits confined to a name or other free text. The new fingerprint is not an authentication mechanism: someone who deliberately recomputes it can change the text without this check detecting it. Review the description and the full removal report before applying.
 
 ### The delete
 

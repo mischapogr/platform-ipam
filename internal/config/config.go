@@ -221,7 +221,7 @@ func Validate(c domain.Config, environment string) error {
 	if environment != "development" && (c.Lifecycle.QuarantineHours < 168 || c.Lifecycle.MinScanSpacing < 300) {
 		return fmt.Errorf("stage/prod require at least seven-day quarantine and five-minute absence scan spacing")
 	}
-	if !c.Reconciliation.IncludeUntagged || !c.Reconciliation.IncludeAssociations || !c.Reconciliation.UnknownBlocksReuse || c.Reconciliation.FullScanInterval < 1 {
+	if !c.Reconciliation.IncludeUntagged || !c.Reconciliation.IncludeAssociations || !c.Reconciliation.UnknownBlocksReuse || c.Reconciliation.FullScanInterval < 1 || c.Reconciliation.ProjectionRefreshInterval < 0 {
 		return fmt.Errorf("reconciliation must include all occupancy and block UNKNOWN reuse")
 	}
 	domains := map[string]domain.Domain{}

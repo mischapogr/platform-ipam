@@ -54,6 +54,8 @@ lifecycle:
 
 reconciliation:
   full_scan_interval_seconds: 300
+  # Six-minute trigger leaves scan and pass time within the 15-minute UI target.
+  projection_refresh_interval_seconds: 360
   include_untagged_resources: true
   include_all_vpc_cidr_associations: true
   unknown_coverage_blocks_reuse: true

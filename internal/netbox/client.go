@@ -40,22 +40,25 @@ const (
 // permitted to serve. HTTPClient is optional; its transport is retained while
 // redirects are disabled by the adapter.
 type Config struct {
-	BaseURL    string
-	Token      string
-	Domains    []domain.Domain
-	Pools      []domain.Pool
-	HTTPClient *http.Client
-	Timeout    time.Duration
+	BaseURL                   string
+	Token                     string
+	Domains                   []domain.Domain
+	Pools                     []domain.Pool
+	HTTPClient                *http.Client
+	Timeout                   time.Duration
+	ProjectionRefreshInterval time.Duration
 }
 
 // Client implements domain.Inventory against a NetBox REST API.
 type Client struct {
-	base    *url.URL
-	token   string
-	domains map[string]domain.Domain
-	pools   map[string]domain.Pool
-	http    *http.Client
-	timeout time.Duration
+	base                      *url.URL
+	token                     string
+	domains                   map[string]domain.Domain
+	pools                     map[string]domain.Pool
+	http                      *http.Client
+	timeout                   time.Duration
+	projectionRefreshInterval time.Duration
+	now                       func() time.Time
 }
 
 // HTTPError intentionally omits response bodies: NetBox validation pages can
@@ -93,6 +96,7 @@ func New(cfg Config) (*Client, error) {
 		transportClient.Timeout = timeout
 	}
 	c := &Client{base: base, token: cfg.Token, http: &transportClient, timeout: timeout,
+		projectionRefreshInterval: cfg.ProjectionRefreshInterval, now: time.Now,
 		domains: make(map[string]domain.Domain), pools: make(map[string]domain.Pool)}
 	for _, d := range cfg.Domains {
 		c.domains[d.ID] = d
@@ -882,6 +886,30 @@ func (c *Client) Sync(ctx context.Context, a domain.Allocation) error {
 		return errors.New("NetBox prefix identity mismatch")
 	}
 	fields := ownedFields(a, stringCF(x.CustomFields, operationIDCF))
+	// Optional owned fields must be explicitly cleared when the ledger no longer
+	// carries them. NetBox renders unset custom fields as null.
+	for _, key := range []string{"platform_aws_resource_id", "platform_last_observed_at", "platform_quarantine_until"} {
+		if _, ok := fields[key]; !ok {
+			fields[key] = nil
+		}
+	}
+	stamp := "platform_last_observed_at"
+	refreshStamp := shouldRefreshObservationStamp(fields[stamp], x.CustomFields[stamp], c.now(), c.projectionRefreshInterval)
+	if !refreshStamp {
+		// A different projection change may still require PATCH; never make it
+		// regress or prematurely refresh the observation timestamp.
+		fields[stamp] = x.CustomFields[stamp]
+	}
+	changed := false
+	for key, value := range fields {
+		if key == stamp {
+			continue
+		}
+		if !sameProjectionValue(key, value, x.CustomFields[key]) {
+			changed = true
+			break
+		}
+	}
 	for key, value := range x.CustomFields {
 		if _, owned := fields[key]; !owned {
 			fields[key] = value
@@ -891,8 +919,57 @@ func (c *Client) Sync(ctx context.Context, a domain.Allocation) error {
 	if a.State == domain.Active {
 		status = "active"
 	}
+	if !changed && !refreshStamp && string(x.Status) == status && c.projectionRefreshInterval > 0 {
+		return nil
+	}
 	_, err = c.request(ctx, http.MethodPatch, "/api/ipam/prefixes/"+url.PathEscape(a.InventoryID)+"/", map[string]any{"status": status, "custom_fields": fields})
 	return err
+}
+
+func sameProjectionValue(key string, desired, current any) bool {
+	if desired == nil {
+		return current == nil || current == ""
+	}
+	want, ok := desired.(string)
+	if !ok {
+		return false
+	}
+	if want == "" && current == nil {
+		return true
+	}
+	got, ok := current.(string)
+	if !ok {
+		return false
+	}
+	if key == "platform_quarantine_until" {
+		wt, we := time.Parse(time.RFC3339Nano, want)
+		gt, ge := time.Parse(time.RFC3339Nano, got)
+		return we == nil && ge == nil && wt.Equal(gt)
+	}
+	return want == got
+}
+
+func shouldRefreshObservationStamp(desired, current any, now time.Time, interval time.Duration) bool {
+	if desired == nil {
+		return current != nil && current != ""
+	}
+	want, ok := desired.(string)
+	if !ok {
+		return true
+	}
+	wt, err := time.Parse(time.RFC3339Nano, want)
+	if err != nil {
+		return true
+	}
+	got, ok := current.(string)
+	if !ok || got == "" {
+		return true
+	}
+	gt, err := time.Parse(time.RFC3339Nano, got)
+	if err != nil {
+		return true
+	}
+	return wt.After(gt) && now.Sub(gt) >= interval
 }
 
 // Delete verifies identity before deleting and confirms the object is absent.

@@ -31,6 +31,11 @@ func TestPolicySafety(t *testing.T) {
 		t.Fatal("outside exclusion accepted")
 	}
 	cfg, _ = Load("../../examples/config/pools.yaml", "", "development")
+	cfg.Reconciliation.ProjectionRefreshInterval = -1
+	if Validate(cfg, "development") == nil {
+		t.Fatal("negative projection refresh interval accepted")
+	}
+	cfg, _ = Load("../../examples/config/pools.yaml", "", "development")
 	cfg.Lifecycle.QuarantineHours = 0
 	if Validate(cfg, "prod") == nil {
 		t.Fatal("production bypass accepted")

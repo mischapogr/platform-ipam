@@ -82,6 +82,38 @@ func TestLocalExtraCredentialsRequireDevelopment(t *testing.T) {
 	}
 }
 
+func TestAWSEmulatorEndpointRequiresDevelopment(t *testing.T) {
+	base := Settings{
+		Environment: "stage", DatabaseURL: "postgres://localhost/ipam?sslmode=verify-full",
+		AuthMode: "local", AWSMode: "live", NetBoxURL: "https://netbox.stage.example.org",
+		NetBoxToken: "netbox-token",
+	}
+	if err := base.Validate("worker"); err != nil {
+		t.Fatalf("stage worker baseline: %v", err)
+	}
+	for _, variant := range []struct {
+		name string
+		set  func(*Settings)
+	}{
+		{"global", func(s *Settings) { s.AWSEndpointURL = "http://moto:5000" }},
+		{"EC2", func(s *Settings) { s.AWSEC2EndpointURL = "http://moto:5000" }},
+		{"STS", func(s *Settings) { s.AWSSTSEndpointURL = "http://moto:5000" }},
+	} {
+		t.Run(variant.name, func(t *testing.T) {
+			s := base
+			variant.set(&s)
+			if err := s.Validate("worker"); err == nil || !strings.Contains(err.Error(), "custom AWS endpoints") {
+				t.Fatalf("stage worker accepted emulator endpoint: %v", err)
+			}
+			s.Environment = "development"
+			s.DatabaseURL = "postgres://localhost/ipam?sslmode=disable"
+			if err := s.Validate("worker"); err != nil {
+				t.Fatalf("development worker rejected emulator endpoint: %v", err)
+			}
+		})
+	}
+}
+
 func TestMigrationRequiresVerifiedDatabaseTLS(t *testing.T) {
 	s := Settings{Environment: "prod", DatabaseURL: "postgres://localhost/ipam?sslmode=disable"}
 	if s.Validate("migrate") == nil {

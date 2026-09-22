@@ -403,6 +403,21 @@ type Ledger interface {
 	View(context.Context, func(*State) error) error
 	Update(context.Context, func(*State) error) error
 	Ready(context.Context) error
+	// Events returns one allocation's full audit history, ordered by when
+	// each event happened (At ascending), with the event id as a
+	// deterministic tiebreaker for two events recorded at the same instant.
+	// It exists because package M4f stopped View, like Update before it
+	// (package M4e), from decoding audit_events on every transaction: every
+	// production writer of State.Events only appends and never reads it
+	// back (M4e's survey of every ".Events" site), and no transport
+	// endpoint or CLI verb lists an allocation's history today, so the
+	// narrowest honest read path for the few callers that DO want history
+	// -- the append-only proof, and the two tests that check an audit trail
+	// outlives the allocation it names -- is a keyed, additive method
+	// rather than a State that carries every event whether a caller asked
+	// for it or not. It is additive to the port: every existing Ledger
+	// double satisfies it automatically by embedding domain.Ledger.
+	Events(ctx context.Context, allocationID string) ([]Event, error)
 }
 
 func NewID(prefix string) string {

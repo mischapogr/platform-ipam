@@ -12,10 +12,12 @@
 # image once (from deploy/compose/netbox/plugin/Dockerfile) and reuses it,
 # rather than building it three times.
 x-netbox-plugin-image: &netbox-plugin-image
-  image: platform-ipam/netbox-plugin:local
+  image: platform-ipam/netbox-plugin:${NETBOX_PLUGIN_IMAGE_TAG:-local}
   build:
     context: ./netbox/plugin
     dockerfile: Dockerfile
+    args:
+      NETBOX_BASE_IMAGE: ${NETBOX_PLUGIN_BASE_IMAGE:-docker.io/netboxcommunity/netbox:v4.6.7-5.0.2}
 
 services:
   netbox:

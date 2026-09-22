@@ -1,0 +1,8 @@
+# Opt-in compatibility probe. The default stack remains pinned to 4.6.7.
+services:
+  netbox:
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2
+  netbox-worker:
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2
+  netbox-bootstrap:
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2

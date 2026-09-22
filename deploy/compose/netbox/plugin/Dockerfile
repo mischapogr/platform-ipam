@@ -12,7 +12,8 @@
 # therefore installs straight into the existing venv, which is how
 # netbox-docker's own plugin documentation installs third-party plugins for
 # this image generation.
-FROM docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+ARG NETBOX_BASE_IMAGE=docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+FROM ${NETBOX_BASE_IMAGE}
 
 # Pinned to an exact version per docs/WORK_PLAN.md Track N ("the plugin
 # pinned to an exact version"). docs/NETBOX_AWS_PLUGIN.md recommends this

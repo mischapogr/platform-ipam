@@ -294,3 +294,68 @@ func TestRangeDuplicateCIDRMessageNamesNoContributors(t *testing.T) {
 		t.Errorf("message %q must not claim contributors for a ranges table", dups[0].Message)
 	}
 }
+
+// Package T2 (docs/WORK_PLAN.md, "test hygiene"): M9b2 left undecided what
+// happens when the same VPC is named in two input files and neither row
+// carries an observation time. ADR 0016
+// (docs/decisions/0016-SOURCE_AWARE_REFRESH_AND_REMOVAL_OF_IMPORTED_OCCUPANCY.md, "What a
+// re-import refreshes, and what it only reports") settles it:
+// "`contributor-stale-source` -- an entry has a null `observed_at`." An
+// entry is built one per input row -- ContributorsForRows (contributors.go)
+// never collapses rows by identity, unlike the write-only "contributor-new"
+// comparison above, which dedupes by identity because it is reporting a SET
+// difference. Stale-source is not a set comparison: it is "is THIS row's
+// provenance known", asked of every row that would contribute an entry, so
+// the same VPC observed twice with no timestamp either time is two rows
+// whose provenance is each individually unusable as removal evidence --
+// both are reported, not collapsed into one. contributorFindings (plan.go)
+// already raises the finding inside its per-entry loop over
+// ContributorsForRows with no identity-keyed "seen" map (unlike
+// contributor-new's own dedup), so this is a pinning test for existing,
+// correct behaviour, not a new code path.
+func TestContributorStaleSourceIsPerRowNotPerIdentity(t *testing.T) {
+	// Two different files naming the very same VPC (identical account, region
+	// and resource id -- so identityOf(first) == identityOf(second)) at the
+	// same CIDR, neither ever having carried an observed_at column.
+	first := oldFormatRow("10.20.10.0/24", "000000000001", "vpc-a", 1)
+	first.SourceFile = "legacy-a.csv"
+	second := oldFormatRow("10.20.10.0/24", "000000000001", "vpc-a", 1)
+	second.SourceFile = "legacy-b.csv"
+	if identityOf(first) != identityOf(second) {
+		t.Fatalf("fixture sanity: %q != %q, want the same VPC identity from both files",
+			identityOf(first), identityOf(second))
+	}
+	existing := domain.Network{ID: "1", CIDR: "10.20.10.0/24", Contributors: []domain.Contributor{
+		// Already recorded under this identity, exactly as
+		// TestContributorStaleSourceForANullObservedAt seeds it, so neither row
+		// can also raise contributor-new -- this test isolates stale-source.
+		{Identity: identityOf(first), AccountID: first.AccountID, ResourceID: first.ResourceID, Region: first.Region},
+	}}
+	table := Table{Kind: KindNetworks, Networks: []NetworkRow{first, second}}
+	report := planWithSnap(table, domain.InventorySnapshot{Complete: true, Networks: []domain.Network{existing}})
+
+	stale := findRule(report.Findings, RuleContributorStaleSource)
+	if len(stale) != 2 {
+		t.Fatalf("findings = %+v, want exactly two contributor-stale-source infos: "+
+			"ADR 0016 raises the finding per row (each row's own provenance), not "+
+			"once per identity, even though both rows share one identity", report.Findings)
+	}
+	for _, f := range stale {
+		if f.Level != LevelInfo {
+			t.Errorf("finding %+v: Level = %v, want LevelInfo", f, f.Level)
+		}
+		if !strings.Contains(f.Message, identityOf(first)) {
+			t.Errorf("message %q does not name %s", f.Message, identityOf(first))
+		}
+		if len(f.Rows) != 1 || f.Rows[0] != 1 {
+			// first and second both carry SourceRow 1 (each file numbers its
+			// own rows from one) but different SourceFile -- confirmed
+			// distinct findings above by count; each must still trace back to
+			// its own row (1) rather than pointing nowhere or colliding.
+			t.Errorf("finding %+v: Rows = %v, want exactly [1] (each file's own row 1)", f, f.Rows)
+		}
+	}
+	if len(findRule(report.Findings, RuleContributorNew)) != 0 {
+		t.Errorf("findings = %+v, want no contributor-new: this identity is already a recorded contributor", report.Findings)
+	}
+}

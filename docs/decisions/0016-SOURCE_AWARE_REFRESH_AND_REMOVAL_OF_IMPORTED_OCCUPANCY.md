@@ -922,3 +922,23 @@ response-reader limits M9b1 measured, under a refresh's own read-then-merge
 path; and, as ADR 0016 itself says of every package before removal, whether
 the evidence this refresh accumulates is what the customer's audit owners
 will accept.
+
+### 2026-09-22: M9c description format (end-to-end verified 2026-09-23)
+
+Package M9c moves the account and resource-ID roll-up out of a newly created
+network prefix's description. The structured contributor field already stores
+those identities. The description now contains the input's name and descriptive
+text, capped at 200 runes with an ellipsis, followed by an eight-hex-digit
+SHA-256 fingerprint of the stored body. A prefix with many contributors no
+longer fails creation because of the description's length. Existing descriptions
+are untouched on re-import and refresh. `onboard remove` checks the fingerprint
+on a new-format prefix and retains its account/resource-ID containment check
+for an older prefix. This detects ordinary edits to the stored text and avoids
+treating import-time truncation as an edit. It does not authenticate the text:
+someone who recalculates the suffix can bypass the check, so the removal
+report and the operator's review remain necessary. Unit and fake-NetBox tests
+cover the format and the fifty-contributor case. On 2026-09-23 the real-stack
+end-to-end import and removal case for a CIDR shared by fifty VPCs passed in
+the isolated development project, as part of the first half of the full suite
+(71 tests); the second half also passed (55 tests). No real AWS Organization
+was used.

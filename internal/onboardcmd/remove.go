@@ -310,9 +310,20 @@ func writeRemoveReport(stdout io.Writer, outPath string, report removeReport) er
 // rule -- it never stops at the first failure -- because the dry run's
 // whole purpose is to show an operator the complete picture in one report.
 func buildRemoveReport(domainID string, detail netbox.OccupancyDetail, records []assess.ResourceRecord, runRecord *assess.RunRecord, assessReport assess.Report, apply bool, wantID string) removeReport {
+	// Refusals, Contributors and Coverage are seeded as non-nil, empty
+	// slices rather than left at their zero value: a report that never
+	// appends to one of them (the happy path has no refusals; a prefix
+	// with no contributors would have none to walk) must still encode
+	// `[]`, not JSON `null` -- the same contract adopt.Report's own
+	// Records already holds (internal/adoptcmd/plan.go's Report is built
+	// with `make([]RecordResult, len(records))` for exactly this reason).
+	// A caller that ranges over `refusals`/`contributors`/`coverage`
+	// without a null check -- this package's own end-to-end tests did --
+	// must never see null on the happy path.
 	report := removeReport{
 		ReportVersion: 1, Domain: domainID, CIDR: detail.CIDR, NetBoxID: detail.ID,
 		Apply: apply, Description: detail.Description, Inputs: assessReport.Inputs,
+		Refusals: []removeRefusal{}, Contributors: []removeContributorEvidence{}, Coverage: []removeAccountRegionOutcome{},
 	}
 	if runRecord != nil {
 		report.Run = &removeRunSummary{StartedAt: runRecord.StartedAt, FinishedAt: runRecord.FinishedAt, SourceFile: runRecord.SourceFile}
@@ -338,10 +349,16 @@ func buildRemoveReport(domainID string, detail netbox.OccupancyDetail, records [
 		// argument that nothing contributes; it is a list nobody wrote".
 		refuse("empty_contributor_list", fmt.Sprintf("prefix %s carries an empty contributor list", detail.CIDR))
 	}
-	wantDescription := expectedContributorDescription(detail.Contributors)
-	if detail.Contributors != nil && len(detail.Contributors) > 0 && wantDescription != "" && !strings.Contains(detail.Description, wantDescription) {
+	if detail.Contributors != nil && len(detail.Contributors) > 0 && !descriptionMatchesImport(detail) {
 		refuse("description_edited", fmt.Sprintf(
-			"prefix %s's description does not contain the account and resource-id segments the import would generate from its contributor list (an operator wrote it, or removed them); this check cannot reconstruct the name or per-row free-text segments (Contributor carries neither), so it verifies only that the reconstructible segments are still present verbatim, not that nothing else was ever edited",
+			"prefix %s's description does not match what the import wrote (an operator wrote it, or removed the import's own text): "+
+				"for a prefix created by package M9c or later this checks the description's own truncation-safe fingerprint "+
+				"(withDescriptionFingerprint/descriptionFingerprintConsistent, internal/onboardcmd); for one created before it "+
+				"(no fingerprint present) this falls back to package M9b4's original check, that the account and resource-id "+
+				"segments the import would generate from the contributor list are still present verbatim -- domain.Contributor "+
+				"carries no Name and no per-row free-text description, so neither check can see an edit confined to the name "+
+				"or free-text portions of the description, and says so nowhere but here: this is the narrowest honest rule the "+
+				"stored data supports",
 			detail.CIDR))
 	}
 
@@ -399,25 +416,91 @@ func buildRemoveReport(domainID string, detail netbox.OccupancyDetail, records [
 	return report
 }
 
-// expectedContributorDescription reconstructs the parts of
+// descriptionMatchesImport decides ADR 0016's description_edited refusal:
+// does the prefix's current description still look like what the import
+// wrote, rather than something an operator has since typed over it.
+//
+// Package M9c changed what a NEW prefix's description contains
+// (mergeNetworkDescription, onboardcmd.go): it no longer rolls up the
+// contributors' account and resource ids, so expectedContributorDescription
+// below -- built entirely from those two Contributor fields -- can no
+// longer be found inside a new-format description at all, and checking it
+// unconditionally would refuse every prefix M9c creates as "edited" the
+// moment it is read back. The fingerprint mergeNetworkDescription now
+// embeds in the description itself (withDescriptionFingerprint,
+// onboardcmd.go) is checked first and, when present, decides the question
+// on its own: it is a self-consistency check over the description's own
+// text, so it needs nothing reconstructed from Contributor and stays
+// correct across a truncation.
+//
+// A prefix created before this package shipped (M9b1-M9b4) carries no
+// fingerprint at all -- it predates withDescriptionFingerprint -- so this
+// falls back to the original, unmodified check for those: does the
+// description still CONTAIN the account/resource-id segments
+// expectedContributorDescription reconstructs from the stored contributor
+// list. Every existing test and fixture built against that shape
+// (internal/onboardcmd/remove_test.go's baseDetail, and any prefix a real
+// install already imported under M9b1-M9b4 before upgrading) keeps working
+// unchanged.
+func descriptionMatchesImport(detail netbox.OccupancyDetail) bool {
+	// A syntactically present new-format suffix is decisive. If its digest
+	// disagrees with the body, the legacy containment rule must not rescue
+	// it: a purpose name can itself contain the old account/resource-id
+	// sentence, even though the new import never generated that roll-up.
+	if descriptionFingerprintPattern.MatchString(detail.Description) {
+		return descriptionFingerprintConsistent(detail.Description)
+	}
+	legacy := expectedContributorDescription(detail.Contributors)
+	if legacy == "" {
+		// Nothing reconstructable either way (every contributor lacks both
+		// an account id and a resource id, e.g. a degenerate identity) --
+		// this check has no evidence to compare and must not manufacture a
+		// false "edited" from an empty string, which is contained in
+		// everything.
+		return true
+	}
+	return strings.Contains(detail.Description, legacy)
+}
+
+// descriptionFingerprintConsistent reports whether description ends with
+// onboardcmd.go's withDescriptionFingerprint suffix AND that suffix still
+// matches the body it is attached to -- a self-consistency check, not a
+// lookup: it needs no copy of what the original body should have been, only
+// that the body and its own fingerprint still agree, which any edit to
+// either one breaks. A description with no such suffix at all (never
+// written with one, or the whole thing replaced) returns false and falls
+// back to descriptionMatchesImport's legacy path.
+func descriptionFingerprintConsistent(description string) bool {
+	loc := descriptionFingerprintPattern.FindStringSubmatchIndex(description)
+	if loc == nil {
+		return false
+	}
+	body := description[:loc[0]]
+	got := description[loc[2]:loc[3]]
+	return got == descriptionFingerprint(body)
+}
+
+// expectedContributorDescription reconstructs the parts of a PRE-M9c
 // mergeNetworkDescription's output that a stored contributor list CAN
 // reproduce: the "account(s) ..." and "resource id(s) ..." segments, built
-// with the exact same uniqueNonEmpty/plural/join(" | ") this package's
-// apply path already uses. domain.Contributor carries no Name and no
-// per-row free-text description (ADR 0016 defines exactly identity,
-// account_id, region, type, resource_id, parent_id, association_id,
-// observed_at, the two batch fields and source_file/source_row -- nothing
-// else), so this can never reconstruct the Name segment or any per-row
-// source-label segment of the original description, both of which a real
-// import commonly carries. buildRemoveReport therefore checks CONTAINMENT
-// (this reconstruction must appear verbatim inside the stored description),
-// not equality: the narrowest honest rule this command can apply, given
-// what Contributor actually stores. It still refuses precisely when the
+// with the exact same uniqueNonEmpty/plural/join(" | ") that generation
+// used. domain.Contributor carries no Name and no per-row free-text
+// description (ADR 0016 defines exactly identity, account_id, region, type,
+// resource_id, parent_id, association_id, observed_at, the two batch fields
+// and source_file/source_row -- nothing else), so this can never
+// reconstruct the Name segment or any per-row source-label segment of the
+// original description, both of which a real import commonly carries.
+// descriptionMatchesImport therefore checks CONTAINMENT (this
+// reconstruction must appear verbatim inside the stored description), not
+// equality: the narrowest honest rule this command can apply, given what
+// Contributor actually stores. It still refuses precisely when the
 // evidence-bearing text -- the account ids and resource ids a removal's
 // argument is actually built on -- has been altered or removed, which is
 // what "an operator wrote it" is meant to catch; it does not, and cannot,
 // detect an edit confined to the Name or free-text portions, since nothing
-// here has a copy of what those originally said.
+// here has a copy of what those originally said. Package M9c narrowed this
+// to a fallback for a prefix created before it (see
+// descriptionMatchesImport); it is otherwise unchanged from M9b4.
 func expectedContributorDescription(contributors []domain.Contributor) string {
 	var parts []string
 	if accounts := uniqueNonEmpty(len(contributors), func(i int) string { return contributors[i].AccountID }); len(accounts) > 0 {

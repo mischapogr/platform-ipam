@@ -15,12 +15,15 @@ package onboardcmd
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"net/netip"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -1062,14 +1065,16 @@ func applyAWSObjects(ctx context.Context, a adapter, d domain.Domain, table onbo
 }
 
 // entryOccupancy builds the netbox.Occupancy for one WriteEntry: the merged
-// description (name, account(s), resource id(s), and every preserved
-// unknown-column/description value, one line per source row once several
-// rows collapsed into it) and, for a prefix built from a networks row, the
-// AWS fields -- but only when the collapsed group has exactly one row that
-// carries them, since several rows with different accounts (design section
-// 5's duplicate-CIDR case) makes "the" account ambiguous and EnsureOccupancy
-// already refuses AWS fields on a range outright (they have no account
-// column in the canonical table to begin with).
+// description (name and every preserved unknown-column/description value,
+// one line per source row once several rows collapsed into it -- package
+// M9c dropped the account/resource-id roll-up mergeNetworkDescription used
+// to add, now that those survive per entry in Contributors instead) and,
+// for a prefix built from a networks row, the AWS fields -- but only when
+// the collapsed group has exactly one row that carries them, since several
+// rows with different accounts (design section 5's duplicate-CIDR case)
+// makes "the" account ambiguous and EnsureOccupancy already refuses AWS
+// fields on a range outright (they have no account column in the canonical
+// table to begin with) -- and the contributor list itself (ADR 0016).
 func entryOccupancy(table onboard.Table, entry onboard.WriteEntry, batch, source string) (netbox.Occupancy, error) {
 	switch table.Kind {
 	case onboard.KindNetworks:
@@ -1107,6 +1112,17 @@ func entryOccupancy(table onboard.Table, entry onboard.WriteEntry, batch, source
 // WriteEntry, the same way onboard.Plan's planPrefixCandidates grouped them:
 // by canonical CIDR string, not by SourceRow (one source row can contribute
 // several NetworkRows when its CIDR cell held several networks).
+//
+// The group is ordered by SourceFile, then SourceRow, with sort.SliceStable:
+// two input files each restart their own row numbering at 1 (package M1b1),
+// so ordering by SourceRow alone left the group's order -- and so
+// mergeNetworkDescription's and networkAWSFields' choice built from it --
+// dependent on whichever file happened to come first in table.Networks, i.e.
+// on the order the files were named on the command line (docs/WORK_PLAN.md
+// C10, found in M9b1's review). A tie on both SourceFile and SourceRow (one
+// source row that held several networks, package C1) is broken by
+// ResourceID then AccountID, so the order is a deterministic total order
+// rather than merely "whatever sort.SliceStable was handed."
 func networkRowsForCIDR(rows []onboard.NetworkRow, cidr string) []onboard.NetworkRow {
 	var out []onboard.NetworkRow
 	for _, r := range rows {
@@ -1114,7 +1130,18 @@ func networkRowsForCIDR(rows []onboard.NetworkRow, cidr string) []onboard.Networ
 			out = append(out, r)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].SourceRow < out[j].SourceRow })
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].SourceFile != out[j].SourceFile {
+			return out[i].SourceFile < out[j].SourceFile
+		}
+		if out[i].SourceRow != out[j].SourceRow {
+			return out[i].SourceRow < out[j].SourceRow
+		}
+		if out[i].ResourceID != out[j].ResourceID {
+			return out[i].ResourceID < out[j].ResourceID
+		}
+		return out[i].AccountID < out[j].AccountID
+	})
 	return out
 }
 
@@ -1125,7 +1152,7 @@ func rangeCIDRRowsForCIDR(rows []onboard.RangeRow, cidr string) []onboard.RangeR
 			out = append(out, r)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].SourceRow < out[j].SourceRow })
+	sortRangeRows(out)
 	return out
 }
 
@@ -1144,7 +1171,7 @@ func rangeRowsForSpan(rows []onboard.RangeRow, start, end string) []onboard.Rang
 			out = append(out, r)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].SourceRow < out[j].SourceRow })
+	sortRangeRows(out)
 	return out
 }
 
@@ -1192,16 +1219,33 @@ func networkAWSFields(rows []onboard.NetworkRow) (accountID, region, resourceID 
 	return "", "", ""
 }
 
+// mergeNetworkDescription names the CIDR's purpose, and nothing else, once
+// its contributors have their own field (docs/WORK_PLAN.md package M9c,
+// ADR 0016's deferred "fifth package"). Before this package it also rolled
+// up every collapsed row's account and resource id into the description --
+// "accounts A, B" / "resource ids vpc-a, vpc-b" -- which is exactly the text
+// that grew without bound as more VPCs shared one CIDR and, at 200 runes
+// (occupancy.go's maxDescription), failed the whole import
+// (TestTheDescriptionStillGrowsWithEverySharer, before this package). Now
+// that account_id and resource_id survive per contributor in
+// platform_import_contributors (package M9b1) that roll-up is redundant as
+// well as unbounded, so it is dropped: the description names only what the
+// table's own name and description columns say, deduplicated and joined
+// exactly as before.
+//
+// The rune cap does not go away -- NetBox's own limit is still 200 runes
+// (occupancy.go's maxDescription) -- but it stops being a reason to fail the
+// import: withDescriptionFingerprint truncates instead, so a CIDR shared by
+// fifty VPCs (docs/WORK_PLAN.md's own end-to-end sentence for this package)
+// still writes ONE prefix. An existing prefix's description is never touched
+// by anything in this package (that rule predates it: EnsureOccupancy only
+// ever writes it on create, and RefreshOccupancy's own comment says it
+// leaves the description alone) -- this function is reached only by the
+// create path, through entryOccupancy.
 func mergeNetworkDescription(rows []onboard.NetworkRow) string {
 	var parts []string
 	if names := uniqueNonEmpty(len(rows), func(i int) string { return rows[i].Name }); len(names) > 0 {
 		parts = append(parts, strings.Join(names, "; "))
-	}
-	if accounts := uniqueNonEmpty(len(rows), func(i int) string { return rows[i].AccountID }); len(accounts) > 0 {
-		parts = append(parts, plural("account", len(accounts))+" "+strings.Join(accounts, ", "))
-	}
-	if resourceIDs := uniqueNonEmpty(len(rows), func(i int) string { return rows[i].ResourceID }); len(resourceIDs) > 0 {
-		parts = append(parts, plural("resource id", len(resourceIDs))+" "+strings.Join(resourceIDs, ", "))
 	}
 	multi := len(rows) > 1
 	for _, r := range rows {
@@ -1210,7 +1254,95 @@ func mergeNetworkDescription(rows []onboard.NetworkRow) string {
 		}
 		parts = append(parts, sourceLabel(multi, r.SourceRow, r.Description))
 	}
-	return strings.Join(parts, " | ")
+	return withDescriptionFingerprint(strings.Join(parts, " | "), maxDescriptionRunes)
+}
+
+// maxDescriptionRunes mirrors internal/netbox/occupancy.go's own
+// maxDescription: that package's hard EnsureOccupancy validation is the
+// backstop (unchanged by this one, and still reachable by
+// mergeRangeDescription, which this package does not touch), and this
+// constant is what lets mergeNetworkDescription stay under it by
+// construction instead of relying on that backstop ever firing for a
+// networks-table create.
+const maxDescriptionRunes = 200
+
+// descriptionFingerprintHexLen is the number of hex digits
+// withDescriptionFingerprint keeps of the body's SHA-256.
+const descriptionFingerprintHexLen = 8
+
+// descriptionFingerprintSuffixRunes is exactly what
+// withDescriptionFingerprint appends: a space, an open paren,
+// descriptionFingerprintHexLen hex digits, a close paren -- " (a1b2c3d4)".
+const descriptionFingerprintSuffixRunes = 1 + 1 + descriptionFingerprintHexLen + 1
+
+// descriptionTruncationMarker replaces the tail of a description body that
+// does not fit under the cap once the fingerprint suffix is reserved. One
+// rune, so the arithmetic in withDescriptionFingerprint stays exact.
+const descriptionTruncationMarker = "…" // "…"
+
+// descriptionFingerprintPattern matches withDescriptionFingerprint's own
+// suffix, anchored to the end of the string so a body that happens to
+// contain a similar-looking parenthesised token elsewhere is not mistaken
+// for it. remove.go's descriptionFingerprintConsistent is the only other
+// user.
+var descriptionFingerprintPattern = regexp.MustCompile(` \(([0-9a-f]{8})\)$`)
+
+// withDescriptionFingerprint is ADR 0016's "fifth package" decision on two
+// questions at once: how a description longer than NetBox's 200-rune limit
+// is capped now that it is never worth failing an import over (it is
+// truncated, with a marker, rather than refused -- docs/WORK_PLAN.md package
+// M9c: "capped by TRUNCATION with a marker rather than by failing the
+// import"), and how `onboard remove`'s description_edited check
+// (internal/onboardcmd/remove.go) stays meaningful now that the roll-up text
+// it used to verify (the account and resource-id segments) no longer exists
+// in a NEW prefix's description at all.
+//
+// The body is truncated first, to leave room for a fixed-width suffix, and
+// the fingerprint is the first 8 hex digits of the FINAL (already
+// truncated) body's own SHA-256 -- so truncation and the fingerprint can
+// never disagree, and "a truncated description must never be mistaken for
+// an edited one" (docs/WORK_PLAN.md) holds by construction:
+// descriptionFingerprintConsistent (remove.go) only ever recomputes the
+// hash of whatever body is actually stored, never of what an original,
+// untruncated body might have been.
+//
+// This keeps the description_edited check inside internal/onboardcmd
+// entirely -- no new NetBox custom field, no change to
+// internal/netbox/remove.go or deploy/compose/seed-netbox.py, neither of
+// which this package's file grant covers. The alternative ADR 0016's own
+// text also names, a hash recorded in its own custom field at create time,
+// would need both; this reaches the same property (an operator's edit is
+// detectable, a truncation is not mistaken for one) without leaving this
+// package's own two files.
+func withDescriptionFingerprint(body string, max int) string {
+	maxBody := max - descriptionFingerprintSuffixRunes
+	runes := []rune(body)
+	markerRunes := []rune(descriptionTruncationMarker)
+	if len(runes) > maxBody {
+		if maxBody <= len(markerRunes) {
+			// Pathological (max too small to hold even the marker):
+			// truncate to nothing rather than panic. Not reachable with
+			// maxDescriptionRunes = 200, kept only so this function has no
+			// undefined input.
+			runes = nil
+		} else {
+			runes = append(append([]rune{}, runes[:maxBody-len(markerRunes)]...), markerRunes...)
+		}
+	}
+	finalBody := string(runes)
+	return finalBody + " (" + descriptionFingerprint(finalBody) + ")"
+}
+
+// descriptionFingerprint is the self-consistency check
+// withDescriptionFingerprint appends and remove.go's
+// descriptionFingerprintConsistent verifies. It is not a security control --
+// descriptionFingerprintHexLen hex digits, and computed over text an
+// operator could in principle reconstruct -- it exists only to tell "this
+// body is exactly what the import wrote" from "something here changed",
+// which is all description_edited ever needed.
+func descriptionFingerprint(body string) string {
+	sum := sha256.Sum256([]byte(body))
+	return hex.EncodeToString(sum[:])[:descriptionFingerprintHexLen]
 }
 
 func mergeRangeDescription(rows []onboard.RangeRow) string {
@@ -1331,4 +1463,25 @@ func runRenderFixture(args []string, stdout, stderr io.Writer) int {
 		return ExitAdapter
 	}
 	return ExitOK
+}
+
+// sortRangeRows orders a range's rows deterministically. RangeRow carries no
+// SourceFile, so two files whose row numbers collide cannot be told apart by
+// file; the row's own content breaks the tie instead, and the sort is stable,
+// so the order never depends on which file was named first (found in review
+// of package C10, which fixed the same defect for network rows).
+func sortRangeRows(out []onboard.RangeRow) {
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.SourceRow != b.SourceRow {
+			return a.SourceRow < b.SourceRow
+		}
+		if a.Description != b.Description {
+			return a.Description < b.Description
+		}
+		if a.Owner != b.Owner {
+			return a.Owner < b.Owner
+		}
+		return a.Source < b.Source
+	})
 }

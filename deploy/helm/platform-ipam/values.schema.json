@@ -113,13 +113,13 @@
       }
     },
     "operatorJob": {
-      "description": "Opt-in Job running `adopt` or `onboard` in the cluster (work-plan package H3). Disabled by default; disabled, this changes nothing in the rendered manifests. Semantic validation (mode enum, required-when-enabled fields, least privilege) lives in templates/operator-job.yaml's `fail` guards, not here, so every error carries one clear, specific message.",
+      "description": "Opt-in Job running `adopt`, `onboard` or `seed` in the cluster (work-plan packages H3 and N4). Disabled by default; disabled, this changes nothing in the rendered manifests. Semantic validation (mode enum, required-when-enabled fields, least privilege) lives in templates/operator-job.yaml's `fail` guards, not here, so every error carries one clear, specific message.",
       "type": "object", "additionalProperties": false,
       "required": ["enabled", "mode", "command", "args", "runId", "input", "ttlSecondsAfterFinished", "activeDeadlineSeconds", "resources", "networkPolicy"],
       "properties": {
         "enabled": {"type": "boolean"},
-        "mode": {"type": "string", "description": "\"adopt\" or \"onboard\"; anything else fails the render (templates/operator-job.yaml)."},
-        "command": {"type": "string", "description": "The subcommand. Validated against an explicit allow-list per operatorJob.mode in templates/operator-job.yaml's `fail` guards (work-plan package H7), not by an enum here, so the error names exactly what is and is not supported: \"plan\", \"apply\" or \"abandon\" for mode: adopt; \"plan\" or \"apply\" for mode: onboard. \"abandon\" (ADR 0012) takes no positional table argument; every other allow-listed command does."},
+        "mode": {"type": "string", "description": "\"adopt\", \"onboard\" or \"seed\"; anything else fails the render (templates/operator-job.yaml)."},
+        "command": {"type": "string", "description": "The subcommand. Validated against an explicit allow-list per operatorJob.mode in templates/operator-job.yaml's `fail` guards (work-plan package H7), not by an enum here, so the error names exactly what is and is not supported: \"plan\", \"apply\" or \"abandon\" for mode: adopt; \"plan\" or \"apply\" for mode: onboard. \"abandon\" (ADR 0012) takes no positional table argument; every other allow-listed command does. Must be left empty (\"\") for mode: seed (work-plan package N4): `platform-ipam seed` takes no subcommand at all -- the render fails if this is set."},
         "args": {"type": "array", "items": {"type": "string"}},
         "runId": {"type": "string", "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$", "maxLength": 40},
         "input": {

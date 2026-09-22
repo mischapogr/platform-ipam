@@ -93,15 +93,16 @@ environment and is not referenced by the application.
 
 ## Optional `operatorJob`
 
-`operatorJob` (work-plan package H3) is an opt-in Job that runs
-`platform-ipam adopt` or `platform-ipam onboard` inside the cluster --
-today's only supported way to run either process mode in stage/prod without
-hand-building a Job of your own. It is **disabled by default**
-(`operatorJob.enabled: false`) and, disabled, renders nothing: no Job, no
-extra ServiceAccount, no extra NetworkPolicy. See
-[the adoption runbook](../../runbooks/ADOPTION.md) section 3 for the
-end-to-end procedure and [docs/DEPLOYMENT.md](../../../docs/DEPLOYMENT.md)
-section 4 for how it fits the rest of the chart.
+`operatorJob` (work-plan packages H3 and N4) is an opt-in Job that runs
+`platform-ipam adopt`, `platform-ipam onboard` or `platform-ipam seed`
+inside the cluster -- today's only supported way to run any of the three
+process modes in stage/prod without hand-building a Job of your own. It is
+**disabled by default** (`operatorJob.enabled: false`) and, disabled,
+renders nothing: no Job, no extra ServiceAccount, no extra NetworkPolicy.
+See [the adoption runbook](../../runbooks/ADOPTION.md) section 3 for the
+`adopt`/`onboard` end-to-end procedure, [the seed runbook](../../runbooks/SEED.md)
+for `seed`'s, and [docs/DEPLOYMENT.md](../../../docs/DEPLOYMENT.md) section 4
+for how it fits the rest of the chart.
 
 **This chart never generates the reviewed table.** Create the ConfigMap
 holding it yourself, e.g.:
@@ -199,6 +200,33 @@ operatorJob:
   runId: 2026-09-20-adopt-abandon-1
 ```
 
+### Example: `seed`
+
+`platform-ipam seed` (work-plan package N4) creates or verifies the
+platform's NetBox custom fields, choice sets and tags -- see
+[the seed runbook](../../runbooks/SEED.md) for the full procedure. Unlike
+`adopt`/`onboard` it takes **no subcommand and no flags at all**:
+`operatorJob.command` and `operatorJob.args` must both be left empty, and
+`operatorJob.input` must name no table (both empty), or the render fails --
+the same "a table handed to a mode that reads none is a mistake worth
+stopping" rule `adopt abandon` already applies.
+
+```yaml
+operatorJob:
+  enabled: true
+  mode: seed
+  runId: 2026-09-20-seed-1
+  networkPolicy:
+    egress:
+      - cidr: 10.0.20.0/24          # NetBox's address, only
+        ports: [{protocol: TCP, port: 443}]
+```
+
+`identity.existingConfigMap` is not required and, like `adopt abandon`, is
+never mounted for `seed` even when set chart-wide for another Job's own
+`plan`/`apply` -- `seed` resolves no principal and loads no identity file at
+all.
+
 ### The `runId`/immutability rule
 
 `runId` is **required** whenever `operatorJob.enabled` is true; rendering
@@ -236,9 +264,15 @@ person reads the pod log and decides whether to run a new Job under a new
 ### Reading the result
 
 The report is the pod's log (stdout): **one JSON document** from `plan`,
-`apply` or `abandon`, preceded by any `slog` JSON lines the process emits
-before it (`onboard` and `adopt` route through the same
-`cmd/platform-ipam/main.go` process, which logs to stdout). `abandon` prints
+`apply`, `abandon` or `seed`, preceded by any `slog` JSON lines the process
+emits before it (`onboard`, `adopt` and `seed` route through the same
+`cmd/platform-ipam/main.go` process, which logs to stdout). `seed`'s report
+lists every custom field, choice set and tag as `created`, `present` or
+`conflict` (see the seed runbook); its own exit codes are `0` nothing to
+do/created, `2` usage (an argument was somehow passed -- this template never
+sends one), `3` a conflict, `4` adapter (NetBox unreachable or the settings
+misconfigured) -- distinct from, but the same shape as, `onboard`/`adopt`'s
+codes below. `abandon` prints
 its document -- the `AbandonReport`'s own fields on success, or an
 `{"error": {"code": ..., "message": ...}}` object -- in **every** outcome
 that reached the service, so a pipeline reading stdout learns why without
@@ -263,16 +297,17 @@ something broke.
 
 ### Least privilege per mode
 
-| | `mode: onboard` | `mode: adopt` (`plan`, `apply` and `abandon` alike) |
-| --- | --- | --- |
-| Opens the ledger database | No (`IPAM_DATABASE_URL` is never set) | Yes -- same `IPAM_DATABASE_URL` as `worker` |
-| Builds a cloud observer | No | Yes -- same `IPAM_AWS_MODE`/live AWS credentials as `worker` |
-| NetBox URL/token | Yes | Yes |
-| Pools configuration (`policy` ConfigMap) | Yes | Yes |
-| Auth/listen settings (`IPAM_OIDC_ISSUER`, `IPAM_OIDC_AUDIENCE`, `IPAM_AUTH_MODE`, `IPAM_LISTEN_ADDR`) | No (never set for onboard) | **No** (work-plan packages H5/H7) -- `adopt` authenticates no HTTP caller and never listens, in any of its three subcommands, so these four are omitted from the Job's environment even though the `worker` Deployment (which shares most of this environment) still carries them |
-| Identity file | Only if `identity.existingConfigMap` is set chart-wide (not required; `onboard plan`/`apply` never read it) | `plan`/`apply`: **Required** -- rendering fails without it: `adopt` resolves its acting principal from the identity file. `abandon`: **not required and never mounted** (work-plan package H9) -- it resolves no principal at all, so it neither demands `identity.existingConfigMap` nor mounts it even when set chart-wide for `plan`/`apply`'s own Jobs |
-| ServiceAccount | Dedicated `<release>-operator-job`, no annotations, `automountServiceAccountToken: false` | The **worker's own** ServiceAccount -- whatever cloud-role annotation it carries |
-| NetworkPolicy egress | DNS + `operatorJob.networkPolicy.egress` only (NetBox's own destination -- fill this in yourself) | DNS + `networkPolicy.egress` (the same chart-wide list `worker` gets) |
+| | `mode: onboard` | `mode: adopt` (`plan`, `apply` and `abandon` alike) | `mode: seed` (work-plan package N4) |
+| --- | --- | --- | --- |
+| Opens the ledger database | No (`IPAM_DATABASE_URL` is never set) | Yes -- same `IPAM_DATABASE_URL` as `worker` | No |
+| Builds a cloud observer | No | Yes -- same `IPAM_AWS_MODE`/live AWS credentials as `worker` | No |
+| NetBox URL/token | Yes | Yes | Yes |
+| Pools configuration (`policy` ConfigMap) | Yes | Yes | **No** -- `seed` loads no pools/identity configuration at all; `internal/netbox.New` is constructed with no `Domains`/`Pools` for this mode |
+| Auth/listen settings (`IPAM_OIDC_ISSUER`, `IPAM_OIDC_AUDIENCE`, `IPAM_AUTH_MODE`, `IPAM_LISTEN_ADDR`) | No (never set for onboard) | **No** (work-plan packages H5/H7) -- `adopt` authenticates no HTTP caller and never listens, in any of its three subcommands, so these four are omitted from the Job's environment even though the `worker` Deployment (which shares most of this environment) still carries them | No |
+| Identity file | Only if `identity.existingConfigMap` is set chart-wide (not required; `onboard plan`/`apply` never read it) | `plan`/`apply`: **Required** -- rendering fails without it: `adopt` resolves its acting principal from the identity file. `abandon`: **not required and never mounted** (work-plan package H9) -- it resolves no principal at all, so it neither demands `identity.existingConfigMap` nor mounts it even when set chart-wide for `plan`/`apply`'s own Jobs | **Not required and never mounted**, like `abandon` -- `seed` resolves no principal at all |
+| ServiceAccount | Dedicated `<release>-operator-job`, no annotations, `automountServiceAccountToken: false` | The **worker's own** ServiceAccount -- whatever cloud-role annotation it carries | The **same** dedicated `<release>-operator-job` ServiceAccount `onboard` uses |
+| NetworkPolicy egress | DNS + `operatorJob.networkPolicy.egress` only (NetBox's own destination -- fill this in yourself) | DNS + `networkPolicy.egress` (the same chart-wide list `worker` gets) | DNS + `operatorJob.networkPolicy.egress` only, like `onboard` |
+| Table/subcommand/flags | `command`/`input` required (see below) | `command`/`input` required (except `abandon`, whose flags come from `args`) | **None accepted** -- `command`, `args` and `input` must all be left empty; the render fails otherwise |
 
 Both modes share the API/worker Deployments' pod and container
 `securityContext` (read-only root filesystem, all capabilities dropped, non-root)
@@ -286,53 +321,63 @@ provisioning when `mode: adopt` is requested with `command: "plan"` or
 `"apply"` and no `identity.existingConfigMap` is configured (work-plan
 package H9: `"abandon"` has no such requirement -- see the least-privilege
 table above and the `adopt abandon` example above), when `operatorJob.mode`
-is anything other than `"adopt"`/`"onboard"`, or when `enabled: true` is set
-without `runId` or without `input.existingConfigMap`/`input.key`.
+is anything other than `"adopt"`/`"onboard"`/`"seed"`, when `enabled: true`
+is set without `runId`, when a `command`/`input.existingConfigMap`/
+`input.key` a command needs is missing, or when `mode: seed` is given a
+`command`, non-empty `args`, or an `input` table (work-plan package N4:
+`seed` takes none of these).
 
 `operatorJob.command` is validated against an explicit **allow-list per
 mode** (work-plan package H7, `templates/operator-job.yaml`'s `fail`
 guards): for `mode: adopt`, `"plan"`, `"apply"` or `"abandon"`; for
-`mode: onboard`, `"plan"` or `"apply"`. Anything else fails the render with
-a message naming the supported set. `plan` and `apply` take exactly one
+`mode: onboard`, `"plan"` or `"apply"`; for `mode: seed` (work-plan package
+N4), the list is **empty** -- `seed` takes no subcommand at all, so
+`operatorJob.command` must stay `""` and no second argument is ever
+appended to the container's `args`. Anything else fails the render with a
+message naming the supported set. `plan` and `apply` take exactly one
 positional table-path argument, which this chart mounts from `input` and
 appends automatically; `abandon` ([ADR 0012](../../../docs/decisions/0012-ABANDONING_AN_ADOPTION_THAT_CANNOT_BE_FINISHED.md),
-work-plan package H2c) takes **no** table at all -- its
-`--allocation-id`/`--operator`/`--reason` (required) and
+work-plan package H2c) and `seed` alike take **no** table at all --
+`abandon`'s `--allocation-id`/`--operator`/`--reason` (required) and
 `--operation-id`/`--dry-run` (optional) flags arrive entirely through
-`operatorJob.args`, and the render fails if `operatorJob.input` is set for
-it (a table handed to a command that takes none is a mistake worth
-stopping). Every subcommand outside the allow-list -- `onboard drift`,
-`onboard parse`, `onboard render-config`, `onboard render-fixture` -- is
-**not** supported by this template, because this chart cannot know in
-general whether an unlisted subcommand takes a table or not; run one of
-those as a one-off `kubectl run`/local invocation instead. See
-[the adoption runbook](../../runbooks/ADOPTION.md) section 3 for the
-`adopt abandon` cluster procedure.
+`operatorJob.args`, `seed` takes no flags at all, and the render fails if
+`operatorJob.input` is set for either (a table handed to a mode/command
+that takes none is a mistake worth stopping). Every subcommand outside the
+allow-list -- `onboard drift`, `onboard parse`, `onboard render-config`,
+`onboard render-fixture` -- is **not** supported by this template, because
+this chart cannot know in general whether an unlisted subcommand takes a
+table or not; run one of those as a one-off `kubectl run`/local invocation
+instead. See [the adoption runbook](../../runbooks/ADOPTION.md) section 3
+for the `adopt abandon` cluster procedure and
+[the seed runbook](../../runbooks/SEED.md) for `seed`'s.
 
 ### Values
 
 | Key | Purpose |
 | --- | --- |
 | `operatorJob.enabled` | Off by default. |
-| `operatorJob.mode` | `"adopt"` or `"onboard"`. Anything else fails the render. |
-| `operatorJob.command` | The subcommand. Required when enabled; validated against an allow-list per mode -- `"plan"`, `"apply"` or `"abandon"` for `mode: adopt`, `"plan"` or `"apply"` for `mode: onboard`. Anything else fails the render. |
-| `operatorJob.args` | Extra arguments appended after the mode, the subcommand and (for every command except `"abandon"`) the mounted table path -- `--operator <subject>` (`adopt apply`), `--domain <id>` (`onboard plan`/`apply`), `--batch <name>` (`onboard apply`). For `"abandon"` this is the **only** place its flags come from: `--allocation-id`, `--operator` and `--reason` are **required** here (each followed by a non-empty value; the render fails otherwise), `--operation-id`/`--dry-run` are optional. |
+| `operatorJob.mode` | `"adopt"`, `"onboard"` or `"seed"`. Anything else fails the render. |
+| `operatorJob.command` | The subcommand. Required when enabled and `mode` is `"adopt"`/`"onboard"`; validated against an allow-list per mode -- `"plan"`, `"apply"` or `"abandon"` for `mode: adopt`, `"plan"` or `"apply"` for `mode: onboard`. Anything else fails the render. **Must be left empty (`""`) for `mode: "seed"`** (work-plan package N4): `seed` takes no subcommand at all -- the render fails if this is set. |
+| `operatorJob.args` | Extra arguments appended after the mode, the subcommand and (for every command except `"abandon"`) the mounted table path -- `--operator <subject>` (`adopt apply`), `--domain <id>` (`onboard plan`/`apply`), `--batch <name>` (`onboard apply`). For `"abandon"` this is the **only** place its flags come from: `--allocation-id`, `--operator` and `--reason` are **required** here (each followed by a non-empty value; the render fails otherwise), `--operation-id`/`--dry-run` are optional. **Must be empty for `mode: "seed"`** -- the render fails if this is non-empty. |
 | `operatorJob.runId` | **Required** when enabled. See the immutability rule above. |
-| `operatorJob.input.existingConfigMap` / `.key` | The reviewed table's ConfigMap and the key (and mounted file name) inside it. **Required for every command except `"abandon"`** (which takes no table -- leave both empty; the render fails if either is set); this chart never generates the table. |
+| `operatorJob.input.existingConfigMap` / `.key` | The reviewed table's ConfigMap and the key (and mounted file name) inside it. **Required for every command except `"abandon"` and every `mode: "seed"` invocation** (neither takes a table -- leave both empty; the render fails if either is set); this chart never generates the table. |
 | `operatorJob.ttlSecondsAfterFinished` | Default `86400` (1 day). |
 | `operatorJob.activeDeadlineSeconds` | Default `1800` (30 minutes). |
 | `operatorJob.resources` | Same shape as `api.resources`/`worker.resources`. |
-| `operatorJob.networkPolicy.egress` | `mode: onboard` only -- NetBox's destination CIDR/port. (`mode: adopt` reuses the chart-wide `networkPolicy.egress`.) An empty list denies all non-DNS egress. |
+| `operatorJob.networkPolicy.egress` | `mode: onboard` or `mode: seed` only -- NetBox's destination CIDR/port. (`mode: adopt` reuses the chart-wide `networkPolicy.egress`.) An empty list denies all non-DNS egress. |
 
-`deploy/helm/platform-ipam/ci/operator-job-{onboard-plan,onboard-apply,adopt-plan,adopt-apply,adopt-abandon,adopt-abandon-dry-run,adopt-abandon-no-identity}-values.yaml`
+`deploy/helm/platform-ipam/ci/operator-job-{onboard-plan,onboard-apply,adopt-plan,adopt-apply,adopt-abandon,adopt-abandon-dry-run,adopt-abandon-no-identity,seed}-values.yaml`
 are CI-only overlays (used by `scripts/ai/checks.py`'s `helm()` check) that
-additively validate all seven combinations -- `adopt-abandon-no-identity`
+additively validate all eight combinations -- `adopt-abandon-no-identity`
 (work-plan package H9) proves `abandon` renders, and mounts no identity
 ConfigMap or `IPAM_IDENTITY_FILE`, with `identity.existingConfigMap` left
-unset -- and the must-fail renders (unknown mode; enabled without `runId`;
-enabled without an input ConfigMap; `mode: adopt` with `command: plan`
-without an identity ConfigMap), on every run; none is a deployment
-environment and none is referenced by the application.
+unset; `seed` (work-plan package N4) proves the least-privilege render
+succeeds with `command`/`args`/`input` all left empty -- and the must-fail
+renders (unknown mode; enabled without `runId`; enabled without an input
+ConfigMap; `mode: adopt` with `command: plan` without an identity ConfigMap;
+`mode: seed` with a `command`, non-empty `args`, or an input ConfigMap set),
+on every run; none is a deployment environment and none is referenced by
+the application.
 
 **This has been validated by `helm lint` and `helm template` only and has
 NEVER run in a real cluster.** Not verified: that the rendered Job actually

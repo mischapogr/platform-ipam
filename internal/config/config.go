@@ -19,6 +19,7 @@ type Settings struct {
 	UIInventoryLinks, UINetBoxURL                                                                                 string
 	Environment, DatabaseURL, ConfigFile, IdentityFile, AuthMode, LocalToken, LocalSubject, LocalExtraCredentials string
 	NetBoxURL, NetBoxToken, AWSMode, FakeCloudFile, ListenAddr, OIDCIssuer, OIDCAudience                          string
+	AWSEndpointURL, AWSEC2EndpointURL, AWSSTSEndpointURL                                                          string
 }
 
 func Environment() Settings {
@@ -28,7 +29,7 @@ func Environment() Settings {
 		}
 		return fallback
 	}
-	return Settings{Environment: get("ENVIRONMENT", "development"), DatabaseURL: get("DATABASE_URL", ""), ConfigFile: get("CONFIG_FILE", "examples/config/pools.yaml"), IdentityFile: get("IDENTITY_FILE", ""), AuthMode: get("AUTH_MODE", "local"), LocalToken: get("LOCAL_TOKEN", ""), LocalSubject: get("LOCAL_SUBJECT", "developer"), LocalExtraCredentials: get("LOCAL_EXTRA_CREDENTIALS", ""), NetBoxURL: get("NETBOX_URL", ""), NetBoxToken: get("NETBOX_TOKEN", ""), AWSMode: get("AWS_MODE", "fake"), FakeCloudFile: get("FAKE_CLOUD_FILE", ""), ListenAddr: get("LISTEN_ADDR", ":8080"), OIDCIssuer: get("OIDC_ISSUER", ""), OIDCAudience: get("OIDC_AUDIENCE", ""), UIInventoryLinks: get("UI_INVENTORY_LINKS_ENABLED", ""), UINetBoxURL: get("UI_NETBOX_BASE_URL", "")}
+	return Settings{Environment: get("ENVIRONMENT", "development"), DatabaseURL: get("DATABASE_URL", ""), ConfigFile: get("CONFIG_FILE", "examples/config/pools.yaml"), IdentityFile: get("IDENTITY_FILE", ""), AuthMode: get("AUTH_MODE", "local"), LocalToken: get("LOCAL_TOKEN", ""), LocalSubject: get("LOCAL_SUBJECT", "developer"), LocalExtraCredentials: get("LOCAL_EXTRA_CREDENTIALS", ""), NetBoxURL: get("NETBOX_URL", ""), NetBoxToken: get("NETBOX_TOKEN", ""), AWSMode: get("AWS_MODE", "fake"), FakeCloudFile: get("FAKE_CLOUD_FILE", ""), ListenAddr: get("LISTEN_ADDR", ":8080"), OIDCIssuer: get("OIDC_ISSUER", ""), OIDCAudience: get("OIDC_AUDIENCE", ""), UIInventoryLinks: get("UI_INVENTORY_LINKS_ENABLED", ""), UINetBoxURL: get("UI_NETBOX_BASE_URL", ""), AWSEndpointURL: os.Getenv("AWS_ENDPOINT_URL"), AWSEC2EndpointURL: os.Getenv("AWS_ENDPOINT_URL_EC2"), AWSSTSEndpointURL: os.Getenv("AWS_ENDPOINT_URL_STS")}
 }
 func (s Settings) Validate(mode string) error {
 	if !slices.Contains([]string{"development", "stage", "prod"}, s.Environment) {
@@ -72,6 +73,9 @@ func (s Settings) Validate(mode string) error {
 	}
 	if mode == "migrate" {
 		return nil
+	}
+	if s.Environment != "development" && (s.AWSEndpointURL != "" || s.AWSEC2EndpointURL != "" || s.AWSSTSEndpointURL != "") {
+		return fmt.Errorf("custom AWS endpoints are permitted only when IPAM_ENVIRONMENT is development")
 	}
 	// adopt (docs/WORK_PLAN.md package H5, found by H3's chart review)
 	// authenticates no caller and answers no HTTP request at all --

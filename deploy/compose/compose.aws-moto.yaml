@@ -1,0 +1,14 @@
+# Opt-in EC2/STS protocol emulator for development only. No host port is
+# published, and the normal Compose worker keeps its deterministic fake.
+services:
+  moto:
+    image: ghcr.io/getmoto/motoserver@sha256:1e3802c95726373544967b428201c548f0247c15b00db2d96a5ba0a77d8643b8
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/', timeout=2)"
+      interval: 5s
+      timeout: 3s
+      retries: 12

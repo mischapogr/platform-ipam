@@ -110,10 +110,11 @@ spec:
         {{- toYaml .ports | nindent 8 }}
     {{- end }}
     {{- else }}
-    # onboard gets NetBox + DNS only -- its OWN, separately scoped egress
-    # list (like uiProxy.networkPolicy.egress), never the chart-wide list
-    # above, which may carry database/AWS/OIDC destinations onboard must
-    # never reach. An empty list denies all non-DNS egress.
+    # onboard and seed (docs/WORK_PLAN.md package N4) both get NetBox + DNS
+    # only -- their OWN, separately scoped egress list (like
+    # uiProxy.networkPolicy.egress), never the chart-wide list above, which
+    # may carry database/AWS/OIDC destinations neither must ever reach. An
+    # empty list denies all non-DNS egress.
     {{- range .Values.operatorJob.networkPolicy.egress }}
     - to:
         - ipBlock:

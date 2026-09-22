@@ -20,6 +20,7 @@ import (
 	"github.com/mischapogr/platform-ipam/internal/domain"
 	"github.com/mischapogr/platform-ipam/internal/netbox"
 	"github.com/mischapogr/platform-ipam/internal/onboardcmd"
+	"github.com/mischapogr/platform-ipam/internal/seedcmd"
 	"github.com/mischapogr/platform-ipam/internal/service"
 	"github.com/mischapogr/platform-ipam/internal/storage"
 	"github.com/mischapogr/platform-ipam/internal/transport"
@@ -55,6 +56,20 @@ func run(ctx context.Context, args []string) error {
 		}
 		return nil
 	}
+	// "seed" (docs/WORK_PLAN.md package N4, found by M9b1's review note;
+	// docs/DEPLOYMENT.md's process-mode table; docs/NETBOX_INTEGRATION.md
+	// section 6) creates or verifies the platform's NetBox custom fields and
+	// tags. Like "onboard", it needs nothing but the NetBox settings -- no
+	// database, no pools/identity configuration, no cloud observer -- so it
+	// returns here, before storage.NewPostgresLedger is even called, and
+	// takes no subcommand at all: unlike onboard and adopt it has exactly
+	// one thing to do.
+	if len(args) > 0 && args[0] == "seed" {
+		if code := seedcmd.Main(ctx, args[1:], os.Stdout, os.Stderr); code != 0 {
+			os.Exit(code)
+		}
+		return nil
+	}
 	// "adopt" (ADR 0010, docs/WORK_PLAN.md package F4) is a sibling of
 	// "onboard" that, unlike onboard, opens the ledger and needs the cloud
 	// observer -- so its real work dispatches below, alongside api and
@@ -71,10 +86,10 @@ func run(ctx context.Context, args []string) error {
 		}
 	}
 	if len(args) == 0 || (args[0] != "api" && args[0] != "worker" && args[0] != "migrate" && args[0] != "adopt") {
-		return fmt.Errorf("usage: platform-ipam api|worker|migrate|client|onboard|adopt")
+		return fmt.Errorf("usage: platform-ipam api|worker|migrate|client|onboard|adopt|seed")
 	}
 	if args[0] != "adopt" && len(args) != 1 {
-		return fmt.Errorf("usage: platform-ipam api|worker|migrate|client|onboard|adopt")
+		return fmt.Errorf("usage: platform-ipam api|worker|migrate|client|onboard|adopt|seed")
 	}
 	mode := args[0]
 	settings := config.Environment()

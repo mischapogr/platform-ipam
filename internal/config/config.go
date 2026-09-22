@@ -34,6 +34,33 @@ func (s Settings) Validate(mode string) error {
 	if !slices.Contains([]string{"development", "stage", "prod"}, s.Environment) {
 		return fmt.Errorf("IPAM_ENVIRONMENT must be development, stage, or prod")
 	}
+	// seed (docs/WORK_PLAN.md package N4, found by M9b1) creates or verifies
+	// the platform's NetBox custom fields and tags. Like adopt and worker
+	// before H5, and unlike every other mode, it must not demand settings it
+	// never uses -- but seed goes further than either: it opens no database
+	// at all (cmd/platform-ipam/main.go dispatches it before
+	// storage.NewPostgresLedger is even constructed, exactly like "client"
+	// and "onboard"), loads no pools/identity configuration, builds no cloud
+	// observer and authenticates no caller. So unlike adopt and worker,
+	// which still reach the shared database/AWS/OIDC checks below, seed
+	// returns immediately after validating only the NetBox origin and
+	// token -- the one thing internal/netbox.New needs to reach NetBox.
+	if mode == "seed" {
+		// The same second guard the general path applies further down,
+		// independent of mode: IPAM_LOCAL_EXTRA_CREDENTIALS must never be
+		// honoured outside development, whether or not this mode ever reads
+		// it (it does not).
+		if s.LocalExtraCredentials != "" && s.Environment != "development" {
+			return fmt.Errorf("IPAM_LOCAL_EXTRA_CREDENTIALS is permitted only when IPAM_ENVIRONMENT is development")
+		}
+		if err := secureOrigin(s.NetBoxURL, s.Environment == "development"); err != nil {
+			return fmt.Errorf("IPAM_NETBOX_URL: %w", err)
+		}
+		if s.NetBoxToken == "" {
+			return fmt.Errorf("IPAM_NETBOX_TOKEN is required")
+		}
+		return nil
+	}
 	if s.DatabaseURL == "" {
 		return fmt.Errorf("IPAM_DATABASE_URL is required")
 	}

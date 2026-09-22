@@ -1,0 +1,9 @@
+# Historical 4.6.7 upgrade source, for isolated backup/restore rehearsal only.
+# Layer after compose.netbox.yaml; do not use for a newly promoted environment.
+services:
+  netbox:
+    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+  netbox-worker:
+    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+  netbox-bootstrap:
+    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2

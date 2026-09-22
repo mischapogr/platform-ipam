@@ -50,12 +50,16 @@ cd "$COMPOSE_DIR"
 
 [ -f .env ] || { echo "deploy/compose/.env is missing; run ./create-env.sh" >&2; exit 2; }
 
-PROJECT=platform-ipam-a5
+case "${IPAM_NETBOX_CANDIDATE:-0}" in
+  0) PROJECT=platform-ipam-a5; UI_PORT=18085 ;;
+  1) PROJECT=platform-ipam-a5-4610; UI_PORT=18105 ;;
+  *) echo "IPAM_NETBOX_CANDIDATE must be 0 or 1" >&2; exit 2 ;;
+esac
 # A fixed path (not mktemp-random): phases run as separate process
 # invocations and need to agree on it, and rebuilding it fresh at the start
 # of every phase (below) means it always reflects the current
 # deploy/compose/.env, never a stale copy from an earlier phase.
-WORK_ENV="${TMPDIR:-/tmp}/platform-ipam-a5.env"
+WORK_ENV="${TMPDIR:-/tmp}/${PROJECT}.env"
 
 build_work_env() {
   # A dedicated copy of .env with only the two values this isolation scheme
@@ -69,9 +73,9 @@ build_work_env() {
     echo "COMPOSE_PROJECT_NAME=${PROJECT}" >>"$WORK_ENV"
   fi
   if grep -q '^NETBOX_PORT=' "$WORK_ENV"; then
-    sed -i.bak 's/^NETBOX_PORT=.*/NETBOX_PORT=18085/' "$WORK_ENV" && rm -f "$WORK_ENV.bak"
+    sed -i.bak "s/^NETBOX_PORT=.*/NETBOX_PORT=${UI_PORT}/" "$WORK_ENV" && rm -f "$WORK_ENV.bak"
   else
-    echo "NETBOX_PORT=18085" >>"$WORK_ENV"
+    echo "NETBOX_PORT=${UI_PORT}" >>"$WORK_ENV"
   fi
 }
 build_work_env
@@ -85,8 +89,14 @@ if [ "$IPAM_ENVIRONMENT" != "development" ]; then
 fi
 
 compose() {
-  docker compose --env-file "$WORK_ENV" -p "$PROJECT" \
-    -f compose.yaml -f compose.netbox.yaml -f compose.ui-ldap.yaml "$@"
+  if [ "${IPAM_NETBOX_CANDIDATE:-0}" = 1 ]; then
+    docker compose --env-file "$WORK_ENV" -p "$PROJECT" \
+      -f compose.yaml -f compose.netbox.yaml -f compose.ui-ldap.yaml \
+      -f compose.netbox-compat-4_6_10.yaml "$@"
+  else
+    docker compose --env-file "$WORK_ENV" -p "$PROJECT" \
+      -f compose.yaml -f compose.netbox.yaml -f compose.ui-ldap.yaml "$@"
+  fi
 }
 
 phase_up() {
@@ -191,11 +201,16 @@ phase_down() {
   rm -f "$WORK_ENV"
 }
 
+phase_stop() {
+  compose stop
+}
+
 case "${1:-all}" in
   up) phase_up ;;
   wait) phase_wait ;;
   bootstrap) phase_bootstrap ;;
   test) phase_test ;;
+  stop) phase_stop ;;
   down) phase_down ;;
   all)
     # The one-shot path for a human, or CI, with no per-call time limit.
@@ -207,7 +222,7 @@ case "${1:-all}" in
     phase_test
     ;;
   *)
-    echo "usage: $0 [up|wait|bootstrap|test|down|all]" >&2
+    echo "usage: $0 [up|wait|bootstrap|test|stop|down|all]" >&2
     echo "  (no argument = all: the one-shot path, for a human or CI with no per-call time limit)" >&2
     exit 2
     ;;

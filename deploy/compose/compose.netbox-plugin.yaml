@@ -17,7 +17,7 @@ x-netbox-plugin-image: &netbox-plugin-image
     context: ./netbox/plugin
     dockerfile: Dockerfile
     args:
-      NETBOX_BASE_IMAGE: ${NETBOX_PLUGIN_BASE_IMAGE:-docker.io/netboxcommunity/netbox:v4.6.7-5.0.2}
+      NETBOX_BASE_IMAGE: ${NETBOX_PLUGIN_BASE_IMAGE:-docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8}
 
 services:
   netbox:

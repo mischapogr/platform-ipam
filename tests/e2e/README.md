@@ -196,6 +196,14 @@ own scripts:
 ./tests/e2e/run-ui-ldap.sh    # ldap mode, against an OpenLDAP test directory
 ```
 
+For the exact NetBox 4.6.10 candidate, prefix each phased runner invocation
+with `IPAM_NETBOX_CANDIDATE=1`. This uses separate `platform-ipam-a4-4610`
+and `platform-ipam-a5-4610` Compose projects and ports 18104/18105. For
+example, run the Entra phases `init`, `up`, `wait-netbox`, `bootstrap`,
+`wait-issuer`, `test`, `stop`; run the LDAP phases `up`, `wait`, `bootstrap`,
+`test`, `stop`. The `stop` phase retains volumes for inspection. The ordinary
+runner defaults and its `down` cleanup remain unchanged.
+
 The additional local simulation gates are opt-in and use separate projects:
 
 ```sh

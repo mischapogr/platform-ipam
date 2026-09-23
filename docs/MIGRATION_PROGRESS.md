@@ -24,6 +24,11 @@ target allocation, and which of the conflicts it claims to resolve are
 actually gone. It never collapses those three facts into one word: there is
 no `done`, no `complete` and no `migrated` field anywhere in its output.
 
+The JSON move now carries the reviewed target identity in `target`, so the
+NetBox workspace can show the tenant, allocation key and requested size
+beside `target_fact`. This repeats the plan's CIDR-free request identity; it
+does not assign or reserve a range.
+
 It never opens the ledger, never constructs a NetBox client, never calls AWS,
 never loads pools configuration, and reads no `IPAM_` environment variable —
 mirroring `onboard assess` exactly, for the same reason (ADR 0014's "no

@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from urllib.parse import unquote, urlsplit
@@ -155,6 +156,10 @@ def aws(report, args):
         # busy machine that alone takes minutes, and a timeout would read as
         # BLOCKED although nothing is wrong.
         report.command(script.stem, ["bash", str(script)], cwd=ROOT, env=dict(os.environ), timeout=540)
+    report.command("test_org_topology", [sys.executable, str(directory / "test_org_topology.py")], cwd=ROOT)
+    report.command("test_address_plan", [sys.executable, str(directory / "test_address_plan.py")], cwd=ROOT)
+    report.command("test_pilot_evidence", [sys.executable, str(directory / "test_pilot_evidence.py")], cwd=ROOT)
+    report.command("test_verify_reservations", [sys.executable, str(directory / "test_verify_reservations.py")], cwd=ROOT)
     
     # Shellcheck validation: host tool if available, pinned image otherwise
     all_shell_scripts = (
@@ -386,6 +391,9 @@ def compose(report, args):
         # Optional overlay (package N2). It only replaces the NetBox image, so
         # it is validated on top of the NetBox stack and never on its own.
         combinations.append(("compose-netbox-plugin", [base, netbox, plugin]))
+    workspace = directory / "compose.netbox-workspace.yaml"
+    if workspace.exists() and netbox.exists():
+        combinations.append(("compose-netbox-workspace", [base, netbox, workspace]))
     # Optional operator-UI auth modes (packages A4 and A5). Each is one overlay
     # on the NetBox stack; `basic` mode is the stack without either.
     for mode in ("entra", "ldap", "samba-ad"):

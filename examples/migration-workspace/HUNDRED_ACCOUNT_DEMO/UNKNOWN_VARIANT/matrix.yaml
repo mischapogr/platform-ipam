@@ -1,0 +1,106 @@
+{
+  "groups": [
+    {
+      "id": "account-000",
+      "members": [
+        "100000000000"
+      ]
+    },
+    {
+      "id": "account-001",
+      "members": [
+        "100000000001"
+      ]
+    },
+    {
+      "id": "account-002",
+      "members": [
+        "100000000002"
+      ]
+    },
+    {
+      "id": "account-003",
+      "members": [
+        "100000000003"
+      ]
+    },
+    {
+      "id": "account-004",
+      "members": [
+        "100000000004"
+      ]
+    },
+    {
+      "id": "account-005",
+      "members": [
+        "100000000005"
+      ]
+    },
+    {
+      "id": "account-006",
+      "members": [
+        "100000000006"
+      ]
+    },
+    {
+      "id": "account-007",
+      "members": [
+        "100000000007"
+      ]
+    },
+    {
+      "id": "account-008",
+      "members": [
+        "100000000008"
+      ]
+    },
+    {
+      "id": "account-009",
+      "members": [
+        "100000000009"
+      ]
+    },
+    {
+      "id": "account-010",
+      "members": [
+        "100000000010"
+      ]
+    },
+    {
+      "id": "account-011",
+      "members": [
+        "100000000011"
+      ]
+    }
+  ],
+  "must_communicate": [
+    [
+      "account-000",
+      "account-001"
+    ],
+    [
+      "account-002",
+      "account-003"
+    ],
+    [
+      "account-004",
+      "account-005"
+    ],
+    [
+      "account-006",
+      "account-007"
+    ],
+    [
+      "account-008",
+      "account-009"
+    ]
+  ],
+  "must_stay_isolated": [
+    [
+      "account-010",
+      "account-011"
+    ]
+  ],
+  "shared_services": [],
+  "version": 1
+}

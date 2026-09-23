@@ -9,6 +9,23 @@ not implemented contracts or commitments. The [API contract](API_V1.md),
 remain authoritative. A choice that changes their boundaries needs its own ADR
 under [decisions/](decisions/).
 
+2026-09-23 update: M1 has an implemented offline
+[`onboard assess`](OVERLAP_ASSESSMENT.md) report. M3 has a reviewed-file
+[`onboard progress`](MIGRATION_PROGRESS.md) report. An optional
+[NetBox workspace](MIGRATION_WORKSPACE.md) displays both, and a separate
+[topology collector](AWS_TOPOLOGY_INVENTORY.md) can gather read-only route and
+TGW evidence for display. These are local and stubbed results, not a live
+organization validation or an integrated TGW readiness verdict. The older
+gap table below is retained as the original proposal; consult the linked
+implementation documents for current behavior.
+
+A later 2026-09-23 pilot boundary narrows the customer ask to four artifacts:
+connectivity intent, covered read-only inventory, protected external ranges,
+and a pilot owner/scope. The [address-readiness command](ADDRESS_READINESS.md)
+now derives `CIDR_BLOCKED`/`UNKNOWN`/`CIDR_READY` and advisory replacement
+options from those inputs plus an operator-approved pool plan. It always
+leaves network readiness `NOT_ASSESSED` and never reserves a candidate.
+
 Related: [licensing and business-model brainstorming](BRAINSTORMING_LICENSING.md),
 [organization inventory](AWS_ORGANIZATION_INVENTORY.md),
 [onboarding import](ONBOARDING_IMPORT.md),

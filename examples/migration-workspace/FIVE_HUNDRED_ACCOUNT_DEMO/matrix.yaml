@@ -1,0 +1,522 @@
+{
+  "groups": [
+    {
+      "id": "account-000",
+      "members": [
+        "100000000000"
+      ]
+    },
+    {
+      "id": "account-001",
+      "members": [
+        "100000000001"
+      ]
+    },
+    {
+      "id": "account-002",
+      "members": [
+        "100000000002"
+      ]
+    },
+    {
+      "id": "account-003",
+      "members": [
+        "100000000003"
+      ]
+    },
+    {
+      "id": "account-004",
+      "members": [
+        "100000000004"
+      ]
+    },
+    {
+      "id": "account-005",
+      "members": [
+        "100000000005"
+      ]
+    },
+    {
+      "id": "account-006",
+      "members": [
+        "100000000006"
+      ]
+    },
+    {
+      "id": "account-007",
+      "members": [
+        "100000000007"
+      ]
+    },
+    {
+      "id": "account-008",
+      "members": [
+        "100000000008"
+      ]
+    },
+    {
+      "id": "account-009",
+      "members": [
+        "100000000009"
+      ]
+    },
+    {
+      "id": "account-010",
+      "members": [
+        "100000000010"
+      ]
+    },
+    {
+      "id": "account-011",
+      "members": [
+        "100000000011"
+      ]
+    },
+    {
+      "id": "account-012",
+      "members": [
+        "100000000012"
+      ]
+    },
+    {
+      "id": "account-013",
+      "members": [
+        "100000000013"
+      ]
+    },
+    {
+      "id": "account-100",
+      "members": [
+        "100000000100"
+      ]
+    },
+    {
+      "id": "account-101",
+      "members": [
+        "100000000101"
+      ]
+    },
+    {
+      "id": "account-102",
+      "members": [
+        "100000000102"
+      ]
+    },
+    {
+      "id": "account-103",
+      "members": [
+        "100000000103"
+      ]
+    },
+    {
+      "id": "account-104",
+      "members": [
+        "100000000104"
+      ]
+    },
+    {
+      "id": "account-105",
+      "members": [
+        "100000000105"
+      ]
+    },
+    {
+      "id": "account-106",
+      "members": [
+        "100000000106"
+      ]
+    },
+    {
+      "id": "account-107",
+      "members": [
+        "100000000107"
+      ]
+    },
+    {
+      "id": "account-108",
+      "members": [
+        "100000000108"
+      ]
+    },
+    {
+      "id": "account-109",
+      "members": [
+        "100000000109"
+      ]
+    },
+    {
+      "id": "account-110",
+      "members": [
+        "100000000110"
+      ]
+    },
+    {
+      "id": "account-111",
+      "members": [
+        "100000000111"
+      ]
+    },
+    {
+      "id": "account-112",
+      "members": [
+        "100000000112"
+      ]
+    },
+    {
+      "id": "account-113",
+      "members": [
+        "100000000113"
+      ]
+    },
+    {
+      "id": "account-114",
+      "members": [
+        "100000000114"
+      ]
+    },
+    {
+      "id": "account-115",
+      "members": [
+        "100000000115"
+      ]
+    },
+    {
+      "id": "account-116",
+      "members": [
+        "100000000116"
+      ]
+    },
+    {
+      "id": "account-117",
+      "members": [
+        "100000000117"
+      ]
+    },
+    {
+      "id": "account-118",
+      "members": [
+        "100000000118"
+      ]
+    },
+    {
+      "id": "account-119",
+      "members": [
+        "100000000119"
+      ]
+    },
+    {
+      "id": "account-120",
+      "members": [
+        "100000000120"
+      ]
+    },
+    {
+      "id": "account-121",
+      "members": [
+        "100000000121"
+      ]
+    },
+    {
+      "id": "account-122",
+      "members": [
+        "100000000122"
+      ]
+    },
+    {
+      "id": "account-123",
+      "members": [
+        "100000000123"
+      ]
+    },
+    {
+      "id": "account-124",
+      "members": [
+        "100000000124"
+      ]
+    },
+    {
+      "id": "account-125",
+      "members": [
+        "100000000125"
+      ]
+    },
+    {
+      "id": "account-126",
+      "members": [
+        "100000000126"
+      ]
+    },
+    {
+      "id": "account-127",
+      "members": [
+        "100000000127"
+      ]
+    },
+    {
+      "id": "account-128",
+      "members": [
+        "100000000128"
+      ]
+    },
+    {
+      "id": "account-129",
+      "members": [
+        "100000000129"
+      ]
+    },
+    {
+      "id": "account-130",
+      "members": [
+        "100000000130"
+      ]
+    },
+    {
+      "id": "account-131",
+      "members": [
+        "100000000131"
+      ]
+    },
+    {
+      "id": "account-132",
+      "members": [
+        "100000000132"
+      ]
+    },
+    {
+      "id": "account-133",
+      "members": [
+        "100000000133"
+      ]
+    },
+    {
+      "id": "account-134",
+      "members": [
+        "100000000134"
+      ]
+    },
+    {
+      "id": "account-135",
+      "members": [
+        "100000000135"
+      ]
+    },
+    {
+      "id": "account-136",
+      "members": [
+        "100000000136"
+      ]
+    },
+    {
+      "id": "account-137",
+      "members": [
+        "100000000137"
+      ]
+    },
+    {
+      "id": "account-138",
+      "members": [
+        "100000000138"
+      ]
+    },
+    {
+      "id": "account-139",
+      "members": [
+        "100000000139"
+      ]
+    },
+    {
+      "id": "account-140",
+      "members": [
+        "100000000140"
+      ]
+    },
+    {
+      "id": "account-141",
+      "members": [
+        "100000000141"
+      ]
+    },
+    {
+      "id": "account-142",
+      "members": [
+        "100000000142"
+      ]
+    },
+    {
+      "id": "account-143",
+      "members": [
+        "100000000143"
+      ]
+    },
+    {
+      "id": "account-144",
+      "members": [
+        "100000000144"
+      ]
+    },
+    {
+      "id": "account-145",
+      "members": [
+        "100000000145"
+      ]
+    },
+    {
+      "id": "account-146",
+      "members": [
+        "100000000146"
+      ]
+    },
+    {
+      "id": "account-147",
+      "members": [
+        "100000000147"
+      ]
+    },
+    {
+      "id": "account-148",
+      "members": [
+        "100000000148"
+      ]
+    },
+    {
+      "id": "account-149",
+      "members": [
+        "100000000149"
+      ]
+    }
+  ],
+  "must_communicate": [
+    [
+      "account-000",
+      "account-001"
+    ],
+    [
+      "account-002",
+      "account-003"
+    ],
+    [
+      "account-004",
+      "account-005"
+    ],
+    [
+      "account-006",
+      "account-007"
+    ],
+    [
+      "account-008",
+      "account-009"
+    ],
+    [
+      "account-100",
+      "account-101"
+    ],
+    [
+      "account-102",
+      "account-103"
+    ],
+    [
+      "account-104",
+      "account-105"
+    ],
+    [
+      "account-106",
+      "account-107"
+    ],
+    [
+      "account-108",
+      "account-109"
+    ],
+    [
+      "account-110",
+      "account-111"
+    ],
+    [
+      "account-112",
+      "account-113"
+    ],
+    [
+      "account-114",
+      "account-115"
+    ],
+    [
+      "account-116",
+      "account-117"
+    ],
+    [
+      "account-118",
+      "account-119"
+    ],
+    [
+      "account-120",
+      "account-121"
+    ],
+    [
+      "account-122",
+      "account-123"
+    ],
+    [
+      "account-124",
+      "account-125"
+    ],
+    [
+      "account-126",
+      "account-127"
+    ],
+    [
+      "account-128",
+      "account-129"
+    ],
+    [
+      "account-130",
+      "account-131"
+    ],
+    [
+      "account-132",
+      "account-133"
+    ],
+    [
+      "account-134",
+      "account-135"
+    ],
+    [
+      "account-136",
+      "account-137"
+    ],
+    [
+      "account-138",
+      "account-139"
+    ]
+  ],
+  "must_stay_isolated": [
+    [
+      "account-010",
+      "account-011"
+    ],
+    [
+      "account-012",
+      "account-013"
+    ],
+    [
+      "account-140",
+      "account-141"
+    ],
+    [
+      "account-142",
+      "account-143"
+    ],
+    [
+      "account-144",
+      "account-145"
+    ],
+    [
+      "account-146",
+      "account-147"
+    ],
+    [
+      "account-148",
+      "account-149"
+    ]
+  ],
+  "shared_services": [],
+  "version": 1
+}

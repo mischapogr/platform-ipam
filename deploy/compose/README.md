@@ -39,6 +39,13 @@ Rerun `netbox-bootstrap` before the e2e test so NetBox receives that token.
 [`tests/e2e/run-e2e.sh`](../../tests/e2e/README.md) performs all of the above
 and then runs the end-to-end suite.
 
+To add the read-only overlap, address planning, migration and topology evidence workspace to the local NetBox UI,
+layer `compose.netbox-workspace.yaml` after the two base files. It builds a
+small first-party plugin image from the pinned NetBox release and the current
+Platform-IPAM binary. The page is `/plugins/platform-ipam/` on the configured
+`NETBOX_PORT`; see [the workspace guide](../../docs/MIGRATION_WORKSPACE.md).
+The overlay does not enable the separate optional AWS-account plugin.
+
 ## A second local development identity
 
 `create-env.sh` also generates `IPAM_OPS_TOKEN`, the same way and at the same
@@ -169,10 +176,11 @@ Neither overlay changes the default fake-cloud development stack. See
 
 `platform-db` is the application ledger. NetBox has its own PostgreSQL and
 Valkey data volumes, and its image is pinned to exact NetBox/netbox-docker
-`v4.6.10-5.0.2` digest `sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8`.
-The former 4.6.7 image remains available through
-`compose.netbox-compat-4_6_7.yaml` for isolated upgrade rehearsals; see
-[ADR 0019](../../docs/decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md).
+`v4.7.1-5.1.1` digest `sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74`.
+The qualified 4.6.10 source image remains available through
+`compose.netbox-compat-4_6_10.yaml` for isolated upgrade rehearsals; see
+[ADR 0019](../../docs/decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md) and the
+[4.7 upgrade runbook](../runbooks/NETBOX_4_7_UPGRADE.md).
 The fake cloud observation file is `fixtures/cloud.json` and is mounted
 read-only into the platform services.
 

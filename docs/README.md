@@ -10,16 +10,23 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [Clients](CLIENTS.md) | Terraform provider implementation, usage, imports, REST, Python, AWS CLI, and future clients |
 | [AWS integration](AWS_INTEGRATION.md) | VPC/subnet inventory, cross-account IAM, EKS identity, coverage, onboarding, and optional AWS native IPAM |
 | [NetBox integration](NETBOX_INTEGRATION.md) | Inventory mapping, adapter, native IPAM UI, access control, and optional visualization extensions |
+| [NetBox 4.7 upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md) | Exact local image, restore rehearsal, promotion gates, and rollback by backup restore |
 | [Deployment environments](DEPLOYMENT.md) | Docker Compose for development; Helm/Kubernetes for stage and prod; migration and promotion flow |
 | [Local simulation](LOCAL_SIMULATION.md) | Compose-first validation and the next AWS, identity, and Kubernetes simulation gates |
 | [Adoption runbook](../deploy/runbooks/ADOPTION.md) | Giving an imported network an owner with `platform-ipam adopt plan\|apply`: prerequisites, the input table, verdicts, `adoption_stuck`, no undo |
 | [Work plan](WORK_PLAN.md) | Packaged next steps with the model and effort each one needs |
 | [Operator UI authentication](GUI_AUTHENTICATION.md) | Basic, mock Entra ID and OpenLDAP modes implemented in Compose; real identity providers remain unverified |
 | [Organization inventory](AWS_ORGANIZATION_INVENTORY.md) | Collecting accounts, VPCs, subnets and ranges from an AWS Organization |
+| [AWS topology inventory](AWS_TOPOLOGY_INVENTORY.md) | Optional read-only route and TGW collection with explicit per-cell gaps; no reachability verdict |
+| [Pilot address readiness](ADDRESS_READINESS.md) | Four input artifacts, explicit address state, protected ranges, advisory replacement candidates and single pool authority |
+| [First customer pilot gates](PILOT_GATES.md) | Four explicit pass/fail gates for inputs, live coverage, planning, and reservation by the sole authority |
+| [Pilot reservation verification](RESERVATION_VERIFICATION.md) | Read-only authenticated Platform-IPAM allocation check and its UI evidence handoff |
 | [NetBox AWS plugin](NETBOX_AWS_PLUGIN.md) | Plugin evaluation and optional Compose image for AWS accounts, VPCs and subnets |
 | [Onboarding import](ONBOARDING_IMPORT.md) | Importing existing accounts, networks and ranges from CSV, Excel or a pasted table |
 | [Overlap assessment](OVERLAP_ASSESSMENT.md) | `platform-ipam onboard assess`: an offline, resource-aware report of which observed VPC CIDR relationships conflict, impact against a reviewed connectivity matrix, and coverage as a first-class result (ADR 0014) |
 | [Migration progress](MIGRATION_PROGRESS.md) | `platform-ipam onboard progress`: derives three independent per-move facts (subject, target, conflicts) from a reviewed `migration.yaml`, the same inventory, and an authenticated allocation evidence export; never a percentage or a "done" (ADR 0015) |
+| [NetBox migration workspace](MIGRATION_WORKSPACE.md) | Optional local browser view of assessment, address candidates, progress and separate topology evidence; read-only uploads and coverage gaps |
+| [100-account workspace demo](../examples/migration-workspace/README.md) | Synthetic upload files with blocking, isolated and unknown overlap scenarios |
 | [Overlapping AWS networks](IP_OVERLAP_MIGRATION.md) | Customer scenario, current allocation/migration boundaries, missing capabilities, proposed pilot and open questions; analysis, not an accepted implementation contract |
 | [Licensing and business-model brainstorming](BRAINSTORMING_LICENSING.md) | Preserved licensing notes, corrected assumptions and a proposed small recurring-revenue offer; does not change the licence |
 | [End-to-end suite](../tests/e2e/README.md) | Running the local stack and the REST/CLI/Terraform/UI checks against it |
@@ -35,7 +42,11 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [ADR 0004](decisions/0004-LOCAL_TERRAFORM_PROVIDER_DISTRIBUTION.md) | Development builds of the Terraform provider install through a CLI development override |
 | [ADR 0005](decisions/0005-PUBLIC_RELEASE_LICENCE_AND_DISTRIBUTION.md) | Apache-2.0, public release, and the limits of controlling reuse |
 | [ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md) | Public Terraform Registry route; namespace and real-release gates remain open |
-| [ADR 0019](decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md) | Qualify exact NetBox images; 4.6.10 is a candidate, 4.7 a separate gate |
+| [ADR 0019](decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md) | Qualify exact NetBox images; 4.7.1 is the local Compose default |
+| [ADR 0020](decisions/0020-NETBOX_MIGRATION_WORKSPACE.md) | Optional read-only NetBox workspace for assessment, address candidates, progress and separate topology evidence |
+| [ADR 0021](decisions/0021-SEPARATE_AWS_TOPOLOGY_EVIDENCE.md) | Opt-in read-only AWS topology evidence stays separate from intended connectivity assessment |
+| [ADR 0022](decisions/0022-PILOT_ADDRESS_READINESS_AND_POOL_AUTHORITY.md) | Address readiness and advisory candidates stay separate from network readiness and allocation authority |
+| [ADR 0023](decisions/0023-IMMUTABLE_PILOT_SNAPSHOTS.md) | Opt-in immutable derived pilot snapshots; uploaded source files remain request-scoped |
 | [ADR 0006](decisions/0006-OPERATOR_UI_AUTHENTICATION.md) | One proxy in front of the NetBox UI, with basic, Entra ID and LDAP modes |
 | [ADR 0007](decisions/0007-ONBOARDING_IMPORT_AS_UNMANAGED_OCCUPANCY.md) | Existing networks are imported as unmanaged occupancy, not as allocations |
 | [ADR 0008](decisions/0008-PLATFORM_OWNED_OPERATOR_UI.md) | Proposed: no platform-owned operator UI, and a NetBox plugin if that changes |
@@ -81,9 +92,9 @@ the environment they were found in.
 
 Still unverified: live AWS, a stage/production Kubernetes rollout, published
 provider distribution and installation, and stage/production promotion of the
-exact NetBox support image. The local Compose stack now pins the qualified
-4.6.10 digest after full-suite, identity and restore rehearsals; 4.7 remains
-untested. The optional
+exact NetBox support image. The local Compose stack pins the qualified
+4.7.1 digest after full-suite, mock identity and restore rehearsals; see the
+[upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md). The optional
 [`run-provider-mirror.sh`](../tests/e2e/run-provider-mirror.sh) now exercises
 local filesystem-mirror installation, checksums and a lock file; the main
 development suite still uses a CLI development override.

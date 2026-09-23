@@ -7,12 +7,12 @@
 #
 # The base image already sets VIRTUAL_ENV=/opt/netbox/venv and puts
 # /opt/netbox/venv/bin first on PATH (docker.io/netboxcommunity/netbox
-# v4.6.10-5.0.2, netbox-docker release 5.0.2), and ships `uv` for package
+# v4.7.1-5.1.1, netbox-docker release 5.1.1), and ships `uv` for package
 # installs -- there is no `pip` binary in the image. `uv pip install` below
 # therefore installs straight into the existing venv, which is how
 # netbox-docker's own plugin documentation installs third-party plugins for
 # this image generation.
-ARG NETBOX_BASE_IMAGE=docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8
+ARG NETBOX_BASE_IMAGE=docker.io/netboxcommunity/netbox:v4.7.1-5.1.1@sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74
 FROM ${NETBOX_BASE_IMAGE}
 
 # Pinned to an exact version per docs/WORK_PLAN.md Track N ("the plugin

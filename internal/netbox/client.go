@@ -327,6 +327,13 @@ func stringCF(fields map[string]any, key string) string {
 		if s, ok := v.(string); ok {
 			return s
 		}
+		if key == stateCF || key == "platform_drift_status" {
+			if choice, ok := v.(map[string]any); ok {
+				if value, ok := choice["value"].(string); ok {
+					return value
+				}
+			}
+		}
 		return fmt.Sprint(v)
 	}
 	return ""
@@ -936,6 +943,9 @@ func sameProjectionValue(key string, desired, current any) bool {
 	}
 	if want == "" && current == nil {
 		return true
+	}
+	if key == stateCF || key == "platform_drift_status" {
+		current = stringCF(map[string]any{key: current}, key)
 	}
 	got, ok := current.(string)
 	if !ok {

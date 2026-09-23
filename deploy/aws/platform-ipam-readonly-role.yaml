@@ -1,10 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  Cross-account read-only role for platform-ipam. Grants exactly the EC2
-  Describe actions the worker's reconciliation adapter needs to observe VPC,
-  subnet and availability-zone inventory in approved regions, plus an
+  Cross-account read-only role for platform-ipam. Grants the EC2 Describe
+  actions the worker's reconciliation adapter needs to observe VPC, subnet
+  and availability-zone inventory in approved regions, plus an
   optional ec2:DescribeRegions statement used only by the one-off
-  organization inventory procedure (docs/AWS_ORGANIZATION_INVENTORY.md).
+  organization inventory procedure (docs/AWS_ORGANIZATION_INVENTORY.md), and
+  optional topology reads for a separate operator role.
   No write, tagging, or AWS Organizations permission is ever granted.
   Deploy as a service-managed StackSet; see README.md in this directory.
   Nothing in this template has been deployed or validated against a live
@@ -43,6 +44,17 @@ Parameters:
       (docs/AWS_ORGANIZATION_INVENTORY.md section 1) and is not required by
       the worker's steady-state reconciliation adapter. Leave "false" for
       roles deployed solely for the worker.
+
+  EnableTopologyDiscovery:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >-
+      When "true", grants the exact EC2 route table and transit gateway read
+      actions required by scripts/aws/org-topology.py. Use a separate operator
+      role; leave "false" for the steady-state worker.
 
   TrustedPrincipalArn:
     Type: String
@@ -84,6 +96,7 @@ Parameters:
 
 Conditions:
   EnableRegionDiscoveryCondition: !Equals [!Ref EnableRegionDiscovery, "true"]
+  EnableTopologyDiscoveryCondition: !Equals [!Ref EnableTopologyDiscovery, "true"]
   HasEksClusterArn: !Not [!Equals [!Ref EksClusterArn, ""]]
   HasKubernetesNamespace: !Not [!Equals [!Ref KubernetesNamespace, ""]]
   HasKubernetesServiceAccount: !Not [!Equals [!Ref KubernetesServiceAccount, ""]]
@@ -152,6 +165,28 @@ Resources:
                   Condition:
                     StringEquals:
                       ec2:Region: !Ref AllowedRegions
+        - !If
+          - EnableTopologyDiscoveryCondition
+          - PolicyName: PlatformIpamReadOnlyTopology
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Sid: ObserveVpcAndTransitGatewayTopology
+                  Effect: Allow
+                  Action:
+                    - ec2:DescribeRouteTables
+                    - ec2:DescribeTransitGateways
+                    - ec2:DescribeTransitGatewayAttachments
+                    - ec2:DescribeTransitGatewayVpcAttachments
+                    - ec2:DescribeTransitGatewayRouteTables
+                    - ec2:GetTransitGatewayRouteTableAssociations
+                    - ec2:GetTransitGatewayRouteTablePropagations
+                    - ec2:SearchTransitGatewayRoutes
+                  Resource: "*"
+                  Condition:
+                    StringEquals:
+                      ec2:Region: !Ref AllowedRegions
+          - !Ref "AWS::NoValue"
 
 Outputs:
   RoleArn:

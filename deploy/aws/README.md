@@ -25,23 +25,37 @@ region-scoped EC2 Describe actions:
   Kubernetes tag parameters empty since there is no EKS workload identity to
   match.
 
-These are two different deployments of the same template with different
-parameter values — not two roles. A single StackSet can only carry one set
+The topology collector is a third, opt-in use of this template. Deploy it as
+`PlatformIpamTopologyReadOnly` with `EnableTopologyDiscovery=true`,
+`TrustedPrincipalArn` set to the operator role, and the reviewed
+`AllowedRegions`. Its extra actions are `DescribeRouteTables`,
+`DescribeTransitGateways`, `DescribeTransitGatewayAttachments`,
+`DescribeTransitGatewayVpcAttachments`, `DescribeTransitGatewayRouteTables`,
+`GetTransitGatewayRouteTableAssociations`,
+`GetTransitGatewayRouteTablePropagations`, and `SearchTransitGatewayRoutes`.
+They are restricted by `ec2:Region`. Keep the flag false for worker roles.
+See [topology inventory](../../docs/AWS_TOPOLOGY_INVENTORY.md).
+
+These are separate deployments of the same template with different
+parameter values. A single StackSet can only carry one set
 of parameters at a time, so if both use cases are needed simultaneously
 across the same accounts, deploy the template twice under two StackSet
 names (e.g. `platform-ipam-readonly-role` for the worker,
 `platform-ipam-readonly-role-inventory` for the one-off operator), or narrow
 `EnableRegionDiscovery=true` to a short-lived StackSet you delete once the
 inventory procedure is done.
+Use a third StackSet for topology reads.
 
-Permissions granted, always exactly these, scoped by an `ec2:Region`
-condition to `AllowedRegions`, `Resource: "*"` (these Describe actions do
-not support resource-level ARN restrictions):
+The base role grants exactly these inventory actions, scoped by an
+`ec2:Region` condition to `AllowedRegions`, `Resource: "*"`:
 
 - `ec2:DescribeVpcs`
 - `ec2:DescribeSubnets`
 - `ec2:DescribeAvailabilityZones`
 - `ec2:DescribeRegions` — only when `EnableRegionDiscovery=true`
+
+The eight topology actions above are added only when
+`EnableTopologyDiscovery=true`. `DescribeRegions` is independent of that flag.
 
 No `Create*`, `Delete*`, `Modify*`, `Associate*`, broad `ec2:Describe*`, or
 `organizations:*` permission is ever included, and the trust policy's

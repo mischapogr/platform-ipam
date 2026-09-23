@@ -6,7 +6,7 @@ Status: implemented adapter and local UI integration, 2026-09-08; operator UI ac
 
 Reuse NetBox as the operator inventory UI. Deploy or connect its API for core allocation; enabling user access to its UI is a separate optional milestone. The UI should help an operator answer: which pool contains this VPC, who requested it, which AWS account/region uses it, what subnets belong to it, and why a released range remains held?
 
-Do not build a new frontend or require an embedded iframe for v1. Offer a normal SSO-protected NetBox URL, optionally deep-linked from platform allocation responses and internal documentation. The API/provider must work when these links are absent. This is an integration of NetBox's existing application, not a standalone frontend package mounted into the platform API.
+Do not build a standalone frontend or require an embedded iframe for v1. Offer a normal SSO-protected NetBox URL, optionally deep-linked from platform allocation responses and internal documentation. The API/provider must work when these links are absent. This is an integration of NetBox's existing application, not a frontend mounted into the platform API. For the later overlap/migration workflow, [ADR 0020](decisions/0020-NETBOX_MIGRATION_WORKSPACE.md) adds an optional local, read-only NetBox plugin that renders the existing offline reports.
 
 ## 2. Inventory mapping
 
@@ -62,11 +62,14 @@ NetBox container utilization measures child-prefix occupancy, while ordinary Pre
 ## 4. Adapter boundary and version gate
 
 [ADR 0019](decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md) qualifies exact image
-releases. `v4.6.10-5.0.2` passed the full 126-test isolated Compose suite,
-optional plugin build/migrations/API probe, mock-Entra and OpenLDAP UI gates,
-and a 4.6.7 backup/restore forward-upgrade rehearsal. Its digest is pinned in
-the local Compose release. Stage and production still need their own NetBox
-image promotion and restore evidence; NetBox 4.7 is a separate target.
+releases. `v4.7.1-5.1.1` passed the full 126-test isolated Compose suite,
+six mock-Entra and seven OpenLDAP UI checks, the optional plugin
+build/migrations/API probe, and a 4.6.10 backup/restore
+forward-upgrade rehearsal. Its digest is pinned in the local Compose release.
+The adapter accepts both 4.6 string and 4.7 `{value, label}` selection custom
+field responses. Stage and production still need their own NetBox image
+promotion and restore evidence; see the
+[4.7 upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md).
 
 The adapter exposes methods such as read domain inventory, find by allocation marker, create exact prefix, update owned metadata, and delete verified managed prefix. It translates those calls to the pinned NetBox REST API. Business logic never imports NetBox response structs outside this boundary.
 

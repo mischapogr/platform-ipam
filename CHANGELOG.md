@@ -9,8 +9,21 @@ between minor versions.
 
 ## [Unreleased]
 
+### Changed
+
+- Local Compose NetBox and the optional AWS plugin base now pin the qualified
+  `v4.7.1-5.1.1` image digest. The adapter reads both 4.6 and 4.7 selection
+  custom-field responses; an isolated full suite, a 4.6.10-to-4.7.1 database
+  restore rehearsal and the plugin migrations/API probe passed. See
+  [the upgrade runbook](deploy/runbooks/NETBOX_4_7_UPGRADE.md).
+
 ### Added
 
+- An optional local NetBox migration workspace displays offline overlap,
+  address planning, migration progress and separately collected AWS topology evidence. A
+  read-only topology collector records VPC routes, TGW attachments, route
+  tables, associations and propagations with explicit coverage gaps. The
+  migration report now includes its reviewed, CIDR-free target identity.
 - Local Compose probes now cover Moto EC2/STS, Samba AD with LDAPS, an exact
   NetBox 4.6.10 candidate and its optional AWS plugin, while a kind probe
   exercises Helm controller behavior. The public provider route has a local

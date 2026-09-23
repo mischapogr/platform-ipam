@@ -55,6 +55,8 @@ case "${IPAM_NETBOX_CANDIDATE:-0}" in
   1) PROJECT=platform-ipam-a5-4610; UI_PORT=18105 ;;
   *) echo "IPAM_NETBOX_CANDIDATE must be 0 or 1" >&2; exit 2 ;;
 esac
+PROJECT=${IPAM_UI_PROJECT:-$PROJECT}
+UI_PORT=${IPAM_UI_PORT:-$UI_PORT}
 # A fixed path (not mktemp-random): phases run as separate process
 # invocations and need to agree on it, and rebuilding it fresh at the start
 # of every phase (below) means it always reflects the current

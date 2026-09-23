@@ -69,6 +69,8 @@ case "${IPAM_NETBOX_CANDIDATE:-0}" in
   1) PROJECT=platform-ipam-a4-4610; UI_PORT=18104 ;;
   *) echo "IPAM_NETBOX_CANDIDATE must be 0 or 1" >&2; exit 2 ;;
 esac
+PROJECT=${IPAM_UI_PROJECT:-$PROJECT}
+UI_PORT=${IPAM_UI_PORT:-$UI_PORT}
 WORK_ENV="${TMPDIR:-/tmp}/${PROJECT}.env"
 
 compose() {

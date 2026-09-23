@@ -10,6 +10,23 @@ import (
 	"github.com/mischapogr/platform-ipam/internal/domain"
 )
 
+func TestSelectionCustomFieldReadsAcrossNetBoxVersions(t *testing.T) {
+	for _, current := range []any{"RESERVED", map[string]any{"value": "RESERVED", "label": "Reserved"}} {
+		if got := stringCF(map[string]any{stateCF: current}, stateCF); got != "RESERVED" {
+			t.Fatalf("state value = %q", got)
+		}
+		if !sameProjectionValue(stateCF, "RESERVED", current) {
+			t.Fatalf("unchanged selection value %#v would trigger a PATCH", current)
+		}
+	}
+	if sameProjectionValue(stateCF, "ACTIVE", map[string]any{"value": "RESERVED", "label": "Reserved"}) {
+		t.Fatal("different selection values compare equal")
+	}
+	if sameProjectionValue(stateCF, "RESERVED", map[string]any{"label": "Reserved"}) {
+		t.Fatal("a selection without a raw value compares equal")
+	}
+}
+
 func TestSyncSkipsUnchangedProjectionAndRefreshesNewObservationOnCadence(t *testing.T) {
 	d, p := testDomain()
 	now := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)

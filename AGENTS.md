@@ -2,6 +2,16 @@
 
 This project targets AWS VPC/subnet allocation. Start with [docs/README.md](docs/README.md), then read only the contract or component needed for the task. Check the working tree before editing; preserve other in-progress work.
 
+## Token-efficient mode
+
+- Keep Fast mode disabled. Do not enable `/fast` or change model, inference, or speed settings unless the user explicitly requests it.
+- Act immediately when the task is clear. If uncertain, inspect the minimum necessary context first.
+- Be concise. Do not restate the request, explain routine actions, or write a long plan before acting. Give brief progress updates only when they convey a meaningful finding, decision, or blocker.
+- Search and read only task-relevant files. Do not reread inspected files without a reason; prefer targeted searches over broad repository scans.
+- Make the smallest correct change. Run contract-required and change-relevant checks, repeating them only when needed. Report unrelated failures without investigating them unless they block required verification.
+- Browse only when the task requires current or source-backed information. Load only task-relevant skills and tools.
+- Keep the final response to one to five short bullets when practical, covering the change, verification, and any material limit. Skip a recap when it adds nothing.
+
 ## Task routing
 
 Read the matching skill when the task needs its workflow. The maintained skills live in `.agents/skills/`, where Codex discovers them automatically in a fresh project session.

@@ -290,10 +290,12 @@
           </p>
           <p class="small text-muted mb-0">Observation: {{ report.discovery.started_at|default:'unknown' }} to {{ report.discovery.finished_at|default:'unknown' }}; {{ report.discovery.duration_seconds|default:'unknown' }} seconds. Collector version {{ report.discovery.collector_version|default:'unknown' }}. {{ report.discovery.vpc_cidr_associations }} VPC CIDR associations; {{ report.discovery.without_observed_overlap }} VPCs without an observed overlap.</p>
           {% if report.authority_verification %}
-            <div class="alert alert-info">Reservation results were imported from a CLI verifier report read at
-              {{ report.authority_verification.read_at }}. This browser request did not contact the allocation API
+            <div class="alert {% if report.authority_verification_current_status == 'EXPIRED' or report.authority_verification_current_status == 'INVALID_EXPIRY' %}alert-warning{% else %}alert-info{% endif %}">
+              Authority evidence: <strong>{{ report.authority_verification_current_status|default:'CURRENT AT REPORT TIME' }}</strong>.
+              It was read at {{ report.authority_verification.read_at }} and was valid through {{ report.authority_verification.valid_until }}.
+              This browser request did not contact the allocation API
               or authenticate the uploaded report.
-              Existing VPC conflicts remain until a later discovery shows they are gone.</div>
+              An expired result is historical evidence and does not establish a current reservation. Existing VPC conflicts remain until a later discovery shows they are gone.</div>
           {% else %}
             <div class="alert alert-info">No authenticated reservation check was supplied.
               A target allocation fact is not proof that its returned CIDR and authority match the proposal.

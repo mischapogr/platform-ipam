@@ -2,6 +2,7 @@
 
 import json
 import hashlib
+from datetime import datetime
 from io import BytesIO
 import shlex
 import subprocess
@@ -15,6 +16,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.http import Http404
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 from django.views import View
 from django.views.decorators.cache import never_cache
 
@@ -77,7 +79,8 @@ def link_existing_prefixes(report, request):
         if len(cidrs) <= 5000:
             ordered = sorted(cidrs)
             for start in range(0, len(ordered), 250):
-                for prefix in Prefix.objects.filter(prefix__in=ordered[start:start + 250]).only("id", "prefix"):
+                for prefix in (Prefix.objects.filter(prefix__in=ordered[start:start + 250])
+                               .restrict(request.user, "view").only("id", "prefix")):
                     matches.setdefault(str(prefix.prefix), []).append(prefix)
         else:
             lookup_status = "skipped"
@@ -112,6 +115,19 @@ def prepare_pilot_view(report):
     if report.get("version") != 1 or "discovery" not in report:
         return
     scope = report.get("scope") or {}
+    verification = report.get("authority_verification") or {}
+    expiry = verification.get("valid_until")
+    if expiry:
+        try:
+            expires_at = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+            verification_expired = timezone.now() > expires_at
+            report["authority_verification_current_status"] = (
+                "EXPIRED" if verification_expired else "CURRENT")
+        except (AttributeError, TypeError, ValueError):
+            verification_expired = True
+            report["authority_verification_current_status"] = "INVALID_EXPIRY"
+    else:
+        verification_expired = False
     cells = {(cell["account_id"], cell["region"]): cell
              for cell in report["discovery"].get("cells", [])}
     report["coverage_matrix"] = [
@@ -142,7 +158,12 @@ def prepare_pilot_view(report):
             stage = "RESERVATION_UNVERIFIED"
         else:
             stage = "REVIEWED"
+        if verification_expired and move.get("reservation_status") == "VERIFIED":
+            stage = "VERIFICATION_EXPIRED"
         move["lifecycle_stage"] = stage
+        move["reservation_current_status"] = (
+            "EXPIRED" if verification_expired and move.get("reservation_status") == "VERIFIED"
+            else move.get("reservation_status", "NOT_SUPPLIED"))
         target = move.get("target") or {}
         required = ("allocation_key", "scope", "environment", "region", "account_id", "prefix_length")
         if move.get("approved") and move.get("authority") == "platform-ipam" and all(

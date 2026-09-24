@@ -144,6 +144,9 @@ python3 -m unittest discover -s tests/e2e -p 'test_e2e_terraform.py' -v
 # The opt-in browser smoke test; not part of the default suite.
 IPAM_E2E_BROWSER=1 python3 tests/e2e/browser_smoke.py
 
+# The workspace browser smoke requires compose.netbox-workspace.yaml to be up.
+IPAM_E2E_BROWSER=1 python3 tests/e2e/workspace_browser_smoke.py
+
 # Keep the built provider and generated Terraform config for inspection.
 IPAM_E2E_KEEP_WORKSPACE=1 ./tests/e2e/run-e2e.sh
 ```

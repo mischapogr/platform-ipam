@@ -21,6 +21,20 @@ local UI credentials in `.env`. The workspace accepts members of the
 `platform-operators` group and NetBox superusers. The standalone NetBox Prefix
 view remains at `/ipam/prefixes/`.
 
+Run the plugin regression suite against the built image without resetting its
+database or allocations:
+
+```sh
+cd deploy/compose
+docker compose --env-file .env -f compose.yaml -f compose.netbox.yaml \
+  -f compose.netbox-workspace.yaml exec netbox \
+  /opt/netbox/venv/bin/python manage.py test platform_ipam_workspace
+
+# Opt-in browser flow; requires the workspace overlay and Playwright image.
+cd ../..
+IPAM_E2E_BROWSER=1 python3 tests/e2e/workspace_browser_smoke.py
+```
+
 The initial page displays a clearly marked **synthetic sample pilot** so the
 overview and blockers can be reviewed without first collecting AWS data. It
 contains two invented VPCs, one conflict and one proposed move, with no
@@ -40,6 +54,10 @@ pilot snapshot. Select an existing pilot for a later report with the same pilot
 owner, or leave the selector at **Create a new pilot**. The **Migration pilots**
 list opens the latest report and its earlier snapshots; it stores
 report JSON, input hashes, creator and time, not the source upload files.
+On every saved report view, the workspace compares authority evidence's
+`valid_until` with the current time. An expired reservation remains in the
+immutable snapshot as historical evidence and is labelled expired; it is not
+presented as currently verified.
 This is a local NetBox plugin migration under [ADR 0023](decisions/0023-IMMUTABLE_PILOT_SNAPSHOTS.md).
 The sample banner also links to a precomputed 100-account preview, clearly
 marked synthetic; uploading the files reruns the report from source inputs.

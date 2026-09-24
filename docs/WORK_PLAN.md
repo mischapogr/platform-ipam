@@ -1,6 +1,6 @@
-# Work plan: operator UI authentication, organization inventory, onboarding import
+# Work plan: allocation platform and migration pilot
 
-Status: active work plan, updated 2026-09-23. Completed packages and remaining external or deferred work are tracked in section 3. Designs: [operator UI authentication](GUI_AUTHENTICATION.md), [organization inventory](AWS_ORGANIZATION_INVENTORY.md), [onboarding import](ONBOARDING_IMPORT.md). Decisions: [ADR 0006](decisions/0006-OPERATOR_UI_AUTHENTICATION.md), [ADR 0007](decisions/0007-ONBOARDING_IMPORT_AS_UNMANAGED_OCCUPANCY.md).
+Status: audit started from `37e1c61`; continuation fixes are in the current worktree (2026-09-24). **The historical local packages are complete within their stated scope; the migration pilot and deployment gates are not all complete.** Section 3 records current implementation, completed continuation fixes, remaining work and verification limits. Designs: [operator UI authentication](GUI_AUTHENTICATION.md), [organization inventory](AWS_ORGANIZATION_INVENTORY.md), [onboarding import](ONBOARDING_IMPORT.md), [migration workspace](MIGRATION_WORKSPACE.md), [pilot gates](PILOT_GATES.md).
 
 The plan is cut so that most packages can be executed by a cheaper model at modest effort. That works only because each package is a closed contract: the files, the steps, the checks that must pass and the conditions under which to stop are all stated. A cheap model with a tight contract beats an expensive one with a vague request; raise the model or the effort only after the contract has been tightened and still fails.
 
@@ -54,13 +54,71 @@ Two traps found while running the first wave:
 
 ## 3. Packages
 
-| ID | Title | Tier | Depends on |
+### 3.1 Current state at the audit
+
+`scripts/ai/run-work-plan --tool codex --list` returned no queued work. The queue has `items: []` and one archived integration closeout. It does not include the open work below; an empty queue is not a completed-product assertion. New packages need explicit scope and acceptance checks before being added to that queue.
+
+| Area | Current implementation and evidence | Completion boundary |
+| --- | --- | --- |
+| Allocation API, CLI, Terraform and reconciliation | Historical package ledger below is locally complete, including M4f/M4g, adoption, cancellation, import refresh/removal and operator reads. Core and provider unit suites passed again at this audit. | Live AWS, provider publication and target-environment qualification remain open. The global ledger lock/full-state load remains; differential persistence is an intermediate architecture. |
+| NetBox 4.7 | Compose and optional AWS plugin pin 4.7.1. The [upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md) records the local restore/upgrade, plugin, identity-shaped and 126-test qualification. | Earlier 4.6.10 checkpoint language below is superseded. Stage/prod and real identity-provider qualification are still open. |
+| Inventory, assessment and topology | Read-only organization discovery, explicit coverage, resource-aware overlaps and separate AWS topology collection are implemented. AWS collector/assessment/topology checks passed with fixtures and stubs. | No live 100-account customer collection or topology/traffic readiness proof. Network readiness remains `NOT_ASSESSED`. |
+| Replacement planning and shared pilot evidence | `scripts/aws/address-plan.py` consumes reviewed move targets through the strict CLI migration decoder. `scripts/aws/pilot-evidence.py` derives conflicts, moves, proposals, blockers and allocation evidence for CLI/UI. | Input and discovery gates are currently hardcoded `UNKNOWN`; customer acceptance/provenance is not yet represented as a passing gate. |
+| Reservation verification | `scripts/aws/verify-reservations.py` validates Platform-IPAM-owned reservations against authenticated API evidence, proposal identity, occupancy and freshness. Unit checks passed. | AWS-IPAM authority has no live reservation/handoff integration. A preview or uploaded unsigned report cannot establish a current authoritative reservation. |
+| Migration workspace | Upload/ZIP handling, overview and drill-downs, saved pilots/immutable snapshots, export/history, coverage, move details, NetBox links and CLI reservation handoff are implemented. Customer-supplied Terraform execution references can be displayed. Fresh-image plugin tests and an opt-in authenticated browser flow cover both demo sizes, drag/drop, save/reload/export, prefix permission filtering and verification expiry. | Customer identity and production access/retention qualification remain open (OPS-1). |
+| 100/500-account demos | Synthetic inventory, intent, protected ranges, plans and execution-reference fixtures exist in `examples/migration-workspace/`; both bundles now pass the NetBox upload/report pipeline. | Fixture reports are synthetic evidence; opening them does not import Prefix/IPAddress objects. |
+
+### 3.2 Completed during continuation (2026-09-24)
+
+| ID | Fix | Evidence |
+| --- | --- | --- |
+| AUD-1 | Demo CSV generation now uses explicit LF; regenerated reports and execution evidence hash the same source bytes. | New fixture regression and full AWS check pass. Both 100/500 ZIPs POSTed through the real workspace view and returned HTTP 200 with no upload error. |
+| AUD-2 | NetBox Prefix link lookup now applies `.restrict(request.user, "view")` before matching or emitting links. | Focused constrained-query regression passes: only the returned restricted match is linked. |
+| AUD-3 | Saved reports now derive current expiry state on read while retaining the archived reservation result; expired moves display `VERIFICATION_EXPIRED`. | Focused tests pass for expired and current evidence; template labels expired results as historical. |
+| AUD-4 | Added fresh-image plugin coverage and an opt-in Playwright flow for partial-file errors, extracted-file and ZIP drag/drop, report generation, snapshot save/reopen and evidence export. The downloaded report digest is compared with the displayed immutable snapshot hash. Browser-created pilot data and snapshots are removed by the smoke test. | `manage.py test platform_ipam_workspace`: 4 passed. `IPAM_E2E_BROWSER=1 python3 tests/e2e/workspace_browser_smoke.py`: passed against the local authenticated proxy. These local checks do not qualify production identity or retention. |
+
+### 3.3 Open work and acceptance gates
+
+The remaining items are **open**, not completed by this continuation. Authority validation remains the next pilot-critical product capability. No route/security/traffic orchestration is implied.
+
+| ID | Priority / state | Finding or missing capability | Done when |
+| --- | --- | --- | --- |
+| PILOT-1 | High · implementation + customer access | AWS-IPAM-owned pools produce an authority handoff recommendation, not a reserved CIDR. | Agree the authority contract; use exactly one allocator per pool; implement authenticated reservation-time validation/atomic allocation or supported authority handoff, stable retry identity, conflict/recovery behavior and returned authority evidence. Stub tests plus a customer-authorized test pool/role run are required. |
+| PILOT-2 | High · gate model + customer evidence | Input/discovery `UNKNOWN` values cannot become a fully accepted pilot merely by uploading complete files. Synthetic 100/500-account fixtures do not prove collection at customer scale. | Represent reviewed inputs, approved scope/owner and evidence provenance explicitly; derive acceptance without trusting editable success counters. Run read-only discovery against agreed accounts/regions, recording expected/observed/inaccessible scope, freshness, duration and deterministic repeat results. Unknown or missing evidence must remain visible. |
+| PILOT-3 | Medium · identity decision + implementation | Browser displays supplied review/approval evidence and a CLI handoff; it cannot authenticate a tenant reservation or edit/approve a move. | Define browser-to-allocation identity/authorization and review persistence; implement audited approval/reservation through the existing authenticated API, including stale proposal, conflict, retry and failed reservation states. No browser Terraform execution. |
+| OPS-1 | Deployment gate | Saved pilots are shared among workspace operators. Production access boundaries, retention, persistence/restore and real-user behavior are not qualified. | Confirm the supported operator visibility policy; qualify backup/restore and retention, constrained access, real Entra/AD admission and write denial with the intended deployment. Do not infer tenant isolation from snapshot ownership. |
+| REL-1 | Release gate | Provider filesystem-mirror installation is locally rehearsed; publication namespace, signing and supported platform packages remain undecided/unverified. | Resolve [ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md) release decisions and verify consumer installation/checksums from the chosen registry or network mirror on supported platforms. |
+| ENV-1 | Deployment gate | Helm/static checks and kind test-image controller behavior do not establish a real stage/prod application rollout. | Qualify actual images, dependencies, workload identity, seed/migration ordering, upgrade/restore and failure recovery in the target environment. |
+| SCALE-1 | Customer qualification / deferred design | M4g's local 1,000-allocation measurement passed, but representative concurrent customer load and target capacity are unverified. Per-aggregate locking remains a future architectural step. | Agree a workload/latency target; measure discovery and allocation/reconciliation under that load, then scope further persistence changes only if the evidence requires them. |
+
+### 3.4 Audit and continuation verification (2026-09-24)
+
+| Check | Result and limit |
+| --- | --- |
+| Core Go suite, pinned `golang:1.26.8-bookworm` | PASS: `go test -mod=readonly -buildvcs=false ./...`. Opt-in PostgreSQL tests were not enabled in this audit. |
+| Terraform provider, same pinned image | PASS: `TF_ACC=0 go test -short -mod=readonly -buildvcs=false ./...` in `providers/terraform`. No live acceptance run/publication. |
+| `PLATFORM_IPAM_BIN="$PWD/bin/platform-ipam" scripts/ai/check-aws` | PASS after LF portability hardening: inventory, assessment, topology, address planning, pilot evidence, verification, committed demo hashes and shell checks. Live AWS `NOT_CHECKED`. Continuation log: `/tmp/platform-ipam-aws-_4e7i3ia/`. |
+| `scripts/ai/check-compose` | PASS: static configuration checks; runtime `NOT_CHECKED`. Continuation log: `/tmp/platform-ipam-compose-uve3ifmg/`. |
+| `scripts/ai/check-helm` | PASS: chart checks; cluster rollout `NOT_CHECKED`. Local logs: `/tmp/platform-ipam-helm-sm8moemm/`. |
+| `scripts/ai/check-contract` and `git diff --check` | PASS: local document links, example syntax, OpenAPI checks and whitespace. Contract behavior is a separate implementation-test gate. Continuation log: `/tmp/platform-ipam-contract-2h4sp5cm/`. |
+| Fresh NetBox 4.7.1 workspace image | Built from the checked-in Dockerfile; services healthy against retained local volumes. `manage.py test platform_ipam_workspace`: 4 tests passed, covering both demo bundles and permission/freshness rules. |
+| Actual workspace view uploads | Both fixture ZIPs rendered successfully (HTTP 200; 100 and 500 accounts; no snapshot saved). |
+| Authenticated workspace browser | Opt-in Playwright smoke passed through ui-proxy: incomplete-file feedback, all extracted files dropped, ZIP dropped, snapshot created and reopened, evidence downloaded; its uniquely named pilot was deleted. |
+| Full Compose e2e, PostgreSQL differential, identity, restore and mirror installation | Earlier dated evidence retained below and in the relevant runbooks. Not rerun in this continuation; do not treat the earlier 126-test result as qualification of all current workspace features. |
+
+Temporary log paths are local audit evidence, not portable release artifacts.
+
+### 3.5 Historical package ledger
+
+Completion applies to each package's stated contract, including design-only packages. The two historical `N4` entries retain their original IDs; the explicit runner queue uses unique IDs. Later qualification supersedes earlier limitations only where explicitly recorded.
+
+| ID | Title | Status / evidence (original tier where recorded) | Depends on |
 | --- | --- | --- | --- |
 | A1 | Verify NetBox image auth capabilities | done (S): image file and package evidence recorded in `GUI_AUTHENTICATION.md` | — |
 | A2 | Read-only operator groups in NetBox bootstrap | done (M). Viewer and maintainer tests passed in the checked-in e2e suite on 2026-09-23 | — |
 | A3 | `ui-proxy` with `basic` mode in Compose | done (L). Review added the underscore spelling of the identity header to the strip list | A1, A2 |
 | A4 | `entra` mode via `oauth2-proxy` and a mock issuer | done (L): optional overlay `compose.ui-entra.yaml`, same identity header as basic mode, admission gated by an allowed group. Review added impersonation of an existing superuser to the tests. Not verified against a real Entra tenant | A3 |
-| A5 | `ldap` mode with a test directory | done (L): optional overlay `compose.ui-ldap.yaml`, 7 tests against an OpenLDAP test server; header trust is off in this mode. Not verified against Active Directory | A3 |
+| A5 | `ldap` mode with a test directory | done (L): optional overlay `compose.ui-ldap.yaml`, 7 tests against an OpenLDAP test server; header trust is off in this mode. Later Samba AD simulation passed (LS1); real Windows AD remains unverified | A3 |
 | A6 | Security end-to-end tests for the UI path | done (M): 14 tests, 5 mutations. Review hardened the proxy against `/api;x=1/` | A3 |
 | A7 | Optional `ui-proxy` in the Helm chart | done (M). Review found the pod could not start: Caddy's binary carries a file capability that `drop: [ALL]` forbids | A3 |
 | A8 | Finalize UI documentation | done (M): one coherent `GUI_AUTHENTICATION.md`; the mode switch is documented as the overlay it really is; ADR 0006 gained a dated implementation note | A3–A7 |
@@ -69,16 +127,16 @@ Two traps found while running the first wave:
 | B2 | `scripts/aws/org-inventory.sh` with a stubbed-`aws` test | done (S; one assertion made exact in review) | B1 |
 | B3 | StackSet template for the read role | done (M; `cfn-lint` re-run in review) | — |
 | C1 | Canonical table, header aliases, normalizer | done (M; networks-without-region made an error in review) | — |
-| C2 | Readers: CSV/TSV/paste, then `.xlsx` | done (M). Review fixed a BOM before a quoted header, and row numbers that ignored the header. No real Excel file read yet | C1 |
+| C2 | Readers: CSV/TSV/paste, then `.xlsx` | done (M). Review fixed a BOM before a quoted header, and row numbers that ignored the header. D2 later verified three workbook writers; Microsoft Excel itself remains unverified | C1 |
 | C3 | Validator and plan report | done (L). It disproved the design's 4096-block rule; review added the incomplete-snapshot rule | C1 |
 | C4 | NetBox occupancy writer and seed fields | done (X): `EnsureOccupancy` in `internal/netbox/occupancy.go` | — |
 | C5 | `onboard` process mode wiring | done (M). Running it against a live NetBox found two defects no fake could: null custom fields read as `"<nil>"`, and account-id repair missing for networks tables | C1–C4 |
 | C6 | Config-fragment and fixture renderers | done (S). Review fixed invalid YAML lists that the golden file had enshrined, and an invented identity subject | C1 |
 | C7 | Import end-to-end tests | done (M): 12 tests, suite green twice. Found that `onboard parse -` (stdin, as the help text advertises) never worked | C5 |
 | C8 | Import docs and agent skill | done (S; two wrong section citations corrected in review) | C5 |
-| C9 | Decision record for ledger adoption (design only) | done (X): [ADR 0010](decisions/0010-ADOPTING_EXISTING_NETWORKS_AS_ALLOCATIONS.md), proposed | C7 |
+| C9 | Decision record for ledger adoption (design only) | done (X): [ADR 0010](decisions/0010-ADOPTING_EXISTING_NETWORKS_AS_ALLOCATIONS.md), subsequently accepted and implemented by F1–F7 | C7 |
 | N1 | Evaluate NetBox AWS plugins against the pinned NetBox | done (S; claims re-checked in review) | — |
-| N2 | Plugin-enabled NetBox image in Compose | done (M): **go** — installs and migrates on 4.6.7; shipped as the optional overlay `compose.netbox-plugin.yaml` | N1 |
+| N2 | Plugin-enabled NetBox image in Compose | done (M): originally qualified on 4.6.7; optional overlay `compose.netbox-plugin.yaml` now pins locally qualified 4.7.1 (upgrade runbook) | N1 |
 | N3 | Import writes AWS Account, VPC and Subnet objects into the plugin | done (L): `onboard apply --aws-objects`. Verified on a real stack with the plugin: two VPCs of different accounts point at one prefix, and with every plugin object deleted the prefix still blocks allocation | N2, C4, C5 |
 | N4 | Decision record: plugin as the home for AWS accounts | done | N1 |
 | D2 | Verify the `.xlsx` reader against workbooks written by real tools | done (M): three writers, ten fixtures; fixed row numbering across omitted blank rows. Review fixed data vanishing under a blank header. Excel itself not covered | C2 |
@@ -88,7 +146,7 @@ Two traps found while running the first wave:
 | F1 | Inventory port: `Adopt`, converting an imported prefix into a managed one | done | C4 |
 | F2 | Service: `Reserve` body shared through a pinned candidate; exported `Adopt` | done | F1 |
 | F3 | Worker: recovery path for a pending `ADOPT` operation | done | F2 |
-| F4 | `platform-ipam adopt plan\| done | L + X review | F2 |
+| F4 | `platform-ipam adopt plan\|apply` | done (L + X review) | F2 |
 | F5 | Adoption end-to-end tests | done | F3, F4 |
 | F6 | Adoption documentation and runbook | done | F5 |
 | F7 | A VPC with subnets cannot be adopted: exempt the reviewed VPC's own observed children; let `onboard` import a child of a managed VPC | done | F5 |
@@ -137,13 +195,17 @@ Two traps found while running the first wave:
 | M4d | Measure what M4a did not: round trips per write, reservation latency during a pass, two writers | done | M4b |
 | M4e | The audit table alone: stop re-offering and re-reading the ledger's history on every transaction (ADR 0017) | done | M4c, M4d |
 | M4f | The diff for the remaining eight tables, and `View` no longer decoding the audit history (ADR 0017) | done; PostgreSQL differential and full development-stack suite passed 2026-09-23 | M4e |
-| M4g | Skip unchanged NetBox projection PATCHes on a bounded observation-stamp cadence (ADR 0017) | implemented; full 4.6.10 Compose suite and 1,000-allocation local pass/latency measurement passed; stage/prod target remains unverified | M4f |
+| M4g | Skip unchanged NetBox projection PATCHes on a bounded observation-stamp cadence (ADR 0017) | done locally; full 4.6.10 Compose suite and 1,000-allocation local pass/latency measurement passed; representative customer and stage/prod targets remain unverified (SCALE-1) | M4f |
 | N4 | A creator for the platform's NetBox custom fields in stage and production: the `seed` mode the documentation promises | done; seed reported 23 existing objects and the full development-stack suite passed 2026-09-23; stage/prod execution remains external | M9b1 |
 | M9c | Contributors leave the 200-rune description; the import no longer fails on a widely shared CIDR | done; fifty-contributor import and removal passed in the full development-stack suite 2026-09-23 | M9b4 |
 | C10 | Deterministic descriptions across several input files: a stable sort by file and row | done | M9b1 |
 | T2 | Test hygiene: the duplicated stale-source finding decided; the e2e quota budget per module documented and asserted | done; final quota canary passed in the full development-stack suite 2026-09-23 | M9b4 |
 | H3 | Helm: an opt-in Job that runs `adopt` or `onboard` in the cluster | done | F6 |
 | D1 | Housekeeping: stale `platform-imap` in `docs/AI_TOOLING.md:13` | done | — |
+
+### 3.6 Historical checkpoints (superseded by the current audit)
+
+The following notes preserve what was known at each checkpoint. Their statements about pending tests, deferred M4g and the default NetBox version are historical, not the current status. Section 3.1 and the 4.7 upgrade runbook take precedence. The package details in section 4 also retain original contracts and review findings; later ledger entries may close those findings.
 
 Status at the 2026-09-22 handoff: packages through M4e and C10 are implemented. The N4 `seed` package was reviewed against the live development NetBox and its Helm templates, but its integrated suite needs a clean rerun after M9c's fixes. M4f, M9c and T2 have code in the worktree. M4f's PostgreSQL differential and measurement evidence came from a throw-away database in the Claude session, while its full development-stack suite is still pending. M9c's fifty-contributor import and T2's final quota canary also need that suite. On 2026-09-23, direct project-mounted Docker commands worked again: `go test ./...` passed in the pinned Go image, and an isolated live NetBox REST probe passed for A2 and cleaned up its prefix. Docker calls spawned by the checked-in Python e2e harness were still denied, so the integrated suite and its quota canary remain open. Earlier wave-by-wave review notes below are historical evidence, not a current queue. M4g, the projection `PATCH` skip in ADR 0017, remains deferred pending representative workload requirements.
 
@@ -514,6 +576,8 @@ For M3b and M9b the **decision record is the specification**; these blocks only 
 
 **M1b4 review note.** Reviewed from its files: the agent copied back and was then killed by a session restart before it reported. `internal/assess/estategen` is a library with no `main` and no importer in `cmd/` or the command packages; it writes a whole collector-shaped inventory plus reviewed inputs with planted facts, and its tests drive the **real** `onboardcmd.Main` and assert the planted relationships, the coverage lists and exits `3` and `0`. `tests/aws/test_assess_from_inventory.sh` is the first run of the real collector script (stubbed `aws` CLI) into the real `onboard assess`: one equal-cidr conflict between two accounts with both sides naming `networks.csv` and their rows, association id and observation time populated, the partial region and the unassumable account in coverage, the owner's sentence with its counts, exit `3`; and a clean scenario, exit `0`. `scripts/ai/check-aws` runs both `tests/aws` scripts; CI gains an `aws-inventory` job that builds the binary and runs the check (**never run on GitHub Actions**). `docs/OVERLAP_ASSESSMENT.md` (twelve sections, incl. the review's refusals and every known limit), pointers from the import documents and the skill, the index rows, and a dated paragraph in ADR 0014 going through its evidence list item by item. **Defect found in review:** the end-to-end test could only pass with a prebuilt binary. Its fallback ran `go run` **inside** a container that does not mount the inventory directory the collector wrote on the host — so `assess` answered "no networks.csv", exit `4` — and `go run` answers `1` for every non-zero exit anyway, hiding the very statuses the test asserts. `check-aws` was therefore `FAILED` on any machine without `PLATFORM_IPAM_BIN`. The fallback now builds the binary once through the pinned image and runs it on the host; the test and the check pass, and two collector mutants driven through it (a partial region reported as succeeded; the association id dropped) are killed. The lead added the routing line to `AGENTS.md`. For the owner's gap table in `docs/IP_OVERLAP_MIGRATION.md` (not edited): row M1's gap is closed for equal and contained cross-VPC conflicts from original records with traceability and explicit coverage; row M2 is met only in its first half (a reviewed customer matrix is read; no topology is).
 
-## 5. What this plan does not cover
+## 5. Scope and external gates
 
-Real Entra and Active Directory verification, a live AWS Organization run of the inventory, provider distribution, and Kubernetes rollout. Each package reports these as not verified rather than implying them.
+Section 3.2 tracks missing pilot functionality and external qualification separately from completed local packages. Real Entra/Windows AD, live AWS Organization/AWS IPAM, provider distribution and actual stage/prod Kubernetes rollout remain unverified; local simulations do not close them.
+
+The current product boundary is inventory → connectivity intent → protected ranges → relevant overlaps → replacement planning → authoritative allocation evidence. Route/security/DNS/traffic readiness remains `NOT_ASSESSED`. Workload migration, cutover and rollback execution belong to the customer. FortiGate dependency discovery and broader integrations are later scope, not implicit requirements for closing the current local package ledger.

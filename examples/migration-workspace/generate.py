@@ -29,7 +29,8 @@ PAIR_CASES = (
 
 
 def write_json(name, value):
-    (OUT / name).write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with (OUT / name).open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(value, indent=2, sort_keys=True) + "\n")
 
 
 def account(index):
@@ -49,7 +50,7 @@ def vpc(index, region_index):
 
 def write_csv(name, rows, columns):
     with (OUT / name).open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -174,17 +175,19 @@ def generate(binary, account_count=100, output=None):
     unknown_matrix["must_stay_isolated"].remove([f"account-{unknown_pair[0]:03d}", f"account-{unknown_pair[1]:03d}"])
     unknown_matrix["groups"] = [group for group in unknown_matrix["groups"]
                                 if group["id"] not in (f"account-{unknown_pair[0]:03d}", f"account-{unknown_pair[1]:03d}")]
-    (variant / "matrix.yaml").write_text(json.dumps(unknown_matrix, indent=2) + "\n")
+    with (variant / "matrix.yaml").open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(unknown_matrix, indent=2) + "\n")
     missing_account, missing_region = account(account_count - 1), "us-east-1"
     write_variant_rows = [row for row in rows if (row["account_id"], row["region"]) != (missing_account, missing_region)]
     with (variant / "networks.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=COLUMNS); writer.writeheader(); writer.writerows(write_variant_rows)
+        writer = csv.DictWriter(handle, fieldnames=COLUMNS, lineterminator="\n"); writer.writeheader(); writer.writerows(write_variant_rows)
     variant_run = json.loads((OUT / "run.json").read_text())
     variant_run["accounts"][-1]["regions"][-1] = {"region": missing_region, "outcome": "failed",
                                                      "row_count": 0, "observed_at": OBSERVED}
-    (variant / "run.json").write_text(json.dumps(variant_run, indent=2) + "\n")
+    with (variant / "run.json").open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(variant_run, indent=2) + "\n")
     with (variant / "failures.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle); writer.writerow(("account_id", "account_name", "region", "stage", "error"))
+        writer = csv.writer(handle, lineterminator="\n"); writer.writerow(("account_id", "account_name", "region", "stage", "error"))
         writer.writerow((missing_account, accounts[-1]["Name"], missing_region, "describe-vpcs", "AccessDenied (synthetic)"))
     variant_assessment = run(binary, "assess", "--networks", portable(variant / "networks.csv"),
                              "--accounts", portable(OUT / "accounts.json"),
@@ -213,10 +216,10 @@ def generate(binary, account_count=100, output=None):
         common = ("--inventory", portable(OUT), "--matrix", portable(OUT / "matrix.yaml"),
                   "--fixed", portable(OUT / "fixed.yaml"), "--ownership", portable(OUT / "ownership.yaml"),
                   "--format", "json")
-        (temp / "progress.json").write_text(json.dumps(run(binary, "progress", "--plan",
-            portable(OUT / "migration.yaml"), *common), sort_keys=True, indent=2) + "\n")
-        (temp / "assessment.json").write_text(json.dumps(run(binary, "assess", *common),
-            sort_keys=True, indent=2) + "\n")
+        (temp / "progress.json").write_bytes((json.dumps(run(binary, "progress", "--plan",
+            portable(OUT / "migration.yaml"), *common), sort_keys=True, indent=2) + "\n").encode())
+        (temp / "assessment.json").write_bytes((json.dumps(run(binary, "assess", *common),
+            sort_keys=True, indent=2) + "\n").encode())
         overview_command = [
             sys.executable, str(ROOT / "scripts/aws/pilot-evidence.py"),
             "--address", str(temp / "address.json"), "--progress", str(temp / "progress.json"),
@@ -236,7 +239,8 @@ def generate(binary, account_count=100, output=None):
                                         cwd=ROOT, capture_output=True, text=True, check=False)
         if with_execution.returncode:
             raise RuntimeError(with_execution.stderr)
-        (OUT / "pilot-overview.json").write_text(with_execution.stdout)
+        with (OUT / "pilot-overview.json").open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(with_execution.stdout)
     print(f"Wrote {len(accounts)} accounts, {account_count * len(REGIONS)} VPCs, {(account_count + 3) // 4} subnets, 5 secondary VPC CIDRs, {len(conflicts)} overlaps and {len(moves)} reviewed moves to {OUT}")
 
 

@@ -17,6 +17,13 @@ jobs:
         with:
           go-version: '1.26.8'
           cache: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: scripts/ai/requirements-ci.txt
+      - name: Install contract check dependencies
+        run: python -m pip install --requirement scripts/ai/requirements-ci.txt
       - name: Go tests
         run: go test ./...
       - name: Helper syntax

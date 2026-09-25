@@ -10,7 +10,7 @@ scripts/ai/codex --check-skills
 scripts/ai/codex
 ```
 
-The authoritative project configuration is [.codex/config.toml](../.codex/config.toml). Codex loads it natively in a trusted checkout, including when launched directly with `codex -C /path/to/platform-ipam`. The [launcher](../scripts/ai/codex) selects this checkout and forwards the caller's arguments unchanged. It supplies no MCP configuration overrides and does not rewrite global configuration, credentials, model, sandbox, or approval settings. Unrelated project settings can coexist in the native file. The former invocation overlay has been removed.
+The authoritative project configuration for this machine is `.codex/config.toml`. That file is ignored by Git and is not included in clean clones. Codex loads it natively in a trusted checkout, including when launched directly with `codex -C /path/to/platform-ipam`. The [launcher](../scripts/ai/codex) selects this checkout and forwards the caller's arguments unchanged. It supplies no MCP configuration overrides and does not rewrite global configuration, credentials, model, sandbox, or approval settings. Unrelated project settings can coexist in the native file. The former invocation overlay has been removed.
 
 This machine's project config now defaults to GPT-6 Sol at medium effort, workspace-write, and `on-request` approvals with automatic review. The config is machine-local (`.codex/` is ignored by Git); it leaves `~/.codex/config.toml` unchanged. A fresh Codex session is needed for the defaults. Automatic review assesses eligible boundary requests but does not grant Docker access or change the sandbox. Model and effort flags from the work-plan runner take precedence for that run.
 

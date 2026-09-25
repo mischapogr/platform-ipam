@@ -22,7 +22,7 @@ claude --model claude-sonnet-5          # then set effort with /effort medium
 codex -m gpt-6-sol -c model_reasoning_effort="medium"
 ```
 
-Codex loads this checkout's [.codex/config.toml](../.codex/config.toml) in a fresh trusted session; [project tooling](AI_TOOLING.md) distinguishes config loading from MCP connectivity. [AGENTS.md](../AGENTS.md) is the shared project guide for Codex and Claude Code. Use `scripts/ai/run-work-plan --tool codex --list` or `--tool claude --list` to inspect the explicit queue; use `--all` with either tool to run it sequentially. The package contract and acceptance checks are shared; only the model route and agent CLI differ.
+In this maintainer checkout, Codex loads the machine-local `.codex/config.toml` in a fresh trusted session; that ignored file is not present in a clean clone. [Project tooling](AI_TOOLING.md) distinguishes config loading from MCP connectivity. [AGENTS.md](../AGENTS.md) is the shared project guide for Codex and Claude Code. Use `scripts/ai/run-work-plan --tool codex --list` or `--tool claude --list` to inspect the explicit queue; use `--all` with either tool to run it sequentially. The package contract and acceptance checks are shared; only the model route and agent CLI differ.
 
 Evidence rule: an **S**-tier result is not accepted on its own word. In the first wave a small model returned correct setting names with invented line numbers, and called a metadata declaration "verified". Spot-check the load-bearing citations of every S package before building on it; that costs minutes.
 

@@ -1,0 +1,99 @@
+name: Terraform provider release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      source-ref:
+        description: Reviewed 40-character commit SHA in mischapogr/platform-ipam
+        required: true
+        type: string
+    secrets:
+      GPG_PRIVATE_KEY:
+        required: true
+      GPG_PASSPHRASE:
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: mischapogr/platform-ipam
+          ref: ${{ inputs.source-ref }}
+          path: platform-ipam-source
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+          cache: true
+          cache-dependency-path: platform-ipam-source/providers/terraform/go.sum
+      - name: Verify source commit is on main
+        env:
+          SOURCE_REF: ${{ inputs.source-ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]] || { echo "source-ref must be a full commit SHA" >&2; exit 1; }
+          git -C platform-ipam-source fetch --no-tags origin main
+          git -C platform-ipam-source merge-base --is-ancestor "$SOURCE_REF" FETCH_HEAD
+      - name: Validate version tag
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" != tag || ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Expected a stable SemVer tag such as v0.1.0; got $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Build and package the qualified linux_amd64 artifact
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROVIDER_DIRECTORY=platform-ipam-source/providers/terraform
+          [[ -f "$PROVIDER_DIRECTORY/go.mod" ]] || { echo "Provider module is missing" >&2; exit 1; }
+          mkdir -p dist
+          binary="terraform-provider-platformipam_v${VERSION}"
+          archive="terraform-provider-platformipam_${VERSION}_linux_amd64.zip"
+          manifest="terraform-provider-platformipam_${VERSION}_manifest.json"
+          (
+            cd "$PROVIDER_DIRECTORY"
+            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=readonly -buildvcs=false -trimpath \
+              -ldflags "-s -w -X main.version=${VERSION}" -o "$GITHUB_WORKSPACE/dist/$binary" .
+          )
+          cp "$PROVIDER_DIRECTORY/terraform-registry-manifest.json" "dist/$manifest"
+          (cd dist && zip -q -j "$archive" "$binary")
+          (cd dist && sha256sum "$archive" "$manifest" > "terraform-provider-platformipam_${VERSION}_SHA256SUMS")
+      - name: Sign checksums for Terraform Registry verification
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          fingerprint="$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')"
+          test -n "$fingerprint"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+            --local-user "$fingerprint" --detach-sign \
+            --output "dist/terraform-provider-platformipam_${VERSION}_SHA256SUMS.sig" \
+            "dist/terraform-provider-platformipam_${VERSION}_SHA256SUMS"
+      - name: Publish immutable GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.value }}
+          SOURCE_REF: ${{ inputs.source-ref }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            "dist/terraform-provider-platformipam_${VERSION}_linux_amd64.zip" \
+            "dist/terraform-provider-platformipam_${VERSION}_manifest.json" \
+            "dist/terraform-provider-platformipam_${VERSION}_SHA256SUMS" \
+            "dist/terraform-provider-platformipam_${VERSION}_SHA256SUMS.sig" \
+            --verify-tag --title "Terraform provider v${VERSION}" \
+            --notes "Signed Platform-IPAM Terraform provider release v${VERSION} (linux_amd64). Source commit: ${SOURCE_REF}."

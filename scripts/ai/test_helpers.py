@@ -129,6 +129,37 @@ class LauncherAndReportingTests(unittest.TestCase):
             finally:
                 shutil.rmtree(report.artifacts)
 
+    def test_contract_uses_pinned_python_image_when_pyyaml_is_missing(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(checks, "ROOT", Path(temporary)):
+            root = Path(temporary)
+            yaml_file = root / "examples/config/pools.yaml"
+            yaml_file.parent.mkdir(parents=True)
+            yaml_file.write_text("pools: []\n")
+            api = root / "api/openapi.yaml"
+            api.parent.mkdir(parents=True)
+            api.write_text("openapi: 3.0.0\n")
+            report = checks.Report("test")
+            commands = []
+
+            def record_command(name, argv, **kwargs):
+                commands.append((name, argv))
+                report.add(name, "PASSED", "mocked container command")
+                return True
+
+            try:
+                with patch.dict(sys.modules, {"yaml": None}), \
+                     patch.object(checks.shutil, "which",
+                                  side_effect=lambda name: "/usr/bin/docker" if name == "docker" else None), \
+                     patch.object(report, "command", side_effect=record_command):
+                    checks.contract(report, None)
+
+                self.assertEqual(report.checks[0]["status"], "PASSED")
+                yaml_command = next(argv for name, argv in commands if name == "config-yaml")
+                self.assertIn(checks.PYTHON_IMAGE, yaml_command)
+                self.assertIn("PyYAML", yaml_command[-1])
+            finally:
+                shutil.rmtree(report.artifacts)
+
 
 class NativeLauncherTests(unittest.TestCase):
     def setUp(self):

@@ -96,7 +96,19 @@ def contract(report, args):
         try:
             import yaml
         except ImportError:
-            report.add("config-yaml", "BLOCKED", "PyYAML is not installed")
+            if shutil.which("docker"):
+                for path in yaml_paths:
+                    relative = path.relative_to(ROOT).as_posix()
+                    report.command("config-yaml", containerized(
+                        [PYTHON_IMAGE, "sh", "-c",
+                         "pip install --quiet PyYAML >/dev/null && "
+                         "python -c 'import pathlib,sys,yaml; "
+                         "yaml.safe_load(pathlib.Path(sys.argv[1]).read_text())' "
+                         f"/src/{relative}"],
+                        workdir="/src"))
+            else:
+                report.add("config-yaml", "BLOCKED",
+                           "PyYAML is not installed and Docker is unavailable")
         else:
             for path in yaml_paths:
                 try:

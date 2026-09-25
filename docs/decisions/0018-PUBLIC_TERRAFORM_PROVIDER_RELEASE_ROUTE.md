@@ -20,3 +20,55 @@ The [public Terraform Registry](https://developer.hashicorp.com/terraform/regist
 ## Unresolved release inputs
 
 The organization namespace, signing-key custodian, release-repository ownership and sandbox access need named owners. No Registry publication, signed release, or real AWS acceptance has occurred. Until those inputs exist, examples retain the clearly unreachable placeholder and local development keeps ADR 0004's override.
+
+## GitHub Actions implementation (2026-09-25)
+
+The main repository CI now runs the provider unit/format checks and the normal
+Terraform filesystem-mirror install/checksum rehearsal on GitHub-hosted
+runners. The Compose validator explicitly uses the checked-in development-only
+`.env.example`; it must not depend on a developer's ignored `.env` or create
+credentials on a CI runner.
+
+`.github/workflows/terraform-provider-release.yml` is a reusable workflow for
+the eventual public repository named `terraform-provider-platformipam`. It
+accepts a stable `vMAJOR.MINOR.PATCH` tag and a reviewed full commit SHA from
+this repository's `main`, verifies that ancestry, builds the qualified
+`linux_amd64` binary from that immutable source commit, creates the Registry
+manifest and ZIP, checksums all published inputs, signs the checksum file with the caller's
+`GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` secrets, and creates a published GitHub
+Release. The manifest declares Plugin Framework protocol 6.0. The workflow
+does not publish from this monorepo: its repository name does not meet the
+Terraform Registry's provider repository rule.
+
+After creating the provider repository and registering its public signing key
+with the Terraform Registry, its caller workflow can be (replace the workflow
+reference with the reviewed commit SHA that contains the reusable workflow):
+
+```yaml
+name: Provider release
+on:
+  push:
+    tags: ['v*.*.*']
+permissions:
+  contents: read
+jobs:
+  release:
+    permissions:
+      contents: write
+    uses: mischapogr/platform-ipam/.github/workflows/terraform-provider-release.yml@<reviewed-commit-sha>
+    with:
+      source-ref: <reviewed-platform-ipam-commit-sha>
+    secrets:
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+```
+
+Pin the reusable workflow to a reviewed commit SHA. Keep the provider source
+mirror in the provider repository aligned with the `source-ref` used for each
+release. Configure the RSA or DSA signing key
+in the Registry before the first publication; after initial registration, its
+GitHub Release webhook discovers subsequent versions. The main repository
+does not contain the cross-repository credential or make the namespace choice.
+The called workflow builds only trusted source from this repository; it does
+not execute code from the tagged provider mirror while the signing secret is
+available.

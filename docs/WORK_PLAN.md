@@ -87,7 +87,7 @@ The remaining items are **open**, not completed by this continuation. Authority 
 | PILOT-2 | High · gate model + customer evidence | Input/discovery `UNKNOWN` values cannot become a fully accepted pilot merely by uploading complete files. Synthetic 100/500-account fixtures do not prove collection at customer scale. | Represent reviewed inputs, approved scope/owner and evidence provenance explicitly; derive acceptance without trusting editable success counters. Run read-only discovery against agreed accounts/regions, recording expected/observed/inaccessible scope, freshness, duration and deterministic repeat results. Unknown or missing evidence must remain visible. |
 | PILOT-3 | Medium · identity decision + implementation | Browser displays supplied review/approval evidence and a CLI handoff; it cannot authenticate a tenant reservation or edit/approve a move. | Define browser-to-allocation identity/authorization and review persistence; implement audited approval/reservation through the existing authenticated API, including stale proposal, conflict, retry and failed reservation states. No browser Terraform execution. |
 | OPS-1 | Deployment gate | Saved pilots are shared among workspace operators. Production access boundaries, retention, persistence/restore and real-user behavior are not qualified. | Confirm the supported operator visibility policy; qualify backup/restore and retention, constrained access, real Entra/AD admission and write denial with the intended deployment. Do not infer tenant isolation from snapshot ownership. |
-| REL-1 | Release gate | Provider filesystem-mirror installation is locally rehearsed; publication namespace, signing and supported platform packages remain undecided/unverified. | Resolve [ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md) release decisions and verify consumer installation/checksums from the chosen registry or network mirror on supported platforms. |
+| REL-1 | Release gate | Provider filesystem-mirror installation is rehearsed in CI; a reusable GitHub Actions workflow now builds and signs the qualified `linux_amd64` Terraform Registry package. The required `terraform-provider-platformipam` repository, durable Registry namespace, signing-key custody and real acceptance remain unresolved. | Create and select the public provider repository/namespace, configure and register an RSA/DSA signing key, invoke the reusable workflow for a reviewed tag, publish through the Registry and verify an ordinary consumer install plus authorized sandbox acceptance. |
 | ENV-1 | Deployment gate | Helm/static checks and kind test-image controller behavior do not establish a real stage/prod application rollout. | Qualify actual images, dependencies, workload identity, seed/migration ordering, upgrade/restore and failure recovery in the target environment. |
 | SCALE-1 | Customer qualification / deferred design | M4g's local 1,000-allocation measurement passed, but representative concurrent customer load and target capacity are unverified. Per-aggregate locking remains a future architectural step. | Agree a workload/latency target; measure discovery and allocation/reconciliation under that load, then scope further persistence changes only if the evidence requires them. |
 
@@ -108,7 +108,33 @@ The remaining items are **open**, not completed by this continuation. Authority 
 
 Temporary log paths are local audit evidence, not portable release artifacts.
 
-### 3.5 Historical package ledger
+### 3.5 GitHub CI and provider-release follow-up (2026-09-25)
+
+The repository was confirmed public through GitHub's repository API. The live
+API listed 13 open Dependabot PRs (#1–#13), and all 13 latest `validate` checks
+were failed. Step details for #9–#13 showed `Compose configuration` failed
+after Go tests passed; API throttling prevented retrieving step details for
+#1–#8. Reproducing with an empty env file identified required Compose
+substitutions absent on a clean runner. The checked-in `.env.example` lacked
+`NETBOX_SUPERUSER_PASSWORD`. The worktree fix has not yet been pushed, so
+remote PR checks still need a rerun.
+
+CI now runs the docs/OpenAPI contract, workflow lint, provider unit/format
+checks and mirror-install test. A reusable GPG-signed `linux_amd64` provider
+release workflow and Plugin Framework 6.0 Registry manifest are prepared for
+a future provider repository. CodeQL analysis covers both Go modules and
+GitHub Actions workflows. Local verification passed `actionlint` 1.7.7,
+Compose config with `.env.example`, `check-provider`, the filesystem-mirror
+install/tamper rehearsal, a temporary-key package/checksum/signature smoke
+test, and the release Docker image tar export. The smoke key was disposable and
+does not qualify the maintainer's release key. GitHub PR checks, release
+signing/publication and Registry installation remain external until the
+changes are pushed and the required namespace/secrets are configured. The
+manual application release workflow now retains the Docker image tar and Helm
+chart as a 14-day downloadable Actions artifact; it does not publish either to
+a container or chart registry.
+
+### 3.6 Historical package ledger
 
 Completion applies to each package's stated contract, including design-only packages. The two historical `N4` entries retain their original IDs; the explicit runner queue uses unique IDs. Later qualification supersedes earlier limitations only where explicitly recorded.
 
@@ -203,7 +229,7 @@ Completion applies to each package's stated contract, including design-only pack
 | H3 | Helm: an opt-in Job that runs `adopt` or `onboard` in the cluster | done | F6 |
 | D1 | Housekeeping: stale `platform-imap` in `docs/AI_TOOLING.md:13` | done | — |
 
-### 3.6 Historical checkpoints (superseded by the current audit)
+### 3.7 Historical checkpoints (superseded by the current audit)
 
 The following notes preserve what was known at each checkpoint. Their statements about pending tests, deferred M4g and the default NetBox version are historical, not the current status. Section 3.1 and the 4.7 upgrade runbook take precedence. The package details in section 4 also retain original contracts and review findings; later ledger entries may close those findings.
 

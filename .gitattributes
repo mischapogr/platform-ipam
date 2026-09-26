@@ -1,3 +1,7 @@
 # Reader fixtures are byte-exact on purpose: CRLF line endings, a byte-order
 # mark and non-breaking spaces are the things under test.
 internal/onboard/testdata/** -text
+
+# These bytes are inputs to recorded SHA-256 evidence in the demo bundles.
+# Keep generator outputs byte-identical on every checkout platform.
+examples/migration-workspace/** text eol=lf

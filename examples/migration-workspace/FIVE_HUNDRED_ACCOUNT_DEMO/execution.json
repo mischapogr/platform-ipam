@@ -1,0 +1,167 @@
+{
+  "input_sha256": {
+    "approved_plan": "a7a50acdb294f49c39a30d3bb65b7dc7021b1264b7708f6fcaab9cf964de152b",
+    "matrix": "a636b84efb89376974e95216813932bd694b9c7891bb69079ebd6388ac15e29c",
+    "migration_plan": "4387df7a3217ff41e92b9df0e0b9c645de585bf86b61de4bfe00206cee81aeb7",
+    "migration_plans": [
+      "4387df7a3217ff41e92b9df0e0b9c645de585bf86b61de4bfe00206cee81aeb7"
+    ],
+    "networks": "f936f1146872ea216186498ca2438db6bb2e82a78531f8c8644339fcc8088dce",
+    "pilot_scope": "e60514203d6f1b1a2b24009037149962c5a3bfcf6e73f2132a091d84a529e1c9",
+    "protected": "e5ccc220b53a4a602647a3575dfc2f4a417ca2dacbb31e1072aa3b14f95d7ab2",
+    "run": "23a5254a835bb960db76eb356056bdf015647f8fa78f7697f5f483bd6ef68d37"
+  },
+  "moves": [
+    {
+      "allocation_key": "demo-replacement-01",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-001",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-02",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-002",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-03",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-003",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-04",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-004",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-05",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-005",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-06",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-006",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-07",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-007",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-08",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-008",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-09",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-009",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-10",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-010",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-11",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-011",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-12",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-012",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-13",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-013",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-14",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-014",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-15",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-015",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-16",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-016",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-17",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-017",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-18",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-018",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-19",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-019",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-20",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-020",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-21",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-021",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-22",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-022",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-23",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-023",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-24",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-024",
+      "status": "PLANNED"
+    },
+    {
+      "allocation_key": "demo-replacement-25",
+      "commit": "synthetic-demo",
+      "run": "synthetic-plan-025",
+      "status": "PLANNED"
+    }
+  ],
+  "version": 1
+}

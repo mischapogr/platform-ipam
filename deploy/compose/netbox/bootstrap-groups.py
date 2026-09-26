@@ -19,12 +19,10 @@ Neither group is a NetBox superuser or staff account, so they carry no
 access beyond what their ObjectPermission grants.
 
 For the end-to-end suite only (package A2, `tests/e2e/test_e2e_netbox_roles.py`),
-this script also creates a development user `e2e-viewer` in
-`platform-operators` with a v1 API token, but only when
-`NETBOX_E2E_VIEWER_TOKEN` is set -- the same 40-character-plaintext v1 token
-shape `bootstrap-token.py` uses for the adapter's own token, for the same
-reason: the platform's NetBox adapter (and this test) authenticate with the
-legacy `Authorization: Token <secret>` header, not the v2 bearer scheme.
+this script creates development users `e2e-viewer` and `e2e-maintainer` when
+their respective token variables are set. Both use the 40-character v1 token
+shape `bootstrap-token.py` uses for the adapter: the test authenticates with
+the legacy `Authorization: Token <secret>` header, not the v2 bearer scheme.
 
 The script is idempotent and refuses to run against anything but the local
 development stack.
@@ -140,61 +138,65 @@ for group_name, spec in GROUPS.items():
     group = Group.objects.get(name=group_name)
     ensure_permission(group, spec["actions"], spec["object_types"])
 
-# --- e2e-only viewer user -----------------------------------------------
-#
-# Gated on NETBOX_E2E_VIEWER_TOKEN being set (the Compose service requires
-# it, so this normally runs) rather than being unconditional, so a bootstrap
-# invoked without that variable still converges the groups above on their
-# own.
-viewer_token_value = environ.get("NETBOX_E2E_VIEWER_TOKEN", "")
-if viewer_token_value:
-    viewer_username = environ.get("NETBOX_E2E_VIEWER_NAME", "e2e-viewer")
-    viewer_email = environ.get("NETBOX_E2E_VIEWER_EMAIL", "e2e-viewer@example.invalid")
-
-    if len(viewer_token_value) != TOKEN_PLAINTEXT_LENGTH:
-        # Same 40-character constraint as the adapter's v1 token; fail loudly
-        # rather than leaving a test viewer whose token NetBox will reject.
+def ensure_e2e_user(token_name, username, email, group_name, write_enabled):
+    """Converge a development test user's group and v1 API token."""
+    token_value = environ.get(token_name, "")
+    if not token_value:
+        print(f"{token_name} not set; skipping {username} bootstrap")
+        return
+    if len(token_value) != TOKEN_PLAINTEXT_LENGTH:
         print(
-            f"NETBOX_E2E_VIEWER_TOKEN must be exactly {TOKEN_PLAINTEXT_LENGTH} characters "
-            f"for a NetBox v1 token; got {len(viewer_token_value)}"
+            f"{token_name} must be exactly {TOKEN_PLAINTEXT_LENGTH} characters "
+            f"for a NetBox v1 token; got {len(token_value)}"
         )
         sys.exit(1)
 
-    viewer = User.objects.filter(username=viewer_username).first()
-    if viewer is None:
-        # No password is passed, so Django gives the account an unusable
-        # password: this user authenticates only via its API token, never
-        # through the login form.
-        viewer = User.objects.create_user(viewer_username, viewer_email)
-        print(f"created user {viewer_username}")
+    user = User.objects.filter(username=username).first()
+    if user is None:
+        # No password is passed: these accounts authenticate only by API token.
+        user = User.objects.create_user(username, email)
+        print(f"created user {username}")
     else:
-        print(f"user {viewer_username} already exists")
+        print(f"user {username} already exists")
 
-    operators = Group.objects.get(name="platform-operators")
-    if operators not in viewer.groups.all():
-        viewer.groups.add(operators)
-        print(f"added {viewer_username} to platform-operators")
-    else:
-        print(f"{viewer_username} already in platform-operators")
+    group = Group.objects.get(name=group_name)
+    if group not in user.groups.all():
+        user.groups.add(group)
+        print(f"added {username} to {group_name}")
 
-    if Token.objects.filter(plaintext=viewer_token_value).exists():
-        print("e2e viewer API token already present")
-    else:
-        # Remove any prior token for this user so a rotated .env converges
-        # instead of accumulating stale credentials, matching bootstrap-token.py.
-        removed, _ = Token.objects.filter(user=viewer, version=TokenVersionChoices.V1).delete()
-        if removed:
-            print(f"removed {removed} superseded e2e viewer token(s)")
-        # As in bootstrap-token.py: the value must be assigned through the
-        # `token` property, not `plaintext=`, or Token.save() would generate
-        # a fresh random value instead of using the one the test expects.
-        Token.objects.create(
-            user=viewer,
-            version=TokenVersionChoices.V1,
-            token=viewer_token_value,
-            description="e2e read-only viewer (test only)",
-            write_enabled=False,
-        )
-        print("created e2e viewer API token")
-else:
-    print("NETBOX_E2E_VIEWER_TOKEN not set; skipping e2e viewer bootstrap")
+    existing = Token.objects.filter(plaintext=token_value).first()
+    if existing is not None:
+        if existing.user_id != user.pk or existing.version != TokenVersionChoices.V1:
+            print(f"{token_name} belongs to another user or token version")
+            sys.exit(1)
+        if existing.write_enabled != write_enabled:
+            existing.write_enabled = write_enabled
+            existing.save(update_fields=["write_enabled"])
+        print(f"confirmed e2e token for {username}")
+        return
+
+    # A rotated .env replaces the old v1 token instead of keeping stale access.
+    removed, _ = Token.objects.filter(user=user, version=TokenVersionChoices.V1).delete()
+    if removed:
+        print(f"removed {removed} superseded token(s) for {username}")
+    # Assign through `token`, not `plaintext=`, so save() uses this value.
+    Token.objects.create(
+        user=user,
+        version=TokenVersionChoices.V1,
+        token=token_value,
+        description=f"e2e {group_name} (test only)",
+        write_enabled=write_enabled,
+    )
+    print(f"created e2e token for {username}")
+
+
+ensure_e2e_user(
+    "NETBOX_E2E_VIEWER_TOKEN",
+    environ.get("NETBOX_E2E_VIEWER_NAME", "e2e-viewer"),
+    environ.get("NETBOX_E2E_VIEWER_EMAIL", "e2e-viewer@example.invalid"),
+    "platform-operators", False,
+)
+ensure_e2e_user(
+    "NETBOX_E2E_MAINTAINER_TOKEN", "e2e-maintainer",
+    "e2e-maintainer@example.invalid", "platform-inventory-maintainers", True,
+)

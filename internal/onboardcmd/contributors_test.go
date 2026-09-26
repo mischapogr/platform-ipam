@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -255,12 +256,19 @@ func TestASingleRowImportIsUnchangedApartFromTheNewField(t *testing.T) {
 	}
 }
 
-// ADR 0016 defers the description deliberately ("a fifth, deliberately
-// separated" package), so a CIDR shared by enough VPCs still overflows the
-// 200-rune limit and still fails the import at EnsureOccupancy. Pinning it
-// here keeps that a decision rather than something a later reader assumes
-// M9b1 quietly fixed.
-func TestTheDescriptionStillGrowsWithEverySharer(t *testing.T) {
+// docs/WORK_PLAN.md package M9c: "Contributors leave the 200-rune
+// description; the import no longer fails on a widely shared CIDR." Before
+// this package, TestTheDescriptionStillGrowsWithEverySharer pinned the
+// opposite as a deliberate deferral ("a fifth, deliberately separated"
+// package, ADR 0016) -- this is the test docs/WORK_PLAN.md names for this
+// package ("changing the overflow test's expectation from 'fails' to
+// 'succeeds with a capped description' is the one M9b1 named"). The
+// description no longer rolls up accounts and resource ids
+// (mergeNetworkDescription, onboardcmd.go), so this fixture's twelve long
+// VPC names still overflow 200 runes on their own -- proving
+// withDescriptionFingerprint's truncation actually engages, not just that
+// removing the roll-up alone would have been enough.
+func TestTheDescriptionNoLongerGrowsWithEverySharer(t *testing.T) {
 	var rows []onboard.NetworkRow
 	for i := 0; i < 12; i++ {
 		row := contributorRow("10.0.5.0/24", "00000000000"+strconv.Itoa(i%10), "vpc-0000000"+string(rune('a'+i)), i+1)
@@ -271,9 +279,74 @@ func TestTheDescriptionStillGrowsWithEverySharer(t *testing.T) {
 	if len(occupancies[0].Contributors) != len(rows) {
 		t.Fatalf("every sharer must be recorded: %d of %d", len(occupancies[0].Contributors), len(rows))
 	}
-	if got := len([]rune(occupancies[0].Description)); got <= 200 {
-		t.Fatalf("this fixture no longer overflows the 200-rune description (%d runes); "+
-			"if the deferred description package has landed, this test is what should change", got)
+	description := occupancies[0].Description
+	if got := len([]rune(description)); got > maxDescriptionRunes {
+		t.Fatalf("description is %d runes, want at most %d: %q", got, maxDescriptionRunes, description)
+	}
+	if !strings.Contains(description, descriptionTruncationMarker) {
+		t.Fatalf("this fixture's 12 long names should still overflow the body budget and be truncated, but got %q", description)
+	}
+	if !descriptionFingerprintPattern.MatchString(description) {
+		t.Fatalf("truncated description carries no fingerprint suffix: %q", description)
+	}
+	if !descriptionFingerprintConsistent(description) {
+		t.Fatalf("truncated description's own fingerprint does not match its body: %q", description)
+	}
+	if strings.Contains(description, "account") || strings.Contains(description, "resource id") {
+		t.Fatalf("description still rolls up accounts/resource ids, which package M9c removes: %q", description)
+	}
+
+	// The headline claim itself: this no longer fails EnsureOccupancy. A
+	// networks table sharing one CIDR across fifty VPCs -- ADR 0016's own
+	// "a CIDR shared by enough VPCs" scale, and docs/WORK_PLAN.md's named
+	// end-to-end case for this package -- imports as one prefix via the
+	// real command, through a stub NetBox server, rather than failing with
+	// ErrOccupancyInvalid as it did before this package.
+	stub := &netboxStub{vrfID: 7, prefixes: []map[string]any{poolPrefix(7)}}
+	server := stub.server(t)
+	defer server.Close()
+	testEnv(t, server.URL)
+
+	var fiftyRows []onboard.NetworkRow
+	for i := 0; i < 50; i++ {
+		row := contributorRow("10.0.6.0/24", fmt.Sprintf("%012d", i), "vpc-fifty-"+strconv.Itoa(i), i+1)
+		row.Name = "a-reasonably-long-vpc-name-" + row.ResourceID
+		fiftyRows = append(fiftyRows, row)
+	}
+	table := onboard.Table{Kind: onboard.KindNetworks, Networks: fiftyRows}
+	tablePath := writeTableFile(t, t.TempDir(), "table.json", table)
+
+	var stdout, stderr bytes.Buffer
+	code := Main(context.Background(), []string{"apply", tablePath, "--domain", "d1",
+		"--batch", "batch-1", "--source", "networks.csv"}, &stdout, &stderr)
+	if code != ExitOK {
+		t.Fatalf("apply of a CIDR shared by 50 VPCs: exit = %d, want %d; stderr=%s", code, ExitOK, stderr.String())
+	}
+	if writes := stub.writes(); len(writes) != 1 || writes[0] != "POST /api/ipam/prefixes/" {
+		t.Fatalf("writes = %v, want exactly one prefix create", writes)
+	}
+}
+
+// A small, well-under-the-truncation-budget fixture that pins the EXACT
+// description string, independent of mergeNetworkDescription's own
+// implementation: TestTheDescriptionNoLongerGrowsWithEverySharer's fixture
+// (twelve long names) overflows the truncation budget on the names alone,
+// so a bug that reintroduced the account/resource-id roll-up AFTER the
+// names segment would never reach the surviving (untruncated-away) part of
+// the string and would go undetected there. This fixture is short enough
+// that nothing is truncated, so every segment mergeNetworkDescription could
+// possibly add is visible in the final string.
+func TestMergeNetworkDescriptionNamesOnlyNoAccountOrResourceIDRollUp(t *testing.T) {
+	rows := []onboard.NetworkRow{
+		contributorRow("10.0.5.0/24", "000000000001", "vpc-0aaa", 1),
+		contributorRow("10.0.5.0/24", "000000000002", "vpc-0bbb", 2),
+	}
+	rows[0].Name, rows[1].Name = "prod-a", "prod-b"
+	got := mergeNetworkDescription(rows)
+	wantBody := "prod-a; prod-b"
+	want := wantBody + " (" + descriptionFingerprint(wantBody) + ")"
+	if got != want {
+		t.Fatalf("mergeNetworkDescription = %q, want exactly %q (no account/resource-id roll-up)", got, want)
 	}
 }
 

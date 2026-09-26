@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary"],
+  "properties": {
+    "status": {"type": "string", "enum": ["ready_for_checks", "blocked"]},
+    "summary": {"type": "string"}
+  }
+}

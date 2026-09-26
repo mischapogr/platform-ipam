@@ -245,9 +245,25 @@ class ImportE2ETest(unittest.TestCase):
 
         matches = [row for c, row in self.stack.netbox_prefixes().items() if c == cidr]
         self.assertEqual(len(matches), 1, f"expected exactly one prefix at {cidr}")
-        description = matches[0]["description"]
-        self.assertIn("000000000003", description)
-        self.assertIn("000000000004", description)
+        row = matches[0]
+        # Package M9c: mergeNetworkDescription no longer rolls the
+        # collapsed rows' account ids into the description (they already
+        # survive per entry in platform_import_contributors, package
+        # M9b1) -- it names only the "name" column, deduplicated, and
+        # ends with a self-consistency fingerprint,
+        # " (" + 8 hex digits + ")" (internal/onboardcmd's
+        # withDescriptionFingerprint). Account identity is now asserted
+        # against the structured field, which is what this collapse is
+        # actually for: two accounts sharing a CIDR is exactly the case
+        # ADR 0016 built the contributor list to stop losing.
+        description = row["description"]
+        self.assertIn("acct-a", description)
+        self.assertIn("acct-b", description)
+        self.assertRegex(description, r" \([0-9a-f]{8}\)$",
+                         "description must end with mergeNetworkDescription's self-consistency fingerprint")
+        contributors = (row.get("custom_fields") or {}).get("platform_import_contributors") or []
+        self.assertEqual({c["account_id"] for c in contributors}, {"000000000003", "000000000004"},
+                         f"both accounts must be recorded in platform_import_contributors: {contributors}")
 
     def test_04_subnet_equal_to_its_vpc_cidr_collapses_to_one_prefix(self):
         """A subnet row whose CIDR equals its own VPC's CIDR (design
@@ -1226,6 +1242,82 @@ class ImportE2ETest(unittest.TestCase):
                     "platform_operation_id": None, "platform_state": None,
                 }})
             self.assertEqual(cleared.status, 200, cleared.body)
+
+    # -- 24. package M9c: contributors leave the 200-rune description -----
+
+    def test_24_a_cidr_shared_by_fifty_vpcs_imports_and_still_passes_removal(self):
+        """docs/WORK_PLAN.md package M9c, ADR 0016's deferred "fifth
+        package": before this package, a CIDR shared by enough VPCs failed
+        the whole import at EnsureOccupancy's 200-rune description limit,
+        because the description rolled up every collapsed row's account and
+        resource id (mergeNetworkDescription, internal/onboardcmd). Fifty
+        VPCs of fifty accounts sharing one CIDR is exactly that case --
+        `internal/onboardcmd/contributors_test.go`'s own
+        TestTheDescriptionNoLongerGrowsWithEverySharer proves it at the unit
+        level; this proves it end to end, against the real stack, and then
+        proves `onboard remove`'s description_edited check (which package
+        M9c had to redesign, since the account/resource-id segments it used
+        to verify no longer exist in a new-format description at all) does
+        not mistake the import's own, unedited description for an
+        operator's edit.
+        """
+        cidr = str(self._removal_subblocks()[2])
+        region = "eu-central-1"
+        observed_at = "2026-09-22T08:00:00Z"
+        account_ids = [f"0000000000{i:02d}" for i in range(50)]
+        resource_ids = [f"vpc-0e2e24{i:02d}" for i in range(50)]
+
+        rows = [
+            {"cidr": cidr, "account_id": account_ids[i], "region": region,
+             "name": f"a-reasonably-long-vpc-name-t24-{resource_ids[i]}", "type": "vpc",
+             "resource_id": resource_ids[i], "association_id": f"vpc-cidr-assoc-{resource_ids[i]}",
+             "observed_at": observed_at}
+            for i in range(50)
+        ]
+
+        # The import that fails today: without this package, EnsureOccupancy
+        # refuses the create with ErrOccupancyInvalid (description over 200
+        # runes) and apply exits non-zero. plan_exit/apply_exit default to 0,
+        # so a regression here fails this assertion, not a mismatched
+        # expect_exit.
+        _, apply_lines, _, apply_stderr = self._import(_collector_networks_csv(rows), "t24")
+        self.assertEqual(apply_lines[0]["action"], "created",
+                         f"the fifty-VPC import must succeed; stderr={apply_stderr}")
+
+        prefix_row = self.stack.netbox_prefixes()[cidr]
+        prefix_id = str(prefix_row["id"])
+        description = prefix_row.get("description") or ""
+        self.assertLessEqual(len(description), 200,
+                             f"description exceeds NetBox's 200-rune limit: {description!r}")
+
+        contributors = ((prefix_row.get("custom_fields") or {}).get("platform_import_contributors") or [])
+        self.assertEqual(len(contributors), 50,
+                         f"every one of the 50 sharers must be recorded as a contributor: {len(contributors)}")
+        self.assertEqual({c["resource_id"] for c in contributors}, set(resource_ids),
+                         "the contributor field must name every one of the 50 VPCs")
+
+        # onboard remove's description_edited check must not mistake this
+        # unedited, import-written (and, given 50 long names, truncated)
+        # description for an operator's edit: the dry run reports removable
+        # once a matching evidence collection shows every one of the 50
+        # contributors absent with complete coverage for all 50 accounts.
+        dry_report, _ = self._remove(
+            cidr, networks_rows=[], account_ids=account_ids,
+            attempts=[(account_id, region, "succeeded", 0) for account_id in account_ids],
+            finished_at="2026-09-22T09:30:00Z", expect_exit=0,
+        )
+        self.assertTrue(dry_report["removable"], dry_report)
+        self.assertNotIn("description_edited", {r["code"] for r in dry_report["refusals"]}, dry_report)
+        self.assertEqual(dry_report["netbox_id"], prefix_id, dry_report)
+
+        apply_report, apply_stderr = self._remove(
+            cidr, networks_rows=[], account_ids=account_ids,
+            attempts=[(account_id, region, "succeeded", 0) for account_id in account_ids],
+            finished_at="2026-09-22T09:30:00Z", apply=True, netbox_id=prefix_id, expect_exit=0,
+        )
+        self.assertTrue(apply_report["removed"], apply_report)
+        self.assertIn(f"removed prefix {cidr}", apply_stderr, apply_stderr)
+        self.assertNotIn(cidr, self.stack.netbox_prefixes(), "the prefix must be gone from NetBox")
 
 
 if __name__ == "__main__":

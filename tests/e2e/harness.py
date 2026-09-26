@@ -105,7 +105,8 @@ class Stack:
         if not self.token or not self.netbox_token:
             raise StackUnavailable("IPAM_LOCAL_TOKEN and IPAM_NETBOX_TOKEN must be set in .env")
         self.api_port = self.env.get("IPAM_LISTEN_ADDR", ":8080").rsplit(":", 1)[-1]
-        self.netbox_port = self.env.get("NETBOX_PORT", "18000")
+        self.api_host_port = os.environ.get("IPAM_API_PORT") or self.env.get("IPAM_API_PORT", self.api_port)
+        self.netbox_port = os.environ.get("NETBOX_PORT") or self.env.get("NETBOX_PORT", "18000")
         self.netbox_internal = self.env.get("IPAM_NETBOX_URL", "http://netbox:8080")
         self.ui_user = self.env.get("NETBOX_UI_USER", "")
         self.ui_password = self.env.get("NETBOX_UI_PASSWORD", "")
@@ -150,7 +151,7 @@ class Stack:
     def _probe_direct(self) -> bool:
         try:
             with urllib.request.urlopen(
-                f"http://127.0.0.1:{self.api_port}/readyz", timeout=5
+                f"http://127.0.0.1:{self.api_host_port}/readyz", timeout=5
             ) as response:
                 return response.status == 200
         except (urllib.error.URLError, OSError, ValueError):
@@ -195,8 +196,9 @@ class Stack:
         merged = {"Authorization": f"Bearer {token if token is not None else self.token}",
                  "Accept": "application/json"}
         merged.update(headers or {})
-        base = f"http://127.0.0.1:{self.api_port}"
-        return self._http(base, base, path, method, body, merged)
+        direct_base = f"http://127.0.0.1:{self.api_host_port}"
+        internal_base = f"http://127.0.0.1:{self.api_port}"
+        return self._http(direct_base, internal_base, path, method, body, merged)
 
     def netbox(self, path: str) -> Response:
         """Read the NetBox inventory an operator sees in the UI.

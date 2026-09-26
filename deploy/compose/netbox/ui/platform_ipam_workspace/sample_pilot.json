@@ -1,0 +1,241 @@
+{
+  "blockers": [
+    {
+      "code": "ALLOCATION_VERIFICATION_NOT_SUPPLIED",
+      "detail": "No current authority verification report was supplied; target facts do not prove the returned CIDR or pool."
+    },
+    {
+      "code": "CURRENT_ADDRESS_CONFLICTS",
+      "detail": "Observed VPC conflicts remain until a later discovery proves otherwise."
+    }
+  ],
+  "conflicts": {
+    "confirmed": 1,
+    "observed_relationships": 1,
+    "unresolved_intent": 0
+  },
+  "current_address_readiness": "CIDR_BLOCKED",
+  "discovery": {
+    "cells": [
+      {
+        "account_id": "111111111111",
+        "observed_at": "2026-09-23T12:00:30Z",
+        "reason": null,
+        "region": "eu-central-1",
+        "stage": null,
+        "status": "succeeded"
+      },
+      {
+        "account_id": "222222222222",
+        "observed_at": "2026-09-23T12:00:30Z",
+        "reason": null,
+        "region": "eu-central-1",
+        "stage": null,
+        "status": "succeeded"
+      }
+    ],
+    "collector_version": null,
+    "complete": true,
+    "duration_seconds": 60,
+    "finished_at": "2026-09-23T12:01:00Z",
+    "inventory_vpcs": [
+      {
+        "account_id": "111111111111",
+        "cidrs": [
+          "10.20.0.0/22"
+        ],
+        "name": "",
+        "overlap_status": "CONFIRMED_CONFLICT",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-a"
+      },
+      {
+        "account_id": "222222222222",
+        "cidrs": [
+          "10.20.0.0/22"
+        ],
+        "name": "",
+        "overlap_status": "CONFIRMED_CONFLICT",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-b"
+      }
+    ],
+    "newest_observed_at": "2026-09-23T12:00:30Z",
+    "oldest_observed_at": "2026-09-23T12:00:30Z",
+    "requested_cells": 2,
+    "scanned_cells": 2,
+    "started_at": "2026-09-23T12:00:00Z",
+    "vpc_cidr_associations": 2,
+    "vpcs": 2,
+    "without_observed_overlap": 0
+  },
+  "input_sha256": {
+    "approved_plan": "pool-hash",
+    "matrix": "matrix-hash",
+    "migration_plans": [
+      "reviewed-plan-hash"
+    ],
+    "networks": "afbcaa3502ab461f97cfadd8f164333801c653331803115eb90edd5bbada3029",
+    "pilot_scope": "scope-hash",
+    "protected": "protected-hash",
+    "run": "88980ff7309b765fa7d0ea5b6eee2c596f84b330bf18f455597dd52b2ac0c1ab"
+  },
+  "network_readiness": "NOT_ASSESSED",
+  "pilot_gates": {
+    "allocation": "UNKNOWN",
+    "discovery": "UNKNOWN",
+    "input": "UNKNOWN",
+    "planning": "PASS"
+  },
+  "pilot_owner": "network-team",
+  "relationships": [
+    {
+      "id": "c-1",
+      "impact": "confirmed",
+      "kind": "equal-cidr",
+      "matrix_relation": "must_communicate",
+      "next_step": "Review the selected replacement and approved pool, reserve through its sole authority, then upload a current verification report.",
+      "review_limit": "Review order is advisory: workload dependencies, route references and migration cost were not assessed.",
+      "review_order": [
+        {
+          "environment": "unknown",
+          "observed_subnets": 0,
+          "owner": null,
+          "selected_replace": true,
+          "subject": "aws:111111111111:eu-central-1:vpc-a"
+        },
+        {
+          "environment": "unknown",
+          "observed_subnets": 0,
+          "owner": null,
+          "selected_replace": false,
+          "subject": "aws:222222222222:eu-central-1:vpc-b"
+        }
+      ],
+      "selected_moves": [
+        {
+          "allocation_key": "vpc-a-new",
+          "approval": {
+            "approved_at": "2026-09-23T11:00:00Z",
+            "approved_by": "network-team",
+            "approves": "VPC replacement"
+          },
+          "approved": true,
+          "authority": "platform-ipam",
+          "blockers": [
+            {
+              "description": "Confirm workload cutover",
+              "id": "owner-review"
+            }
+          ],
+          "conflict_ids": [
+            "c-1"
+          ],
+          "depends_on": [
+            "aws:222222222222:eu-central-1:vpc-b"
+          ],
+          "notes": null,
+          "owner": null,
+          "pool_id": "pilot",
+          "proposal_status": "ADVISORY_CANDIDATE",
+          "proposal_target_match": true,
+          "proposed_cidr": "10.64.0.0/22",
+          "reservation_status": "VERIFICATION_NOT_SUPPLIED",
+          "reservation_verified": false,
+          "rollback": "Restore the original route and DNS record.",
+          "subject": "aws:111111111111:eu-central-1:vpc-a",
+          "target": {
+            "account_id": "111111111111",
+            "allocation_key": "vpc-a-new",
+            "environment": "development",
+            "prefix_length": 22,
+            "region": "eu-central-1",
+            "scope": "vpc",
+            "tenant_id": "developer"
+          },
+          "target_fact": "active",
+          "verifications": [],
+          "wave_id": "wave-1"
+        }
+      ],
+      "sides": [
+        {
+          "account_id": "111111111111",
+          "cidr": "10.20.0.0/22",
+          "region": "eu-central-1",
+          "vpc_id": "vpc-a"
+        },
+        {
+          "account_id": "222222222222",
+          "cidr": "10.20.0.0/22",
+          "region": "eu-central-1",
+          "vpc_id": "vpc-b"
+        }
+      ]
+    }
+  ],
+  "replacements": {
+    "approved": 1,
+    "moves": [
+      {
+        "allocation_key": "vpc-a-new",
+        "approval": {
+          "approved_at": "2026-09-23T11:00:00Z",
+          "approved_by": "network-team",
+          "approves": "VPC replacement"
+        },
+        "approved": true,
+        "authority": "platform-ipam",
+        "blockers": [
+          {
+            "description": "Confirm workload cutover",
+            "id": "owner-review"
+          }
+        ],
+        "conflict_ids": [
+          "c-1"
+        ],
+        "depends_on": [
+          "aws:222222222222:eu-central-1:vpc-b"
+        ],
+        "notes": null,
+        "owner": null,
+        "pool_id": "pilot",
+        "proposal_status": "ADVISORY_CANDIDATE",
+        "proposal_target_match": true,
+        "proposed_cidr": "10.64.0.0/22",
+        "reservation_status": "VERIFICATION_NOT_SUPPLIED",
+        "reservation_verified": false,
+        "rollback": "Restore the original route and DNS record.",
+        "subject": "aws:111111111111:eu-central-1:vpc-a",
+        "target": {
+          "account_id": "111111111111",
+          "allocation_key": "vpc-a-new",
+          "environment": "development",
+          "prefix_length": 22,
+          "region": "eu-central-1",
+          "scope": "vpc",
+          "tenant_id": "developer"
+        },
+        "target_fact": "active",
+        "verifications": [],
+        "wave_id": "wave-1"
+      }
+    ],
+    "planned": 1,
+    "proposed_cidrs": 1,
+    "reservations_verified": 0,
+    "target_facts_reserved_or_active": 1
+  },
+  "reviewed_waves": [],
+  "scope": {
+    "accounts": [
+      "111111111111",
+      "222222222222"
+    ],
+    "regions": [
+      "eu-central-1"
+    ]
+  },
+  "version": 1
+}

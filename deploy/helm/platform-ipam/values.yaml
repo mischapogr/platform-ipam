@@ -149,26 +149,29 @@ uiProxy:
     # named in uiProxy.upstream. An empty list denies non-DNS egress.
     egress: []
 
-# Opt-in Job that runs `platform-ipam adopt` or `platform-ipam onboard`
-# inside the cluster (work-plan package H3; see
-# deploy/runbooks/ADOPTION.md section 3 and deploy/helm/platform-ipam/README.md).
-# Disabled by default; disabled, this renders NOTHING -- no Job, no extra
-# ServiceAccount, no extra NetworkPolicy.
+# Opt-in Job that runs `platform-ipam adopt`, `platform-ipam onboard` or
+# `platform-ipam seed` inside the cluster (work-plan packages H3 and N4; see
+# deploy/runbooks/ADOPTION.md section 3, deploy/runbooks/SEED.md and
+# deploy/helm/platform-ipam/README.md). Disabled by default; disabled, this
+# renders NOTHING -- no Job, no extra ServiceAccount, no extra NetworkPolicy.
 operatorJob:
   enabled: false
-  # "adopt" or "onboard". Anything else fails the render with a clear
-  # message (templates/operator-job.yaml).
+  # "adopt", "onboard" or "seed". Anything else fails the render with a
+  # clear message (templates/operator-job.yaml).
   mode: adopt
-  # The subcommand. REQUIRED when enabled, and validated against an explicit
-  # allow-list per mode (work-plan package H7, templates/operator-job.yaml):
-  # "plan", "apply" or "abandon" for mode: adopt; "plan" or "apply" for
-  # mode: onboard. Anything else fails the render with a clear message. Every
-  # allow-listed command except "abandon" takes exactly one positional
-  # table-path argument, which this chart mounts from `input` below and
-  # appends automatically; "abandon" (ADR 0012) takes NO table at all -- see
-  # `args` below. A subcommand outside the allow-list (e.g. "onboard drift",
-  # "onboard parse", "onboard render-config") is not supported by this
-  # template; run it as a one-off invocation instead.
+  # The subcommand. REQUIRED when enabled and mode is "adopt" or "onboard",
+  # validated against an explicit allow-list per mode (work-plan package H7,
+  # templates/operator-job.yaml): "plan", "apply" or "abandon" for mode:
+  # adopt; "plan" or "apply" for mode: onboard. Anything else fails the
+  # render with a clear message. Every allow-listed command except "abandon"
+  # takes exactly one positional table-path argument, which this chart
+  # mounts from `input` below and appends automatically; "abandon"
+  # (ADR 0012) takes NO table at all -- see `args` below. A subcommand
+  # outside the allow-list (e.g. "onboard drift", "onboard parse", "onboard
+  # render-config") is not supported by this template; run it as a one-off
+  # invocation instead. MUST be left empty ("") for mode: "seed" (work-plan
+  # package N4): `platform-ipam seed` takes no subcommand at all -- the
+  # render fails if this is set.
   command: ""
   # Extra arguments appended after the mode, the subcommand and (for every
   # command except "abandon") the mounted table path. For "plan"/"apply" this
@@ -177,6 +180,8 @@ operatorJob:
   # the ONLY place its flags come from -- --allocation-id, --operator and
   # --reason are REQUIRED here (each must be followed by a non-empty value;
   # the render fails otherwise), and --operation-id/--dry-run are optional.
+  # MUST be empty for mode: "seed" (work-plan package N4): `platform-ipam
+  # seed` takes no flags at all -- the render fails if this is non-empty.
   args: []
   # REQUIRED when enabled. Part of the Job's name, so every run is a new,
   # immutable Job: a `helm upgrade` that leaves this block enabled with the
@@ -190,15 +195,17 @@ operatorJob:
     # -- create the ConfigMap yourself, e.g.:
     #   kubectl create configmap platform-ipam-adopt-records \
     #     --from-file=records.csv=./records.csv
-    # REQUIRED for every command except "abandon" (ADR 0012), which takes no
-    # table -- leave both fields empty for "abandon"; the render fails if
-    # either is set (a table handed to a command that takes none is a
-    # mistake worth stopping).
+    # REQUIRED for every command except "abandon" (ADR 0012) and every "seed"
+    # invocation (work-plan package N4), neither of which takes a table --
+    # leave both fields empty for "abandon" and for mode: "seed"; the render
+    # fails if either is set (a table handed to a command that takes none is
+    # a mistake worth stopping).
     existingConfigMap: ""
     # The key inside existingConfigMap holding the table, e.g. "records.csv"
     # or "table.json" -- also the file name it is mounted under, and the
     # path passed to the command as its table argument. See existingConfigMap
-    # above for why this must be empty when command is "abandon".
+    # above for why this must be empty when command is "abandon" or mode is
+    # "seed".
     key: ""
   ttlSecondsAfterFinished: 86400
   activeDeadlineSeconds: 1800
@@ -206,7 +213,7 @@ operatorJob:
     requests: {cpu: 100m, memory: 128Mi}
     limits: {cpu: 500m, memory: 512Mi}
   networkPolicy:
-    # mode: onboard only -- NetBox's destination CIDR and port. (mode: adopt
-    # reuses networkPolicy.egress above, the same list -worker gets.) An
-    # empty list denies all non-DNS egress.
+    # mode: onboard or mode: seed only -- NetBox's destination CIDR and port.
+    # (mode: adopt reuses networkPolicy.egress above, the same list -worker
+    # gets.) An empty list denies all non-DNS egress.
     egress: []

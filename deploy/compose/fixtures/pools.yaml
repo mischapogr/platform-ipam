@@ -40,6 +40,7 @@ lifecycle:
 
 reconciliation:
   full_scan_interval_seconds: 30
+  projection_refresh_interval_seconds: 360
   include_untagged_resources: true
   include_all_vpc_cidr_associations: true
   unknown_coverage_blocks_reuse: true

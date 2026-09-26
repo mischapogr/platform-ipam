@@ -1,8 +1,10 @@
 {{- /*
-operator-job.yaml: an OPT-IN Job that runs the "adopt" or "onboard" process
-mode inside the cluster (docs/WORK_PLAN.md package H3; replaces the gap
-deploy/runbooks/ADOPTION.md section 3 used to describe -- "there is no Helm
-Job ... for adopt or onboard").
+operator-job.yaml: an OPT-IN Job that runs the "adopt", "onboard" or "seed"
+process mode inside the cluster (docs/WORK_PLAN.md packages H3 and N4;
+replaces the gap deploy/runbooks/ADOPTION.md section 3 used to describe --
+"there is no Helm Job ... for adopt or onboard"). "seed" creates or verifies
+the platform's NetBox custom fields and tags (package N4); unlike adopt and
+onboard it takes no subcommand and no flags at all.
 
 Disabled by default (operatorJob.enabled: false). With the default value this
 template renders NOTHING: no Job, no ServiceAccount, no NetworkPolicy -- so a
@@ -36,12 +38,26 @@ see this chart's README for why and what to run instead.
 {{- if .Values.operatorJob.enabled }}
 {{- $root := . -}}
 {{- $job := $root.Values.operatorJob -}}
-{{- if not (or (eq $job.mode "adopt") (eq $job.mode "onboard")) }}
-{{- fail (printf "operatorJob.mode must be \"adopt\" or \"onboard\", got %q." $job.mode) }}
+{{- if not (or (eq $job.mode "adopt") (eq $job.mode "onboard") (eq $job.mode "seed")) }}
+{{- fail (printf "operatorJob.mode must be \"adopt\", \"onboard\" or \"seed\", got %q." $job.mode) }}
 {{- end }}
 {{- if not $job.runId }}
 {{- fail "operatorJob.runId is required when operatorJob.enabled is true: it names the Job so every run is a new, immutable object (see deploy/helm/platform-ipam/README.md)." }}
 {{- end }}
+{{- $isSeed := eq $job.mode "seed" -}}
+{{- /* seed (docs/WORK_PLAN.md package N4) takes no subcommand and no flags
+at all: `platform-ipam seed` is the whole invocation, and internal/seedcmd's
+own Main rejects any argument as a usage error. So unlike adopt and onboard,
+which each require an allow-listed command, seed requires the OPPOSITE --
+operatorJob.command and operatorJob.args must both be empty. */}}
+{{- if $isSeed }}
+{{- if $job.command }}
+{{- fail (printf "operatorJob.command must not be set when operatorJob.mode is \"seed\": platform-ipam seed takes no subcommand at all; got %q." $job.command) }}
+{{- end }}
+{{- if $job.args }}
+{{- fail "operatorJob.args must be empty when operatorJob.mode is \"seed\": platform-ipam seed takes no flags at all -- a Job that could only exit with a usage error is not worth creating." }}
+{{- end }}
+{{- else }}
 {{- if not $job.command }}
 {{- fail "operatorJob.command is required when operatorJob.enabled is true, e.g. \"plan\" or \"apply\"." }}
 {{- end }}
@@ -49,15 +65,20 @@ see this chart's README for why and what to run instead.
 {{- if not (has $job.command (index $allowedCommands $job.mode)) }}
 {{- fail (printf "operatorJob.command %q is not supported for operatorJob.mode %q by this template; supported commands are %s. A subcommand that takes no reviewed table (\"onboard drift\" and similar read-only subcommands) cannot run through this Job -- see this chart's README." $job.command $job.mode (join ", " (index $allowedCommands $job.mode))) }}
 {{- end }}
-{{- $isAbandon := eq $job.command "abandon" -}}
-{{- if $isAbandon }}
-{{- /* abandon (ADR 0012) acts on one --allocation-id, not a table: a table
-handed to a command that takes none is a mistake worth stopping, and
-internal/adoptcmd's own CheckArgs would refuse a positional argument before
-the container even opens the ledger, so this Job must never mount one. */}}
-{{- if or $job.input.existingConfigMap $job.input.key }}
-{{- fail "operatorJob.input.existingConfigMap and operatorJob.input.key must not be set when operatorJob.command is \"abandon\": abandon (ADR 0012) takes no reviewed table -- pass --allocation-id/--operator/--reason through operatorJob.args instead." }}
 {{- end }}
+{{- $isAbandon := eq $job.command "abandon" -}}
+{{- /* seed and abandon share one property this template cares about: NO
+reviewed table is mounted or appended -- abandon because ADR 0012's
+--allocation-id/--operator/--reason arrive through operatorJob.args instead,
+seed because internal/seedcmd reads no table at all. $noTable is that
+combined condition, used everywhere a table/identity mount or the table
+argument would otherwise be added. */}}
+{{- $noTable := or $isAbandon $isSeed -}}
+{{- if $noTable }}
+{{- if or $job.input.existingConfigMap $job.input.key }}
+{{- fail "operatorJob.input.existingConfigMap and operatorJob.input.key must not be set when operatorJob.command is \"abandon\" or operatorJob.mode is \"seed\": neither reads a reviewed table -- abandon's flags (ADR 0012) and seed's NetBox settings arrive another way." }}
+{{- end }}
+{{- if $isAbandon }}
 {{- range list "--allocation-id" "--operator" "--reason" }}
 {{- $flag := . -}}
 {{- $found := false -}}
@@ -70,6 +91,7 @@ the container even opens the ledger, so this Job must never mount one. */}}
 {{- end }}
 {{- if not $found }}
 {{- fail (printf "operatorJob.args must contain %q followed by a non-empty value when operatorJob.command is \"abandon\": adopt abandon reads --allocation-id, --operator and --reason from args, not a table (--operation-id and --dry-run are optional). A Job that can only exit with a usage error is not worth creating." $flag) }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- else }}
@@ -94,7 +116,7 @@ that for abandon only. */}}
 {{- fail "operatorJob.mode=adopt requires identity.existingConfigMap for \"plan\" and \"apply\": adopt resolves its acting principal from the identity file (the one identity whose tenant/account/environment/region scope covers each record), and with none configured every record is refused for having no covering identity. Configure identity.existingConfigMap before enabling operatorJob in adopt mode with command plan or apply. (\"abandon\" needs no identity file at all -- work-plan package H9 -- so this check does not apply to it.)" }}
 {{- end }}
 {{- $tablePath := "" }}
-{{- if not $isAbandon }}
+{{- if not $noTable }}
 {{- $tablePath = printf "/var/run/platform-ipam/input/%s" $job.input.key }}
 {{- end }}
 apiVersion: batch/v1
@@ -118,13 +140,15 @@ spec:
         app.kubernetes.io/component: operator-job
     spec:
       restartPolicy: Never
-      {{- if eq $job.mode "onboard" }}
-      # Least privilege per mode (work-plan package H3, requirement 5): onboard
-      # never opens the ledger and never builds a cloud observer
-      # (cmd/platform-ipam/main.go dispatches it before storage.NewPostgresLedger
-      # is even constructed, exactly like "client"), so it gets a dedicated
-      # ServiceAccount that carries no IRSA/workload-identity annotation and no
-      # mounted token -- see templates/serviceaccount.yaml.
+      {{- if ne $job.mode "adopt" }}
+      # Least privilege per mode (work-plan package H3, requirement 5;
+      # package N4 extends it to "seed"): onboard and seed alike never open
+      # the ledger and never build a cloud observer
+      # (cmd/platform-ipam/main.go dispatches both before
+      # storage.NewPostgresLedger is even constructed, exactly like
+      # "client"), so they share one dedicated ServiceAccount that carries no
+      # IRSA/workload-identity annotation and no mounted token -- see
+      # templates/serviceaccount.yaml.
       serviceAccountName: {{ include "platform-ipam.fullname" $root }}-operator-job
       automountServiceAccountToken: false
       {{- else }}
@@ -150,12 +174,17 @@ spec:
           # and the subcommand, for every command except "abandon" (ADR 0012,
           # package H2c), which takes no table at all -- its
           # --allocation-id/--operator/--reason/--operation-id/--dry-run
-          # flags arrive entirely through operatorJob.args below. See this
-          # chart's README for the full allow-list of supported commands.
+          # flags arrive entirely through operatorJob.args below. "seed"
+          # (package N4) takes no subcommand at all: `platform-ipam seed` is
+          # the whole invocation, so no second argument is appended for it
+          # either. See this chart's README for the full allow-list of
+          # supported commands.
           args:
             - {{ $job.mode | quote }}
+            {{- if not $isSeed }}
             - {{ $job.command | quote }}
-            {{- if not $isAbandon }}
+            {{- end }}
+            {{- if not $noTable }}
             - {{ $tablePath | quote }}
             {{- end }}
             {{- range $job.args }}
@@ -187,6 +216,28 @@ spec:
             - name: IPAM_IDENTITY_FILE
               value: /etc/platform-ipam/identity/identities.yaml
             {{- end }}
+            {{- else if $isSeed }}
+            {{- /* seed's own settings (internal/config.Settings.Validate
+            with mode "seed", package N4): the NetBox origin and token only.
+            No IPAM_DATABASE_URL (seed opens no ledger, exactly like
+            onboard); no IPAM_CONFIG_FILE (unlike onboard, seed loads no
+            pools/identity configuration at all -- internal/netbox.New is
+            constructed with no Domains/Pools for this mode, so there is
+            nothing for it to read); no IPAM_IDENTITY_FILE; no
+            IPAM_AWS_MODE, IPAM_AUTH_MODE, IPAM_OIDC_ISSUER, IPAM_OIDC_AUDIENCE
+            or IPAM_LISTEN_ADDR -- Settings.Validate returns immediately after
+            checking the NetBox
+            settings for mode "seed" and never reaches any of those other
+            checks. */}}
+            - name: IPAM_ENVIRONMENT
+              value: {{ $root.Values.deploymentEnvironment | quote }}
+            - name: IPAM_NETBOX_URL
+              value: {{ $root.Values.netbox.url | quote }}
+            - name: IPAM_NETBOX_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $root.Values.netbox.existingSecret }}
+                  key: {{ $root.Values.netbox.secretKey }}
             {{- else }}
             {{- /* work-plan packages H5/H7: adopt authenticates no HTTP
             caller and never listens, in any of its three subcommands, so its
@@ -203,26 +254,35 @@ spec:
           resources:
             {{- toYaml $job.resources | nindent 12 }}
           volumeMounts:
+            {{- /* seed loads no pools configuration at all (package N4;
+            see the env block above), so unlike every other mode/command it
+            gets no policy ConfigMap mounted. */}}
+            {{- if not $isSeed }}
             {{- include "platform-ipam.policyVolumeMount" $root | nindent 12 }}
+            {{- end }}
             {{- include "platform-ipam.tmpVolumeMount" $root | nindent 12 }}
             {{- /* work-plan package H9: "abandon" mounts no identity file --
             it resolves no domain.Principal (see the fail guard above) -- even
-            when identity.existingConfigMap is set chart-wide for plan/apply. */}}
-            {{- if and (not $isAbandon) $root.Values.identity.existingConfigMap }}
+            when identity.existingConfigMap is set chart-wide for plan/apply.
+            package N4: "seed" resolves no principal either and loads no
+            identity file, so $noTable (abandon OR seed) covers both. */}}
+            {{- if and (not $noTable) $root.Values.identity.existingConfigMap }}
             {{- include "platform-ipam.identityVolumeMount" $root | nindent 12 }}
             {{- end }}
-            {{- if not $isAbandon }}
+            {{- if not $noTable }}
             - name: input
               mountPath: /var/run/platform-ipam/input
               readOnly: true
             {{- end }}
       volumes:
+        {{- if not $isSeed }}
         {{- include "platform-ipam.policyVolume" $root | nindent 8 }}
+        {{- end }}
         {{- include "platform-ipam.tmpVolume" $root | nindent 8 }}
-        {{- if and (not $isAbandon) $root.Values.identity.existingConfigMap }}
+        {{- if and (not $noTable) $root.Values.identity.existingConfigMap }}
         {{- include "platform-ipam.identityVolume" $root | nindent 8 }}
         {{- end }}
-        {{- if not $isAbandon }}
+        {{- if not $noTable }}
         - name: input
           configMap:
             name: {{ $job.input.existingConfigMap }}

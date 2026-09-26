@@ -23,8 +23,28 @@ legacy v1 header (`Authorization: Token <secret>`). A v1 token's plaintext is
 validated at exactly 40 characters, which is why `create-env.sh` generates
 `IPAM_NETBOX_TOKEN` at that length and the bootstrap refuses any other.
 
+The bootstrap also creates the `e2e-viewer` and `e2e-maintainer` accounts used
+by `tests/e2e/test_e2e_netbox_roles.py`. `create-env.sh` generates separate v1
+tokens for them. The viewer token is read-only; the maintainer token permits
+writes, while the maintainer group's object permissions limit those writes to
+adding and changing prefixes and IP ranges. An existing `.env` can opt into
+the maintainer test without replacing its database credentials:
+
+```sh
+printf 'NETBOX_E2E_MAINTAINER_TOKEN=%s\n' "$(openssl rand -hex 20)" >> .env
+```
+
+Rerun `netbox-bootstrap` before the e2e test so NetBox receives that token.
+
 [`tests/e2e/run-e2e.sh`](../../tests/e2e/README.md) performs all of the above
 and then runs the end-to-end suite.
+
+To add the read-only overlap, address planning, migration and topology evidence workspace to the local NetBox UI,
+layer `compose.netbox-workspace.yaml` after the two base files. It builds a
+small first-party plugin image from the pinned NetBox release and the current
+Platform-IPAM binary. The page is `/plugins/platform-ipam/` on the configured
+`NETBOX_PORT`; see [the workspace guide](../../docs/MIGRATION_WORKSPACE.md).
+The overlay does not enable the separate optional AWS-account plugin.
 
 ## A second local development identity
 
@@ -144,9 +164,23 @@ with neither:
   own throw-away project and a bundled OpenLDAP test directory. **Verified against that test
   directory only -- not against a real Active Directory.**
 
+For a closer local AD protocol test, use `tests/e2e/run-ui-samba-ad.sh`
+with its `up`, `wait`, `bootstrap`, `test` and `stop` phases. It layers
+`compose.ui-samba-ad.yaml`, pins a Samba AD image by digest, and tests nested
+groups and LDAPS. The Samba service is privileged as its upstream image
+requires; it publishes no host port. Its isolated volumes are retained by
+`stop`. `tests/e2e/run-aws-moto.sh up|test|stop` separately exercises the
+real AWS SDK EC2/STS read path against an isolated, pinned Moto service.
+Neither overlay changes the default fake-cloud development stack. See
+[local simulation](../../docs/LOCAL_SIMULATION.md) for the evidence boundary.
+
 `platform-db` is the application ledger. NetBox has its own PostgreSQL and
-Valkey data volumes, and its image is pinned to
-`docker.io/netboxcommunity/netbox:v4.6.7-5.0.2` (netbox-docker release 5.0.2).
+Valkey data volumes, and its image is pinned to exact NetBox/netbox-docker
+`v4.7.1-5.1.1` digest `sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74`.
+The qualified 4.6.10 source image remains available through
+`compose.netbox-compat-4_6_10.yaml` for isolated upgrade rehearsals; see
+[ADR 0019](../../docs/decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md) and the
+[4.7 upgrade runbook](../runbooks/NETBOX_4_7_UPGRADE.md).
 The fake cloud observation file is `fixtures/cloud.json` and is mounted
 read-only into the platform services.
 
@@ -236,6 +270,13 @@ docker compose --env-file .env \
   -f compose.yaml -f compose.netbox.yaml -f compose.netbox-plugin.yaml \
   --profile bootstrap run --rm seed
 ```
+
+For an isolated candidate build, set `NETBOX_PLUGIN_BASE_IMAGE` to an exact
+NetBox image digest and `NETBOX_PLUGIN_IMAGE_TAG` to a separate local tag before
+running the same overlay's `build netbox`. The defaults above use the qualified
+4.6.10 digest and `platform-ipam/netbox-plugin:local`. The local candidate
+build, migrations and API probe are recorded in ADR 0019; stage/production
+need separate checks.
 
 The plugin's migrations run automatically at NetBox startup, the same as
 NetBox's own; verified against a throwaway Compose project on 2026-09-18 (five

@@ -15,10 +15,8 @@ import (
 // there" apart from "NetBox is broken" (docs/WORK_PLAN.md package E2: an
 // unreachable plugin must never be reported as "no drift").
 //
-// If internal/netbox/awsplugin.go lands with its own probe or sentinel for
-// this same condition (package N3, docs/decisions/0009-...), the two should
-// be unified -- this one was declared independently because N3's file did not
-// exist in the repository yet when this was written.
+// ProbeAWSPlugin (package N3, awsplugin.go) and ListAWSAccounts (package E2,
+// this file) both wrap this same sentinel for a 404 on the accounts endpoint.
 var ErrAWSPluginAccountsUnavailable = errors.New("netbox-aws-vpc-plugin aws-accounts endpoint is unavailable (is the plugin installed?)")
 
 // awsAccountsPath is the plugin's REST endpoint for AWSAccount objects. The

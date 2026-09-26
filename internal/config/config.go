@@ -19,6 +19,7 @@ type Settings struct {
 	UIInventoryLinks, UINetBoxURL                                                                                 string
 	Environment, DatabaseURL, ConfigFile, IdentityFile, AuthMode, LocalToken, LocalSubject, LocalExtraCredentials string
 	NetBoxURL, NetBoxToken, AWSMode, FakeCloudFile, ListenAddr, OIDCIssuer, OIDCAudience                          string
+	AWSEndpointURL, AWSEC2EndpointURL, AWSSTSEndpointURL                                                          string
 }
 
 func Environment() Settings {
@@ -28,11 +29,38 @@ func Environment() Settings {
 		}
 		return fallback
 	}
-	return Settings{Environment: get("ENVIRONMENT", "development"), DatabaseURL: get("DATABASE_URL", ""), ConfigFile: get("CONFIG_FILE", "examples/config/pools.yaml"), IdentityFile: get("IDENTITY_FILE", ""), AuthMode: get("AUTH_MODE", "local"), LocalToken: get("LOCAL_TOKEN", ""), LocalSubject: get("LOCAL_SUBJECT", "developer"), LocalExtraCredentials: get("LOCAL_EXTRA_CREDENTIALS", ""), NetBoxURL: get("NETBOX_URL", ""), NetBoxToken: get("NETBOX_TOKEN", ""), AWSMode: get("AWS_MODE", "fake"), FakeCloudFile: get("FAKE_CLOUD_FILE", ""), ListenAddr: get("LISTEN_ADDR", ":8080"), OIDCIssuer: get("OIDC_ISSUER", ""), OIDCAudience: get("OIDC_AUDIENCE", ""), UIInventoryLinks: get("UI_INVENTORY_LINKS_ENABLED", ""), UINetBoxURL: get("UI_NETBOX_BASE_URL", "")}
+	return Settings{Environment: get("ENVIRONMENT", "development"), DatabaseURL: get("DATABASE_URL", ""), ConfigFile: get("CONFIG_FILE", "examples/config/pools.yaml"), IdentityFile: get("IDENTITY_FILE", ""), AuthMode: get("AUTH_MODE", "local"), LocalToken: get("LOCAL_TOKEN", ""), LocalSubject: get("LOCAL_SUBJECT", "developer"), LocalExtraCredentials: get("LOCAL_EXTRA_CREDENTIALS", ""), NetBoxURL: get("NETBOX_URL", ""), NetBoxToken: get("NETBOX_TOKEN", ""), AWSMode: get("AWS_MODE", "fake"), FakeCloudFile: get("FAKE_CLOUD_FILE", ""), ListenAddr: get("LISTEN_ADDR", ":8080"), OIDCIssuer: get("OIDC_ISSUER", ""), OIDCAudience: get("OIDC_AUDIENCE", ""), UIInventoryLinks: get("UI_INVENTORY_LINKS_ENABLED", ""), UINetBoxURL: get("UI_NETBOX_BASE_URL", ""), AWSEndpointURL: os.Getenv("AWS_ENDPOINT_URL"), AWSEC2EndpointURL: os.Getenv("AWS_ENDPOINT_URL_EC2"), AWSSTSEndpointURL: os.Getenv("AWS_ENDPOINT_URL_STS")}
 }
 func (s Settings) Validate(mode string) error {
 	if !slices.Contains([]string{"development", "stage", "prod"}, s.Environment) {
 		return fmt.Errorf("IPAM_ENVIRONMENT must be development, stage, or prod")
+	}
+	// seed (docs/WORK_PLAN.md package N4, found by M9b1) creates or verifies
+	// the platform's NetBox custom fields and tags. Like adopt and worker
+	// before H5, and unlike every other mode, it must not demand settings it
+	// never uses -- but seed goes further than either: it opens no database
+	// at all (cmd/platform-ipam/main.go dispatches it before
+	// storage.NewPostgresLedger is even constructed, exactly like "client"
+	// and "onboard"), loads no pools/identity configuration, builds no cloud
+	// observer and authenticates no caller. So unlike adopt and worker,
+	// which still reach the shared database/AWS/OIDC checks below, seed
+	// returns immediately after validating only the NetBox origin and
+	// token -- the one thing internal/netbox.New needs to reach NetBox.
+	if mode == "seed" {
+		// The same second guard the general path applies further down,
+		// independent of mode: IPAM_LOCAL_EXTRA_CREDENTIALS must never be
+		// honoured outside development, whether or not this mode ever reads
+		// it (it does not).
+		if s.LocalExtraCredentials != "" && s.Environment != "development" {
+			return fmt.Errorf("IPAM_LOCAL_EXTRA_CREDENTIALS is permitted only when IPAM_ENVIRONMENT is development")
+		}
+		if err := secureOrigin(s.NetBoxURL, s.Environment == "development"); err != nil {
+			return fmt.Errorf("IPAM_NETBOX_URL: %w", err)
+		}
+		if s.NetBoxToken == "" {
+			return fmt.Errorf("IPAM_NETBOX_TOKEN is required")
+		}
+		return nil
 	}
 	if s.DatabaseURL == "" {
 		return fmt.Errorf("IPAM_DATABASE_URL is required")
@@ -45,6 +73,9 @@ func (s Settings) Validate(mode string) error {
 	}
 	if mode == "migrate" {
 		return nil
+	}
+	if s.Environment != "development" && (s.AWSEndpointURL != "" || s.AWSEC2EndpointURL != "" || s.AWSSTSEndpointURL != "") {
+		return fmt.Errorf("custom AWS endpoints are permitted only when IPAM_ENVIRONMENT is development")
 	}
 	// adopt (docs/WORK_PLAN.md package H5, found by H3's chart review)
 	// authenticates no caller and answers no HTTP request at all --
@@ -190,7 +221,7 @@ func Validate(c domain.Config, environment string) error {
 	if environment != "development" && (c.Lifecycle.QuarantineHours < 168 || c.Lifecycle.MinScanSpacing < 300) {
 		return fmt.Errorf("stage/prod require at least seven-day quarantine and five-minute absence scan spacing")
 	}
-	if !c.Reconciliation.IncludeUntagged || !c.Reconciliation.IncludeAssociations || !c.Reconciliation.UnknownBlocksReuse || c.Reconciliation.FullScanInterval < 1 {
+	if !c.Reconciliation.IncludeUntagged || !c.Reconciliation.IncludeAssociations || !c.Reconciliation.UnknownBlocksReuse || c.Reconciliation.FullScanInterval < 1 || c.Reconciliation.ProjectionRefreshInterval < 0 {
 		return fmt.Errorf("reconciliation must include all occupancy and block UNKNOWN reuse")
 	}
 	domains := map[string]domain.Domain{}

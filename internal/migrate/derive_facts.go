@@ -258,6 +258,7 @@ func deriveMove(m Move, report assess.Report, input assess.Input, idx *evidenceI
 		Disposition:           string(m.Disposition),
 		WaveID:                m.Wave,
 		Owner:                 m.Owner,
+		Target:                m.Target,
 		Approval:              toApprovalResult(m.Approval),
 		DependsOn:             dependsOn,
 		Blockers:              toBlockerResults(m.Blockers),

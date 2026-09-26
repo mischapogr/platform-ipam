@@ -141,6 +141,10 @@ A NetBox-only outage still permits ledger-backed Read, with pending inventory pr
 
 Private provider distribution needs a registry or approved filesystem/network mirror, release checksums/signatures, supported OS/architectures, and a compatibility policy. Keep API v1/provider versions independently versioned and retain rollback artifacts. [Terraform provider installation](https://developer.hashicorp.com/terraform/cli/plugins).
 
+[ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md) selects the public Registry route, a separate generated release repository and an initial tested `linux_amd64` artifact. The final organization namespace and signing custodian remain unassigned; no consumer should use the placeholder source as a durable state identity.
+
+**Local installation rehearsal (2026-09-23).** `sh tests/e2e/run-provider-mirror.sh` builds the current provider source in the pinned Go image, packages a test-only `linux_amd64` version `0.1.0` in a temporary [Terraform filesystem mirror](https://developer.hashicorp.com/terraform/cli/config/config-file#filesystem_mirror), and runs normal `terraform init` in the pinned Terraform image without `dev_overrides`. It verifies the generated lock entry, loads the provider schema, reinitializes with a read-only lock, and confirms that a changed binary inside the ZIP is rejected by the recorded checksum. This passed locally. The temporary package is discarded; `registry.example.com` and `0.1.0` remain fixtures. A real distribution address, release signing, target-platform matrix, and consumer installation from a published artifact still need decisions and verification. Mirror-derived checksums are not publisher signatures; see [Terraform's lock command](https://developer.hashicorp.com/terraform/cli/commands/providers/lock).
+
 ## 6. Supported CLI
 
 `platform-ipam client` is the first-party consumer client ([ADR 0003](decisions/0003-FIRST_PARTY_CONSUMER_CLI.md)).

@@ -1,0 +1,2712 @@
+{
+  "accounts": [
+    {
+      "account_id": "100000000000",
+      "account_name": "prod-application-001",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000001",
+      "account_name": "nonprod-application-002",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000002",
+      "account_name": "prod-application-003",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000003",
+      "account_name": "nonprod-application-004",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000004",
+      "account_name": "prod-application-005",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000005",
+      "account_name": "nonprod-application-006",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000006",
+      "account_name": "prod-application-007",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000007",
+      "account_name": "nonprod-application-008",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000008",
+      "account_name": "prod-application-009",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000009",
+      "account_name": "nonprod-application-010",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000010",
+      "account_name": "prod-application-011",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000011",
+      "account_name": "nonprod-application-012",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000012",
+      "account_name": "prod-application-013",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000013",
+      "account_name": "nonprod-application-014",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000014",
+      "account_name": "prod-application-015",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000015",
+      "account_name": "nonprod-application-016",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000016",
+      "account_name": "prod-application-017",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000017",
+      "account_name": "nonprod-application-018",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000018",
+      "account_name": "prod-application-019",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000019",
+      "account_name": "nonprod-application-020",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000020",
+      "account_name": "prod-application-021",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 3
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000021",
+      "account_name": "nonprod-application-022",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000022",
+      "account_name": "prod-application-023",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000023",
+      "account_name": "nonprod-application-024",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000024",
+      "account_name": "prod-application-025",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 3
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000025",
+      "account_name": "nonprod-application-026",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000026",
+      "account_name": "prod-application-027",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000027",
+      "account_name": "nonprod-application-028",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000028",
+      "account_name": "prod-application-029",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000029",
+      "account_name": "nonprod-application-030",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000030",
+      "account_name": "prod-application-031",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000031",
+      "account_name": "nonprod-application-032",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000032",
+      "account_name": "prod-application-033",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000033",
+      "account_name": "nonprod-application-034",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000034",
+      "account_name": "prod-application-035",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000035",
+      "account_name": "nonprod-application-036",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000036",
+      "account_name": "prod-application-037",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000037",
+      "account_name": "nonprod-application-038",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000038",
+      "account_name": "prod-application-039",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000039",
+      "account_name": "nonprod-application-040",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000040",
+      "account_name": "prod-application-041",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000041",
+      "account_name": "nonprod-application-042",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000042",
+      "account_name": "prod-application-043",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000043",
+      "account_name": "nonprod-application-044",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000044",
+      "account_name": "prod-application-045",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000045",
+      "account_name": "nonprod-application-046",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000046",
+      "account_name": "prod-application-047",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000047",
+      "account_name": "nonprod-application-048",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000048",
+      "account_name": "prod-application-049",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000049",
+      "account_name": "nonprod-application-050",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000050",
+      "account_name": "prod-application-051",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000051",
+      "account_name": "nonprod-application-052",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000052",
+      "account_name": "prod-application-053",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000053",
+      "account_name": "nonprod-application-054",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000054",
+      "account_name": "prod-application-055",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000055",
+      "account_name": "nonprod-application-056",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000056",
+      "account_name": "prod-application-057",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000057",
+      "account_name": "nonprod-application-058",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000058",
+      "account_name": "prod-application-059",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000059",
+      "account_name": "nonprod-application-060",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000060",
+      "account_name": "prod-application-061",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000061",
+      "account_name": "nonprod-application-062",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000062",
+      "account_name": "prod-application-063",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000063",
+      "account_name": "nonprod-application-064",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000064",
+      "account_name": "prod-application-065",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000065",
+      "account_name": "nonprod-application-066",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000066",
+      "account_name": "prod-application-067",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000067",
+      "account_name": "nonprod-application-068",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000068",
+      "account_name": "prod-application-069",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000069",
+      "account_name": "nonprod-application-070",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000070",
+      "account_name": "prod-application-071",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000071",
+      "account_name": "nonprod-application-072",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000072",
+      "account_name": "prod-application-073",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000073",
+      "account_name": "nonprod-application-074",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000074",
+      "account_name": "prod-application-075",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000075",
+      "account_name": "nonprod-application-076",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000076",
+      "account_name": "prod-application-077",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000077",
+      "account_name": "nonprod-application-078",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000078",
+      "account_name": "prod-application-079",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000079",
+      "account_name": "nonprod-application-080",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000080",
+      "account_name": "prod-application-081",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000081",
+      "account_name": "nonprod-application-082",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000082",
+      "account_name": "prod-application-083",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000083",
+      "account_name": "nonprod-application-084",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000084",
+      "account_name": "prod-application-085",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000085",
+      "account_name": "nonprod-application-086",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000086",
+      "account_name": "prod-application-087",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000087",
+      "account_name": "nonprod-application-088",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000088",
+      "account_name": "prod-application-089",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000089",
+      "account_name": "nonprod-application-090",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000090",
+      "account_name": "prod-application-091",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000091",
+      "account_name": "nonprod-application-092",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000092",
+      "account_name": "prod-application-093",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000093",
+      "account_name": "nonprod-application-094",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000094",
+      "account_name": "prod-application-095",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000095",
+      "account_name": "nonprod-application-096",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000096",
+      "account_name": "prod-application-097",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 2
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000097",
+      "account_name": "nonprod-application-098",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000098",
+      "account_name": "prod-application-099",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "us-east-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "100000000099",
+      "account_name": "nonprod-application-100",
+      "credential_source": "assumed-role",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        },
+        {
+          "observed_at": "2026-09-24T10:00:00Z",
+          "outcome": "succeeded",
+          "region": "eu-west-1",
+          "row_count": 1
+        },
+        {
+          "region": "us-east-1",
+          "outcome": "failed",
+          "row_count": 0,
+          "observed_at": "2026-09-24T10:00:00Z"
+        }
+      ],
+      "regions_attempted": "known"
+    }
+  ],
+  "configured_regions": [
+    "eu-central-1",
+    "eu-west-1",
+    "us-east-1"
+  ],
+  "finished_at": "2026-09-24T10:05:00Z",
+  "script_version": "2",
+  "started_at": "2026-09-24T10:00:00Z"
+}

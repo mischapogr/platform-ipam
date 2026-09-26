@@ -1,0 +1,707 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Migration workspace{% endblock %}
+
+{% block header %}
+  <h1>Migration workspace</h1>
+{% endblock %}
+
+{% block content %}
+  <div class="card mb-4" id="saved-pilots">
+    <div class="card-header">Migration pilots</div>
+    <div class="card-body">
+      <p class="small text-muted">Each pilot keeps immutable derived report snapshots. Uploaded source files are not retained; a new assessment adds a snapshot.</p>
+      {% if snapshot %}<div class="alert alert-success">Viewing <strong>{{ selected_pilot.name }}</strong> snapshot
+        from {{ snapshot.created_at }}. Report SHA-256: <code>{{ snapshot.report_sha256 }}</code>.
+        <a href="?pilot={{ selected_pilot.id }}&amp;snapshot={{ snapshot.id }}&amp;download=1">Download saved evidence JSON</a></div>{% endif %}
+      {% for saved in saved_pilots %}
+        <details class="border-bottom py-2" {% if selected_pilot.id == saved.id %}open{% endif %}>
+          <summary><a href="?pilot={{ saved.id }}">{{ saved.name }}</a>
+            <span class="small text-muted">owner {{ saved.owner }} · {{ saved.snapshots.count }} snapshot{{ saved.snapshots.count|pluralize }}</span></summary>
+          {% for history in saved.recent_snapshots %}
+            <div class="ms-3 small"><a href="?pilot={{ saved.id }}&amp;snapshot={{ history.id }}">{{ history.created_at }}</a>
+              · {{ history.created_by }} · {{ history.report.discovery.scanned_cells }}/{{ history.report.discovery.requested_cells }} cells
+              · {{ history.report.conflicts.confirmed }} blockers
+              · {{ history.report.replacements.reservations_verified }}/{{ history.report.replacements.planned }} verified</div>
+          {% endfor %}
+          {% if saved.change %}<div class="ms-3 small text-muted">Latest versus previous: scanned cells {{ saved.change.coverage|stringformat:'+d' }}, blockers {{ saved.change.conflicts|stringformat:'+d' }}, verified moves {{ saved.change.verified|stringformat:'+d' }}. Review both snapshots before interpreting the change.</div>{% endif %}
+        </details>
+      {% empty %}<p class="mb-0">No pilots saved yet. Upload evidence below and select <strong>Save pilot snapshot</strong>.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="alert alert-info">
+    <strong>Uploadable synthetic pilot files:</strong>
+    <a href="?download_fixture=100">Download 100-account ZIP</a> ·
+    <a href="?download_fixture=500">Download 500-account ZIP</a>.
+    Upload a ZIP directly, or extract it and drop all files into the area below.
+    Uploads are read-only: they create no NetBox Prefixes, IP addresses or allocations.
+  </div>
+  {% if sample %}
+    <div class="alert alert-warning" role="status">
+      <strong>{% if large_sample %}100-account demo{% else %}Sample pilot{% endif %} — synthetic, dated evidence.</strong>
+      This shows how a review looks; it is not a customer assessment or a live AWS scan.
+      Upload your pilot files below to review real evidence. No reservation is verified in this sample.
+      <span class="ms-2">{% if large_sample %}<a href="?sample=small">Open small sample</a>{% else %}<a href="?sample=100">Open 100-account demo</a>{% endif %}</span>
+    </div>
+  {% endif %}
+  {% if not report %}<div class="alert alert-info">
+    Upload a collected inventory to assess address conflicts. Add a reviewed migration plan
+    and allocation evidence to derive progress, propose advisory replacement CIDRs from
+    an approved plan, or inspect a separately collected AWS topology report.
+    Files are processed for this request and are not stored by this workspace.
+    These reports do not prove workload reachability.
+  </div>{% endif %}
+
+  <details class="mb-4" {% if not sample %}open{% endif %}>
+    <summary class="mb-2">Upload pilot evidence or run another report</summary>
+  <div class="card">
+    <div class="card-header">Run a read-only report</div>
+    <div class="card-body">
+      <form id="workspace-upload" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% if error %}<div id="server-upload-error" class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+        <div id="client-upload-error" class="alert alert-danger" role="alert" hidden></div>
+        <div class="mb-3">
+          <label class="form-label" for="bundle">Pilot ZIP (one file; Migration pilot overview)</label>
+          <input class="form-control" id="bundle" name="bundle" type="file" accept=".zip,application/zip">
+        </div>
+        <div id="pilot-dropzone" class="border rounded p-3 mb-3" tabindex="0" role="button"
+             aria-label="Drop pilot ZIP or extracted pilot files here">
+          Drop the ZIP or all extracted files here. Files are assigned to the matching fields below.
+          <div id="upload-status" class="small text-muted mt-1" aria-live="polite">No files selected.</div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="mode">Report</label>
+            <select class="form-select" id="mode" name="mode">
+              <option value="pilot" {% if mode == 'pilot' or not mode %}selected{% endif %}>Migration pilot overview</option>
+              <option value="assess" {% if mode == 'assess' %}selected{% endif %}>Overlap assessment</option>
+              <option value="progress" {% if mode == 'progress' %}selected{% endif %}>Migration progress</option>
+              <option value="address" {% if mode == 'address' %}selected{% endif %}>Address readiness and candidates</option>
+              <option value="topology" {% if mode == 'topology' %}selected{% endif %}>AWS topology evidence</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="networks">networks.csv (required)</label>
+            <input class="form-control" id="networks" name="networks" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="accounts">accounts.json</label>
+            <input class="form-control" id="accounts" name="accounts" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="failures">failures.csv</label>
+            <input class="form-control" id="failures" name="failures" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="run">run.json</label>
+            <input class="form-control" id="run" name="run" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="matrix">Connectivity matrix YAML</label>
+            <input class="form-control" id="matrix" name="matrix" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="ownership">Ownership YAML</label>
+            <input class="form-control" id="ownership" name="ownership" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="fixed">Protected ranges YAML or JSON (JSON required for address planning)</label>
+            <input class="form-control" id="fixed" name="fixed" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="approved">Approved pool plan JSON (address planning only)</label>
+            <input class="form-control" id="approved" name="approved" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="pilot">Pilot owner and scope JSON (address planning only)</label>
+            <input class="form-control" id="pilot" name="pilot" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="decisions">Reviewed decisions YAML</label>
+            <input class="form-control" id="decisions" name="decisions" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="plan">migration.yaml (progress or pilot overview)</label>
+            <input class="form-control" id="plan" name="plan" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="allocations">Allocation evidence JSON (progress or pilot overview)</label>
+            <input class="form-control" id="allocations" name="allocations" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="verification">CLI reservation verification report JSON (pilot overview only)</label>
+            <input class="form-control" id="verification" name="verification" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="execution">Customer Terraform execution JSON (pilot overview only)</label>
+            <input class="form-control" id="execution" name="execution" type="file">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="topology">topology.json (topology only)</label>
+            <input class="form-control" id="topology" name="topology" type="file">
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="form-label" for="pilot-id">Add report to pilot (optional)</label>
+          <select class="form-select" id="pilot-id" name="pilot_id">
+            <option value="">Create a new pilot</option>
+            {% for saved in saved_pilots %}<option value="{{ saved.id }}" {% if selected_pilot.id == saved.id %}selected{% endif %}>{{ saved.name }} — {{ saved.owner }}</option>{% endfor %}
+          </select>
+          <label class="form-label" for="pilot-name">Pilot name (when saving)</label>
+          <input class="form-control" id="pilot-name" name="pilot_name" type="text" maxlength="160" placeholder="Required when creating a new pilot">
+          <label class="form-check mt-2"><input class="form-check-input" name="save_snapshot" type="checkbox" value="1">
+            <span class="form-check-label">Save pilot snapshot after a successful Migration pilot overview report</span></label>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+          <button class="btn btn-primary" type="submit">Show report</button>
+          <button class="btn btn-outline-secondary" type="submit" name="download" value="1">Download JSON</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </details>
+
+  <script>
+    (() => {
+      const form = document.getElementById('workspace-upload');
+      const mode = document.getElementById('mode');
+      const bundle = document.getElementById('bundle');
+      const dropzone = document.getElementById('pilot-dropzone');
+      const status = document.getElementById('upload-status');
+      const error = document.getElementById('client-upload-error');
+      const inputs = new Map([...form.querySelectorAll('input[type="file"]')].map(input => [input.name, input]));
+      const names = new Map([
+        ['networks.csv', 'networks'], ['accounts.json', 'accounts'], ['failures.csv', 'failures'],
+        ['run.json', 'run'], ['matrix.yaml', 'matrix'], ['ownership.yaml', 'ownership'],
+        ['fixed.yaml', 'fixed'], ['approved-plan.json', 'approved'], ['pilot-scope.json', 'pilot'],
+        ['decisions.yaml', 'decisions'], ['migration.yaml', 'plan'], ['allocations.json', 'allocations'],
+        ['verification.json', 'verification'], ['execution.json', 'execution'], ['topology.json', 'topology']
+      ]);
+      const fileNameByField = new Map([...names].map(([name, field]) => [field, name]));
+      const required = {
+        pilot: ['networks', 'accounts', 'run', 'matrix', 'fixed', 'approved', 'pilot', 'plan'],
+        address: ['networks', 'accounts', 'matrix', 'fixed', 'approved', 'pilot'],
+        assess: ['networks'], progress: ['networks', 'plan'], topology: ['topology']
+      };
+      const showError = message => {
+        error.textContent = message;
+        error.hidden = false;
+        error.scrollIntoView({block: 'center'});
+      };
+      const selectedFields = () => [...inputs].filter(([key, input]) => key !== 'bundle' && input.files.length)
+        .map(([key]) => key);
+      const updateStatus = () => {
+        error.hidden = true;
+        if (bundle.files.length) {
+          status.textContent = `ZIP ready: ${bundle.files[0].name}. Choose Migration pilot overview, then Show report.`;
+          return;
+        }
+        const chosen = selectedFields();
+        const missing = (required[mode.value] || []).filter(key => !chosen.includes(key))
+          .map(key => fileNameByField.get(key) || key);
+        status.textContent = chosen.length
+          ? `${chosen.length} file(s) selected. ${missing.length ? `Still needed: ${missing.join(', ')}.` : 'Required files ready.'}`
+          : `No files selected. ${missing.length ? `Required: ${missing.join(', ')}.` : ''}`;
+      };
+      for (const input of inputs.values()) input.addEventListener('change', updateStatus);
+      mode.addEventListener('change', updateStatus);
+      dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('border-primary'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-primary'));
+      dropzone.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); bundle.click(); }
+      });
+      dropzone.addEventListener('drop', event => {
+        event.preventDefault();
+        dropzone.classList.remove('border-primary');
+        const files = [...event.dataTransfer.files];
+        if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
+          const transfer = new DataTransfer();
+          transfer.items.add(files[0]);
+          bundle.files = transfer.files;
+          for (const [key, input] of inputs) if (key !== 'bundle') input.value = '';
+          mode.value = 'pilot';
+          updateStatus();
+          return;
+        }
+        if (!files.length) { showError('Drop a ZIP or the extracted files, not a folder.'); return; }
+        const unknown = files.filter(file => !names.has(file.name)).map(file => file.name);
+        if (unknown.length) { showError(`Unrecognized files: ${unknown.join(', ')}.`); return; }
+        bundle.value = '';
+        for (const file of files) {
+          const transfer = new DataTransfer();
+          transfer.items.add(file);
+          inputs.get(names.get(file.name)).files = transfer.files;
+        }
+        updateStatus();
+      });
+      document.addEventListener('dragover', event => {
+        if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
+      });
+      document.addEventListener('drop', event => {
+        if (!dropzone.contains(event.target) && !(event.target instanceof HTMLInputElement && event.target.type === 'file')) {
+          event.preventDefault();
+          showError('Drop files in the marked area or use Choose File.');
+        }
+      });
+      form.addEventListener('submit', event => {
+        const chosen = selectedFields();
+        if (bundle.files.length) {
+          if (mode.value !== 'pilot' || chosen.length) {
+            event.preventDefault();
+            showError('Choose Migration pilot overview and use either the ZIP or individual files.');
+          }
+          return;
+        }
+        const missing = (required[mode.value] || []).filter(key => !chosen.includes(key))
+          .map(key => fileNameByField.get(key) || key);
+        if (missing.length) {
+          event.preventDefault();
+          showError(`Missing required files: ${missing.join(', ')}. Drop the full ZIP or add these files.`);
+        }
+      });
+      updateStatus();
+    })();
+  </script>
+
+  {% if report %}
+    <div class="card mb-4" id="pilot-overview">
+      <div class="card-header">{% if large_sample %}100-account demo overview{% elif sample %}Sample pilot overview{% else %}{{ mode|title }} summary{% endif %}</div>
+      <div class="card-body">
+        {% if mode == 'pilot' %}
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="text-muted">Address state</div><a href="#pilot-blockers"><strong>{{ report.current_address_readiness }}</strong></a><div class="small">Network: {{ report.network_readiness }}</div></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="text-muted">Discovery coverage</div><a href="#pilot-discovery"><strong>{{ report.discovery.scanned_cells }}/{{ report.discovery.requested_cells }}</strong></a><div class="small">account-region cells; {{ report.discovery.vpcs }} VPCs</div></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="text-muted">Connectivity blockers</div><a href="#pilot-conflicts"><strong>{{ report.conflicts.confirmed }}</strong></a><div class="small">{{ report.affected_vpcs }} VPCs across {{ report.affected_accounts }} accounts</div></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><div class="text-muted">Replacement moves</div><a href="#pilot-moves"><strong>{{ report.replacements.approved }}/{{ report.replacements.planned }}</strong></a><div class="small">approved; {{ report.replacements.proposed_cidrs }} advisory CIDRs; <a href="#pilot-allocations">{{ report.replacements.reservations_verified }} verified</a></div></div></div>
+          </div>
+          <nav class="nav nav-pills gap-2 mb-3" aria-label="Pilot evidence sections">
+            <a class="nav-link" href="#pilot-overview">Overview</a>
+            <a class="nav-link" href="#pilot-scope">Scope</a>
+            <a class="nav-link" href="#pilot-discovery">Discovery</a>
+            <a class="nav-link" href="#pilot-conflicts">Conflicts &amp; moves</a>
+            <a class="nav-link" href="#pilot-allocations">Allocations</a>
+          </nav>
+          <p class="mb-1">Gates:
+            <a href="#pilot-scope">input <strong>{{ report.pilot_gates.input }}</strong></a> ·
+            <a href="#pilot-discovery">discovery <strong>{{ report.pilot_gates.discovery }}</strong></a> ·
+            <a href="#pilot-conflicts">planning <strong>{{ report.pilot_gates.planning }}</strong></a> ·
+            <a href="#pilot-allocations">allocation <strong>{{ report.pilot_gates.allocation }}</strong></a>.
+          </p>
+          <p class="small text-muted mb-0">Observation: {{ report.discovery.started_at|default:'unknown' }} to {{ report.discovery.finished_at|default:'unknown' }}; {{ report.discovery.duration_seconds|default:'unknown' }} seconds. Collector version {{ report.discovery.collector_version|default:'unknown' }}. {{ report.discovery.vpc_cidr_associations }} VPC CIDR associations; {{ report.discovery.without_observed_overlap }} VPCs without an observed overlap.</p>
+          {% if report.authority_verification %}
+            <div class="alert {% if report.authority_verification_current_status == 'EXPIRED' or report.authority_verification_current_status == 'INVALID_EXPIRY' %}alert-warning{% else %}alert-info{% endif %}">
+              Authority evidence: <strong>{{ report.authority_verification_current_status|default:'CURRENT AT REPORT TIME' }}</strong>.
+              It was read at {{ report.authority_verification.read_at }} and was valid through {{ report.authority_verification.valid_until }}.
+              This browser request did not contact the allocation API
+              or authenticate the uploaded report.
+              An expired result is historical evidence and does not establish a current reservation. Existing VPC conflicts remain until a later discovery shows they are gone.</div>
+          {% else %}
+            <div class="alert alert-info">No authenticated reservation check was supplied.
+              A target allocation fact is not proof that its returned CIDR and authority match the proposal.
+              Existing VPC conflicts remain until a later discovery shows they are gone.</div>
+          {% endif %}
+        {% elif mode == 'assess' %}
+          <p>{{ report.summary.sentence }}</p>
+          <p>Inventory coverage complete: <strong>{{ report.coverage.complete|yesno:'yes,no' }}</strong>.
+            Relationships: {{ report.summary.total_relationships }}.
+            Accounts with incomplete evidence: {{ report.summary.incomplete_accounts }}.</p>
+        {% elif mode == 'progress' %}
+          <p>{{ report.summary.sentence }}</p>
+          <p>Evidence complete: <strong>{{ report.evidence.complete|yesno:'yes,no' }}</strong>.
+            Moves: {{ report.summary.derived.moves_total }}.
+            Fully evidenced: {{ report.summary.derived.fully_evidenced }}.</p>
+          <p>Underlying assessment: {{ report.assessment.summary.sentence }}</p>
+        {% elif mode == 'address' %}
+          <p>Address readiness: <strong>{{ report.address_readiness }}</strong>.
+            Network readiness: <strong>{{ report.network_readiness }}</strong>.</p>
+          <p>Inventory coverage complete: {{ report.coverage_complete|yesno:'yes,no' }}.
+            Confirmed conflicts: {{ report.confirmed_conflicts }}.
+            Unresolved intent conflicts: {{ report.unresolved_intent_conflicts }}.</p>
+          <p>Pilot owner: {{ report.pilot_scope.owner }}. Accounts: {{ report.pilot_scope.accounts|join:', ' }}.</p>
+        {% else %}
+          <p>Collection complete: <strong>{{ report.complete|yesno:'yes,no' }}</strong>.
+            Account and region cells: {{ report.cells|length }}.
+            Collection gaps: {{ report.gaps|length }}.</p>
+          <p>This is current route and attachment evidence. It has not been joined to the
+            intended connectivity matrix and does not establish TGW readiness.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if mode == 'pilot' %}
+      <div class="card mb-4" id="pilot-scope">
+        <div class="card-header">Scope and reviewed inputs</div>
+        <div class="card-body">
+          <p>Owner: <strong>{{ report.pilot_owner }}</strong> · {{ report.scope.accounts|length }} accounts · {{ report.scope.regions|join:', ' }}</p>
+          <p class="small">Scope input version {{ report.scope_inputs.versions.pilot_scope|default:'unknown' }} · approved plan version {{ report.scope_inputs.versions.approved_plan|default:'unknown' }}.</p>
+          <p class="small text-muted">Input and discovery gates remain {{ report.pilot_gates.input }} / {{ report.pilot_gates.discovery }} until independent owner approval and live collection validation are supplied.</p>
+          <div class="row g-3">
+            <div class="col-lg-6"><strong>Protected ranges</strong>
+              <ul class="mb-0">{% for item in report.scope_inputs.protected_ranges %}<li><code>{{ item.cidr }}</code> · {{ item.description|default:'protected' }} · {{ item.owner|default:'owner unknown' }}</li>
+              {% empty %}<li>Details unavailable in this report; inspect the protected-input hash below.</li>{% endfor %}</ul>
+            </div>
+            <div class="col-lg-6"><strong>Approved pools and sole authority</strong>
+              <ul class="mb-0">{% for pool in report.scope_inputs.approved_pools %}<li>{{ pool.id }} · <code>{{ pool.cidr }}</code> · {{ pool.region }} · {{ pool.authority }}</li>
+              {% empty %}<li>Details unavailable in this report; inspect the approved-plan hash below.</li>{% endfor %}</ul>
+            </div>
+          </div>
+          <details class="mt-3"><summary>Input SHA-256 evidence</summary><table class="table table-sm mt-2"><tbody>
+            {% for name, digest in report.input_sha256.items %}<tr><th>{{ name }}</th><td><code>{{ digest }}</code></td></tr>{% endfor %}
+          </tbody></table></details>
+          {% if report.reviewed_waves %}<details class="mt-3"><summary>Reviewed migration waves ({{ report.reviewed_waves|length }})</summary>
+            <div class="table-responsive"><table class="table table-sm mt-2"><thead><tr><th>Wave</th><th>Owner</th><th>Moves</th><th>Approval supplied in plan</th></tr></thead><tbody>
+              {% for wave in report.reviewed_waves %}<tr><td>{{ wave.name|default:wave.id }} <code>{{ wave.id }}</code></td><td>{{ wave.owner|default:'unknown' }}</td><td>{{ wave.moves_total }}</td>
+                <td>{% if wave.approval %}{{ wave.approval.approved_by }} · {{ wave.approval.approved_at }}<br>{{ wave.approval.approves }}{% else %}Not supplied{% endif %}</td></tr>{% endfor %}
+            </tbody></table></div>
+          </details>{% endif %}
+          <p class="small text-muted mt-2 mb-0">Connectivity intent for observed overlaps appears under <a href="#pilot-conflicts">Conflicts &amp; moves</a>. The full reviewed matrix stays in the source file.</p>
+        </div>
+      </div>
+      <details class="card mb-4">
+        <summary class="card-header">Where to resolve the next blocker</summary>
+        <div class="card-body">
+          <ol class="mb-0">
+            <li><strong>Unknown intent:</strong> the network owner updates <code>matrix.yaml</code> with required or isolated connectivity, then reruns the assessment.</li>
+            <li><strong>Unreviewed move:</strong> the workload owner chooses which VPC changes and records approval, wave and target allocation key in <code>migration.yaml</code>.</li>
+            <li><strong>Candidate:</strong> the platform operator checks <code>approved-plan.json</code> and protected ranges. A proposed CIDR is advisory.</li>
+            <li><strong>Reservation:</strong> the owning team uses <code>platform-ipam client reserve</code> or Terraform for a Platform-IPAM pool, then imports a fresh CLI verification report. AWS-IPAM-owned pools need their authority handoff.</li>
+            <li><strong>Migration:</strong> the workload team executes its cutover; the operator reruns AWS discovery and this report to see whether the old conflict has disappeared. Network readiness needs separate route and traffic evidence.</li>
+          </ol>
+        </div>
+      </details>
+      <div class="card mb-4" id="pilot-blockers">
+        <div class="card-header">What prevents a pilot gate from passing?</div>
+        <div class="card-body">
+          {% for blocker in report.blockers %}<p class="mb-2"><strong>{{ blocker.code }}</strong>: {{ blocker.detail }}{% if blocker.conflict_ids %} {{ blocker.conflict_ids|join:', ' }}{% endif %}</p>
+          {% empty %}<p>No blocker is recorded in this evidence.</p>{% endfor %}
+        </div>
+      </div>
+      <div class="card mb-4" id="pilot-conflicts">
+        <div class="card-header d-flex justify-content-between align-items-center"><span>Observed CIDR relationships</span><span class="small">Intent determines impact</span></div>
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter relationships">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-impact-filter="all">All</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-impact-filter="confirmed">Blocks connectivity</button>
+            <button type="button" class="btn btn-sm btn-outline-warning" data-impact-filter="potential">Isolated</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-impact-filter="unknown">Unknown</button>
+          </div>
+          <label class="form-label" for="relationship-search">Find account, VPC, CIDR or conflict ID</label>
+          <input class="form-control mb-3" id="relationship-search" type="search" placeholder="Filter relationships">
+          {% for relationship in report.relationships %}
+            <div class="border rounded p-3 mb-3" id="{{ relationship.id }}" data-relationship data-impact="{{ relationship.impact }}">
+              <details {% if relationship.impact == 'confirmed' %}open{% endif %}>
+                <summary><strong>{{ relationship.id }}</strong> · {{ relationship.kind }} ·
+                  {% if relationship.impact == 'confirmed' %}<span class="badge bg-danger text-white">Blocks intended connectivity</span>
+                  {% elif relationship.matrix_relation == 'must_stay_isolated' %}<span class="badge bg-secondary text-white">Isolated by intent</span>
+                  {% else %}<span class="badge bg-warning text-dark">Intent unknown</span>{% endif %}
+                </summary>
+                <div class="row g-3 mt-1">
+                  {% for side in relationship.sides %}
+                    <div class="col-lg-6"><div class="border rounded p-2 h-100">
+                      <div class="fw-semibold">{{ side.account_id }} / {{ side.vpc_id }}</div>
+                      <div>{{ side.region }} · <code>{{ side.cidr }}</code></div>
+                      <div class="small">Owner: {{ side.owner|default:'unknown' }} · {{ side.environment|default:'unknown' }}</div>
+                      {% if side.prefix_url %}<a href="{{ side.prefix_url }}">Open NetBox prefix</a>
+                      {% elif side.prefix_lookup_status == 'not_in_netbox' %}<span class="small text-muted">Not in NetBox; this report has not imported the prefix.</span>
+                      {% elif side.prefix_search_url %}<a href="{{ side.prefix_search_url }}">Review matching NetBox prefixes</a> <span class="small text-muted">(multiple exact matches)</span>
+                      {% elif side.prefix_lookup_status == 'skipped' %}<span class="small text-muted">NetBox lookup skipped for this large report.</span>
+                      {% elif side.prefix_lookup_status == 'unavailable' %}<span class="small text-muted">NetBox lookup unavailable.</span>{% endif %}
+                    </div></div>
+                  {% endfor %}
+                </div>
+                <p class="mt-3 mb-1"><strong>Recommended next step:</strong> {{ relationship.next_step }}</p>
+                {% if relationship.impact == 'confirmed' and relationship.review_order %}
+                  <details class="small mt-2"><summary>Compare VPCs before choosing a move</summary>
+                    <ol class="mb-1">{% for option in relationship.review_order %}
+                      <li>{{ option.subject }} · {{ option.environment }} · {{ option.observed_subnets }} observed subnets
+                        {% if option.selected_replace %}· <strong>reviewed REPLACE decision</strong>{% endif %}</li>
+                    {% endfor %}</ol>
+                    <span class="text-muted">{{ relationship.review_limit }}</span>
+                  </details>
+                {% endif %}
+                {% for selected in relationship.selected_moves %}
+                  <div class="small mt-2"><strong>Reviewed replacement:</strong> {{ selected.subject }}<br>
+                    Owner: {{ selected.owner|default:'unknown' }} · Pool: {{ selected.pool_id|default:'unresolved' }}
+                    ({{ selected.authority|default:'unknown' }}) · Candidate: {{ selected.proposed_cidr|default:'none' }}
+                    · Reservation:
+                    {% if selected.reservation_status == 'VERIFICATION_NOT_SUPPLIED' %}check missing
+                    {% else %}{{ selected.reservation_status }}{% endif %}
+                    · <a href="#pilot-moves">See move evidence and next step</a>
+                  </div>
+                {% endfor %}
+              </details>
+            </div>
+          {% empty %}<p>No relationship detail was supplied in this report.</p>{% endfor %}
+          <p class="small text-muted mb-0">Suggestions use the reviewed matrix and migration plan. They do not prove TGW routing, security, DNS or traffic readiness.</p>
+        </div>
+      </div>
+      <details class="card mb-4" id="pilot-inventory">
+        <summary class="card-header">Observed VPC inventory ({{ report.discovery.vpcs }} VPCs; {{ report.discovery.without_observed_overlap }} without an observed overlap)</summary>
+        <div class="card-body">
+          <p class="small text-muted">“No observed overlap” describes only the uploaded inventory and reviewed assessment. Missing account-region evidence can hide additional relationships.</p>
+          <label for="inventory-search" class="form-label">Find account, region, VPC, name, CIDR or status</label>
+          <input class="form-control" id="inventory-search" type="search" placeholder="Filter observed VPCs">
+          <div id="inventory-display-status" class="small text-muted mt-2" aria-live="polite"></div>
+          <button id="inventory-show-all" class="btn btn-sm btn-outline-secondary mt-2" type="button" hidden>Show all observed VPCs</button>
+        </div>
+        <div class="table-responsive"><table class="table table-striped mb-0">
+          <thead><tr><th>Account</th><th>Region</th><th>VPC</th><th>Observed CIDRs</th><th>Overlap status</th></tr></thead>
+          <tbody>{% for item in report.discovery.inventory_vpcs %}
+            <tr data-inventory-row><td>{{ item.account_id }}</td><td>{{ item.region }}</td>
+              <td>{{ item.vpc_id }}<br><span class="small text-muted">{{ item.name }}</span></td>
+              <td>{% for link in item.cidr_links %}<code>{{ link.cidr }}</code>
+                {% if link.prefix_url %}<a class="small" href="{{ link.prefix_url }}">Open prefix</a>
+                {% elif link.prefix_lookup_status == 'not_in_netbox' %}<span class="small text-muted">Not in NetBox</span>
+                {% elif link.prefix_search_url %}<a class="small" href="{{ link.prefix_search_url }}">Review matching prefixes</a>
+                {% elif link.prefix_lookup_status == 'skipped' %}<span class="small text-muted">Lookup skipped</span>
+                {% elif link.prefix_lookup_status == 'unavailable' %}<span class="small text-muted">Lookup unavailable</span>{% endif %}<br>{% endfor %}</td>
+              <td>{{ item.overlap_status }}</td></tr>
+          {% endfor %}</tbody>
+        </table></div>
+      </details>
+      <div class="card mb-4" id="pilot-moves">
+        <div class="card-header">Reviewed replacement moves and evidence</div>
+        <div class="table-responsive"><table class="table table-striped mb-0">
+          <thead><tr><th>Subject</th><th>Approved</th><th>Pool / authority</th><th>Proposal</th><th>Allocation key</th><th>Target fact</th><th>Reservation</th></tr></thead>
+          <tbody>{% for move in report.replacements.moves %}
+            <tr><td>{{ move.subject }}<br><strong>{{ move.lifecycle_stage }}</strong>{% for conflict_id in move.conflict_ids %}<br><a href="#{{ conflict_id }}">{{ conflict_id }}</a>{% endfor %}
+              <details class="mt-2"><summary>Review decision and constraints</summary>
+                <div class="small">Wave: {{ move.wave_id|default:'not supplied' }} · Owner: {{ move.owner|default:'unknown' }}</div>
+                <div class="small">Approval from plan: {% if move.approval %}{{ move.approval.approved_by }} · {{ move.approval.approved_at }}<br>{{ move.approval.approves }}{% else %}not supplied{% endif %}</div>
+                {% if move.depends_on %}<div class="small">Depends on: {{ move.depends_on|join:', ' }}</div>{% endif %}
+                {% for blocker in move.blockers %}<div class="small">Open plan constraint {{ blocker.id }}: {{ blocker.description }}</div>{% endfor %}
+                <div class="small">Rollback: {{ move.rollback|default:'Not supplied' }}</div>
+                {% for check in move.verifications %}<div class="small">Customer check {{ check.id }}: {{ check.outcome }} · {{ check.description }}</div>{% endfor %}
+                {% if move.notes %}<div class="small">Notes: {{ move.notes }}</div>{% endif %}
+              </details></td><td>{{ move.approved|yesno:'yes,no' }}</td>
+              <td>{{ move.pool_id|default:'unknown' }} / {{ move.authority|default:'unknown' }}</td>
+              <td>{{ move.proposed_cidr|default:'none' }}<br>
+                {% if move.proposal_target_match == False %}<strong class="text-danger">Proposal does not match reviewed target; replan with migration.yaml.</strong><br>{% endif %}
+                {% if move.proposal_status == 'ADVISORY_CANDIDATE' %}
+                  <strong>Suggested CIDR, not reserved</strong><br>
+                  <span class="small text-muted">Fits the approved pool against the uploaded inventory, protected ranges and other suggestions. Availability may change before reservation.</span>
+                {% else %}{{ move.proposal_status }}{% endif %}
+              </td>
+              <td>{{ move.allocation_key|default:'none' }}</td><td>{{ move.target_fact }}</td>
+              <td>{% if move.reservation_status == 'VERIFICATION_NOT_SUPPLIED' %}
+                  <strong>Reservation check missing</strong><br>
+                  <span class="small text-muted">No current authority verification report was uploaded; this does not establish whether a reservation exists. For a Platform-IPAM-owned pool, reserve the stable allocation key, run <code>scripts/aws/verify-reservations.py</code>, and upload its JSON report to confirm the returned CIDR and pool. AWS-IPAM-owned pools still need an authority handoff.</span>
+                {% else %}{{ move.reservation_status }}{% endif %}
+                {% if move.allocation_id %}<br>{{ move.allocation_id }}{% endif %}
+                {% if move.returned_cidr %}<br>{{ move.returned_cidr }}{% endif %}
+                {% if move.allocation_prefix_url %}<br><a href="{{ move.allocation_prefix_url }}">Open NetBox allocation prefix</a>{% endif %}
+                {% for reason in move.reservation_reasons %}<br>{{ reason }}{% endfor %}
+              </td></tr>
+          {% empty %}<tr><td colspan="7">No replacement moves were supplied.</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+      <div class="card mb-4" id="pilot-allocations">
+        <div class="card-header">Allocation and execution assertions</div>
+        <div class="table-responsive"><table class="table table-striped mb-0">
+          <thead><tr><th>Move / stable key</th><th>Proposal</th><th>Authority / pool</th><th>Returned reservation</th><th>Result</th><th>External execution</th></tr></thead>
+          <tbody>{% for move in report.replacements.moves %}<tr>
+            <td>{{ move.subject }}<br><code>{{ move.allocation_key }}</code></td>
+            <td><code>{{ move.proposed_cidr|default:'none' }}</code></td>
+            <td>{{ move.authority|default:'unknown' }} / {{ move.pool_id|default:'unknown' }}</td>
+            <td>{{ move.allocation_id|default:'not supplied' }}<br><code>{{ move.returned_cidr|default:'none' }}</code></td>
+            <td>{{ move.reservation_status }}{% for reason in move.reservation_reasons %}<br>{{ reason }}{% endfor %}</td>
+              <td>{% if move.execution %}{{ move.execution.status }} · run {{ move.execution.run|default:'unknown' }}<br>
+              commit {{ move.execution.commit|default:'unknown' }}<br><span class="small text-muted">Customer-supplied; awaiting independent observation</span>
+              {% else %}Not supplied{% endif %}</td>
+          </tr>{% empty %}<tr><td colspan="6">No reviewed replacement moves.</td></tr>{% endfor %}</tbody>
+        </table></div>
+        <div class="card-body border-top"><strong>Reservation handoff</strong>
+          <p class="small text-muted">Run as the owning tenant with <code>PLATFORM_IPAM_URL</code> and <code>PLATFORM_IPAM_TOKEN</code> set. The API selects the CIDR; a different returned CIDR needs owner review. Upload a fresh CLI verification report afterward.</p>
+          {% for move in report.replacements.moves %}
+            {% if move.reserve_command %}<details class="mb-2"><summary>{{ move.subject }} · CLI reserve command</summary><pre class="mt-2 mb-0">{{ move.reserve_command }}</pre></details>
+            {% elif move.authority == 'aws-ipam' %}<p class="small mb-2">{{ move.subject }}: AWS IPAM is the sole authority; live handoff is not configured.</p>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="card-body small text-muted">Verified means the uploaded CLI authority report matched the reviewed move at its read time. Terraform status is customer-supplied and never changes address or network readiness.</div>
+      </div>
+      <details class="card mb-4" id="pilot-discovery">
+        <summary class="card-header">Requested account and region coverage ({{ report.discovery.scanned_cells }}/{{ report.discovery.requested_cells }})</summary>
+        <div class="card-body"><label for="coverage-search" class="form-label">Find account, region or status</label><input class="form-control" id="coverage-search" type="search" placeholder="Filter requested account-region cells">
+          <div id="coverage-display-status" class="small text-muted mt-2" aria-live="polite"></div>
+          <button id="coverage-show-all" class="btn btn-sm btn-outline-secondary mt-2" type="button" hidden>Show all requested accounts</button></div>
+        <div class="table-responsive"><table class="table table-sm mb-0">
+          <thead><tr><th>Account</th>{% for region in report.scope.regions %}<th>{{ region }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for row in report.coverage_matrix %}<tr data-coverage-matrix-row><td>{{ row.account_id }}</td>
+            {% for cell in row.cells %}<td><details><summary>{{ cell.status|upper }}</summary>
+              <div class="small">{{ cell.observed_at|default:'No observation time' }}<br>{{ cell.stage|default:'collector stage unknown' }}<br>{{ cell.reason|default:'No error reported' }}</div>
+            </details></td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table></div>
+        <details class="card-body"><summary>Flat coverage evidence</summary>
+        <div class="table-responsive"><table class="table table-striped mb-0">
+          <thead><tr><th>Account</th><th>Region</th><th>Result</th><th>Observed at</th><th>Reason</th></tr></thead>
+          <tbody>{% for cell in report.discovery.cells %}
+            <tr data-coverage-row><td>{{ cell.account_id }}</td><td>{{ cell.region }}</td><td>{{ cell.status }}</td>
+              <td>{{ cell.observed_at|default:'unknown' }}</td><td>{{ cell.reason|default:'none' }}</td></tr>
+          {% endfor %}</tbody>
+        </table></div>
+        </details>
+      </details>
+    {% elif mode == 'assess' %}
+      {% if not report.coverage.complete %}
+        <div class="alert alert-warning" role="status">
+          Coverage is incomplete. Confirmed relationships describe only the resources observed;
+          missing account and region evidence can hide additional relationships.
+        </div>
+      {% endif %}
+      <div class="card mb-4">
+        <div class="card-header">Observed CIDR relationships</div>
+        <div class="table-responsive">
+          <table class="table table-striped mb-0">
+            <thead><tr><th>Conflict</th><th>Impact</th><th>Relationship</th><th>First VPC / CIDR</th><th>Second VPC / CIDR</th><th>Decision</th></tr></thead>
+            <tbody>
+            {% for conflict in report.conflicts %}
+              <tr>
+                <td>{{ conflict.id }}</td><td>{{ conflict.impact }}</td><td>{{ conflict.kind }}</td>
+                <td>{{ conflict.sides.0.account_id }} / {{ conflict.sides.0.vpc_id }}<br>{{ conflict.sides.0.cidr }}<br>Owner: {{ conflict.sides.0.owner }}</td>
+                <td>{{ conflict.sides.1.account_id }} / {{ conflict.sides.1.vpc_id }}<br>{{ conflict.sides.1.cidr }}<br>Owner: {{ conflict.sides.1.owner }}</td>
+                <td>{{ conflict.decision.decision|default:'undecided' }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6">No relationship was observed in the uploaded inventory. Check coverage before drawing a conclusion.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% if report.coverage.failed or report.coverage.partial or report.coverage.not_attempted %}
+        <div class="card mb-4">
+          <div class="card-header">Coverage gaps</div>
+          <div class="card-body">
+            {% for gap in report.coverage.failed %}<p>Failed: {{ gap.account_id }} / {{ gap.region|default:'all regions' }} — {{ gap.stage }} {{ gap.error }}</p>{% endfor %}
+            {% for gap in report.coverage.partial %}<p>Partial: {{ gap.account_id }} / {{ gap.region }}</p>{% endfor %}
+            {% for gap in report.coverage.not_attempted %}<p>Not attempted: {{ gap.account_id }} / {{ gap.region|default:'unknown region' }}</p>{% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    {% elif mode == 'progress' %}
+      <div class="card mb-4">
+        <div class="card-header">Migration moves</div>
+        <div class="table-responsive">
+          <table class="table table-striped mb-0">
+            <thead><tr><th>Old VPC</th><th>Action</th><th>Wave</th><th>Owner</th><th>Observed</th><th>Planned target</th><th>Target evidence</th><th>Conflicts</th><th>Blockers</th><th>Evidence</th></tr></thead>
+            <tbody>
+            {% for move in report.moves %}
+              <tr>
+                <td>{{ move.subject }}</td><td>{{ move.disposition }}</td><td>{{ move.wave_id }}</td>
+                <td>{{ move.owner|default:'unknown' }}</td><td>{{ move.subject_fact }}</td>
+                <td>{% if move.target %}{{ move.target.tenant_id }} / {{ move.target.allocation_key }}<br>{{ move.target.account_id }} {{ move.target.region }} /{{ move.target.prefix_length }}{% else %}none{% endif %}</td>
+                <td>{{ move.target_fact }}</td>
+                <td>{% for item in move.resolves %}{{ item.conflict_id }}: {{ item.status }}<br>{% empty %}none claimed{% endfor %}
+                  {% if move.unclaimed_conflicts %}Unclaimed: {{ move.unclaimed_conflicts|join:', ' }}{% endif %}</td>
+                <td>{% for blocker in move.blockers %}{{ blocker.id }}: {{ blocker.description }}<br>{% empty %}none{% endfor %}</td>
+                <td>{{ move.fully_evidenced|yesno:'fully evidenced,incomplete' }}</td>
+              </tr>
+            {% empty %}<tr><td colspan="10">No moves were supplied.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% if report.unplanned_conflicts %}
+        <div class="alert alert-warning">Unplanned conflict IDs: {{ report.unplanned_conflicts|join:', ' }}</div>
+      {% endif %}
+    {% elif mode == 'address' %}
+      {% if not report.coverage_complete %}<div class="alert alert-warning">Inventory coverage is incomplete; additional conflicts may be hidden.</div>{% endif %}
+      <div class="alert alert-info">Candidates are advisory and do not reserve a CIDR. The pilot owner chooses which VPC moves. AWS IPAM pools never receive a locally selected CIDR.</div>
+      <div class="card mb-4">
+        <div class="card-header">Replacement options for VPCs in confirmed conflicts</div>
+        <div class="table-responsive">
+          <table class="table table-striped mb-0">
+            <thead><tr><th>Account / VPC</th><th>Region</th><th>Conflicts</th><th>Pool / authority</th><th>Candidate</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for item in report.proposals %}
+              <tr><td>{{ item.account_id }} / {{ item.vpc_id }}</td><td>{{ item.region }}<br>Target: {{ item.target_account_id|default:'unknown' }} / {{ item.target_region|default:'unknown' }} /{{ item.prefix_length|default:'unknown' }}{% if item.reviewed_target %} (reviewed move){% else %} (alternative){% endif %}</td>
+                <td>{{ item.conflict_ids|join:', ' }}</td><td>{{ item.pool_id|default:'needs review' }} / {{ item.authority|default:'unknown' }}</td>
+                <td>{{ item.candidate_cidr|default:'none' }}</td><td>{{ item.status }}<br>{{ item.reason }}</td></tr>
+            {% empty %}<tr><td colspan="6">No confirmed conflict requires a replacement option in this report.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      {% if not report.complete %}<div class="alert alert-warning">Topology collection is incomplete. Review every gap before using the observations.</div>{% endif %}
+      <div class="card mb-4">
+        <div class="card-header">Observed account and region cells</div>
+        <div class="table-responsive">
+          <table class="table table-striped mb-0">
+            <thead><tr><th>Account</th><th>Region</th><th>Observed</th><th>VPC route tables</th><th>TGWs</th><th>Attachments</th><th>TGW route tables</th><th>Gaps</th></tr></thead>
+            <tbody>
+            {% for cell in report.cells %}
+              <tr><td>{{ cell.account_id }}</td><td>{{ cell.region }}</td><td>{{ cell.observed_at }}</td>
+                <td>{{ cell.vpc_route_tables|length }}</td><td>{{ cell.transit_gateways|length }}</td>
+                <td>{{ cell.tgw_attachments|length }}</td><td>{{ cell.tgw_route_tables|length }}</td>
+                <td>{% for gap in cell.gaps %}{{ gap.stage }}: {{ gap.reason }}<br>{% empty %}none{% endfor %}</td></tr>
+            {% empty %}<tr><td colspan="8">No cells were observed.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% if report.gaps %}<div class="alert alert-warning">Unscanned accounts or regions: {% for gap in report.gaps %}{{ gap.account_id }} {{ gap.region }} ({{ gap.reason }}){% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
+    {% endif %}
+    <details class="mb-4"><summary>Full JSON report</summary><pre class="mt-2">{{ report|json }}</pre></details>
+    {% if mode == 'pilot' %}
+      <script>
+        (() => {
+          const relationshipSearch = document.getElementById('relationship-search');
+          const relationshipCards = [...document.querySelectorAll('[data-relationship]')];
+          let impact = 'all';
+          const applyRelationships = () => {
+            const query = relationshipSearch.value.trim().toLowerCase();
+            for (const card of relationshipCards) {
+              card.hidden = (impact !== 'all' && card.dataset.impact !== impact) ||
+                (query && !card.textContent.toLowerCase().includes(query));
+            }
+          };
+          relationshipSearch.addEventListener('input', applyRelationships);
+          for (const button of document.querySelectorAll('[data-impact-filter]')) {
+            button.addEventListener('click', () => {
+              impact = button.dataset.impactFilter;
+              for (const item of document.querySelectorAll('[data-impact-filter]')) {
+                item.classList.toggle('active', item === button);
+              }
+              applyRelationships();
+            });
+          }
+          const filterLargeTable = (searchId, rowSelector, statusId, buttonId, initialLimit) => {
+            const search = document.getElementById(searchId);
+            const rows = [...document.querySelectorAll(rowSelector)];
+            const status = document.getElementById(statusId);
+            const button = document.getElementById(buttonId);
+            let expanded = false;
+            const update = () => {
+              const query = search.value.trim().toLowerCase();
+              let matching = 0;
+              let shown = 0;
+              for (const row of rows) {
+                const matches = !query || row.textContent.toLowerCase().includes(query);
+                if (matches) matching++;
+                row.hidden = !matches || (!query && !expanded && shown >= initialLimit);
+                if (!row.hidden) shown++;
+              }
+              status.textContent = `Showing ${shown} of ${matching} matching rows (${rows.length} total).`;
+              button.hidden = Boolean(query) || matching <= initialLimit;
+              button.textContent = expanded ? `Show first ${initialLimit}` : `Show all ${matching}`;
+            };
+            search.addEventListener('input', update);
+            button.addEventListener('click', () => { expanded = !expanded; update(); });
+            update();
+          };
+          filterLargeTable('coverage-search', '[data-coverage-matrix-row]', 'coverage-display-status', 'coverage-show-all', 50);
+          filterLargeTable('inventory-search', '[data-inventory-row]', 'inventory-display-status', 'inventory-show-all', 100);
+          document.getElementById('coverage-search').addEventListener('input', event => {
+            const query = event.target.value.trim().toLowerCase();
+            for (const row of document.querySelectorAll('[data-coverage-row]')) {
+              row.hidden = Boolean(query) && !row.textContent.toLowerCase().includes(query);
+            }
+          });
+        })();
+      </script>
+    {% endif %}
+  {% endif %}
+{% endblock %}

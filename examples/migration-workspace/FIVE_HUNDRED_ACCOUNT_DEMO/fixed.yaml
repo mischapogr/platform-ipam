@@ -1,0 +1,17 @@
+[
+  {
+    "cidr": "10.64.0.0/22",
+    "description": "protected external route",
+    "owner": "corporate-network"
+  },
+  {
+    "cidr": "10.65.0.0/22",
+    "description": "protected external route",
+    "owner": "corporate-network"
+  },
+  {
+    "cidr": "10.66.0.0/22",
+    "description": "protected external route",
+    "owner": "corporate-network"
+  }
+]

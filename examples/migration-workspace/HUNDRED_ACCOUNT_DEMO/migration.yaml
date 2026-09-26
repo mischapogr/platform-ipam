@@ -1,0 +1,153 @@
+{
+  "moves": [
+    {
+      "approval": {
+        "approved_at": "2026-09-24T10:00:00Z",
+        "approved_by": "synthetic-demo-owner",
+        "approves": "replace for synthetic demo only"
+      },
+      "disposition": "replace",
+      "owner": "application-002-team",
+      "resolves": [
+        "c-393dc91f92f92bd9"
+      ],
+      "rollback": "Customer workload owner must design and validate rollback.",
+      "subject": {
+        "account_id": "100000000001",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-00000000000000004"
+      },
+      "target": {
+        "account_id": "100000000001",
+        "allocation_key": "demo-replacement-01",
+        "environment": "development",
+        "prefix_length": 22,
+        "region": "eu-central-1",
+        "scope": "vpc",
+        "tenant_id": "developer"
+      },
+      "wave": "wave-1"
+    },
+    {
+      "approval": {
+        "approved_at": "2026-09-24T10:00:00Z",
+        "approved_by": "synthetic-demo-owner",
+        "approves": "replace for synthetic demo only"
+      },
+      "disposition": "replace",
+      "owner": "application-004-team",
+      "resolves": [
+        "c-af68719a6a7f5b61"
+      ],
+      "rollback": "Customer workload owner must design and validate rollback.",
+      "subject": {
+        "account_id": "100000000003",
+        "region": "eu-west-1",
+        "vpc_id": "vpc-0000000000000000b"
+      },
+      "target": {
+        "account_id": "100000000003",
+        "allocation_key": "demo-replacement-02",
+        "environment": "development",
+        "prefix_length": 24,
+        "region": "eu-west-1",
+        "scope": "vpc",
+        "tenant_id": "developer"
+      },
+      "wave": "wave-1"
+    },
+    {
+      "approval": {
+        "approved_at": "2026-09-24T10:00:00Z",
+        "approved_by": "synthetic-demo-owner",
+        "approves": "replace for synthetic demo only"
+      },
+      "disposition": "replace",
+      "owner": "application-006-team",
+      "resolves": [
+        "c-72c6be2b0d7ae686"
+      ],
+      "rollback": "Customer workload owner must design and validate rollback.",
+      "subject": {
+        "account_id": "100000000005",
+        "region": "us-east-1",
+        "vpc_id": "vpc-00000000000000012"
+      },
+      "target": {
+        "account_id": "100000000005",
+        "allocation_key": "demo-replacement-03",
+        "environment": "development",
+        "prefix_length": 22,
+        "region": "us-east-1",
+        "scope": "vpc",
+        "tenant_id": "developer"
+      },
+      "wave": "wave-1"
+    },
+    {
+      "approval": {
+        "approved_at": "2026-09-24T10:00:00Z",
+        "approved_by": "synthetic-demo-owner",
+        "approves": "replace for synthetic demo only"
+      },
+      "disposition": "replace",
+      "owner": "application-008-team",
+      "resolves": [
+        "c-5f508eb61cfb7244"
+      ],
+      "rollback": "Customer workload owner must design and validate rollback.",
+      "subject": {
+        "account_id": "100000000007",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-00000000000000016"
+      },
+      "target": {
+        "account_id": "100000000007",
+        "allocation_key": "demo-replacement-04",
+        "environment": "development",
+        "prefix_length": 24,
+        "region": "eu-central-1",
+        "scope": "vpc",
+        "tenant_id": "developer"
+      },
+      "wave": "wave-1"
+    },
+    {
+      "approval": {
+        "approved_at": "2026-09-24T10:00:00Z",
+        "approved_by": "synthetic-demo-owner",
+        "approves": "replace for synthetic demo only"
+      },
+      "disposition": "replace",
+      "owner": "application-010-team",
+      "resolves": [
+        "c-2a7ace83371152ad"
+      ],
+      "rollback": "Customer workload owner must design and validate rollback.",
+      "subject": {
+        "account_id": "100000000009",
+        "region": "eu-west-1",
+        "vpc_id": "vpc-0000000000000001d"
+      },
+      "target": {
+        "account_id": "100000000009",
+        "allocation_key": "demo-replacement-05",
+        "environment": "development",
+        "prefix_length": 22,
+        "region": "eu-west-1",
+        "scope": "vpc",
+        "tenant_id": "developer"
+      },
+      "wave": "wave-1"
+    }
+  ],
+  "plan_id": "synthetic-100-account-demo",
+  "version": 1,
+  "waves": [
+    {
+      "id": "wave-1",
+      "name": "Example replacement wave",
+      "owner": "corporate-network-pilot"
+    }
+  ]
+}

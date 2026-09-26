@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from urllib.parse import unquote, urlsplit
@@ -155,6 +156,12 @@ def aws(report, args):
         # busy machine that alone takes minutes, and a timeout would read as
         # BLOCKED although nothing is wrong.
         report.command(script.stem, ["bash", str(script)], cwd=ROOT, env=dict(os.environ), timeout=540)
+    report.command("test_org_topology", [sys.executable, str(directory / "test_org_topology.py")], cwd=ROOT)
+    report.command("test_address_plan", [sys.executable, str(directory / "test_address_plan.py")], cwd=ROOT)
+    report.command("test_pilot_evidence", [sys.executable, str(directory / "test_pilot_evidence.py")], cwd=ROOT)
+    report.command("test_verify_reservations", [sys.executable, str(directory / "test_verify_reservations.py")], cwd=ROOT)
+    report.command("test_migration_workspace_fixtures",
+                   [sys.executable, str(directory / "test_migration_workspace_fixtures.py")], cwd=ROOT)
     
     # Shellcheck validation: host tool if available, pinned image otherwise
     all_shell_scripts = (
@@ -386,12 +393,22 @@ def compose(report, args):
         # Optional overlay (package N2). It only replaces the NetBox image, so
         # it is validated on top of the NetBox stack and never on its own.
         combinations.append(("compose-netbox-plugin", [base, netbox, plugin]))
+    workspace = directory / "compose.netbox-workspace.yaml"
+    if workspace.exists() and netbox.exists():
+        combinations.append(("compose-netbox-workspace", [base, netbox, workspace]))
     # Optional operator-UI auth modes (packages A4 and A5). Each is one overlay
     # on the NetBox stack; `basic` mode is the stack without either.
-    for mode in ("entra", "ldap"):
+    for mode in ("entra", "ldap", "samba-ad"):
         overlay = directory / f"compose.ui-{mode}.yaml"
         if overlay.exists() and netbox.exists():
             combinations.append((f"compose-ui-{mode}", [base, netbox, overlay]))
+    moto = directory / "compose.aws-moto.yaml"
+    if moto.exists():
+        combinations.append(("compose-aws-moto", [base, moto]))
+    for version in ("4_6_7", "4_6_10"):
+        netbox_compat = directory / f"compose.netbox-compat-{version}.yaml"
+        if netbox_compat.exists() and netbox.exists():
+            combinations.append((f"compose-netbox-compat-{version}", [base, netbox, netbox_compat]))
     for name, files in combinations:
         command = ["docker", "compose"]
         if args.env_file:
@@ -483,6 +500,10 @@ _WORKER_ENV_NAMES = {
     "IPAM_OIDC_ISSUER", "IPAM_OIDC_AUDIENCE", "IPAM_IDENTITY_FILE",
 }
 _ONBOARD_ENV_NAMES = {"IPAM_CONFIG_FILE", "IPAM_ENVIRONMENT", "IPAM_NETBOX_URL", "IPAM_NETBOX_TOKEN"}
+# Work-plan package N4: seed goes further than onboard -- it loads no pools
+# configuration at all (internal/netbox.New is constructed with no
+# Domains/Pools for this mode), so it lacks even IPAM_CONFIG_FILE.
+_SEED_ENV_NAMES = {"IPAM_ENVIRONMENT", "IPAM_NETBOX_URL", "IPAM_NETBOX_TOKEN"}
 # Work-plan packages H5 (internal/config.Settings.Validate becomes mode-aware)
 # and H7 (the chart stops handing the Job settings adopt never reads): adopt
 # authenticates no HTTP caller and never listens, in any of its three
@@ -560,6 +581,21 @@ _OPERATOR_JOB_COMBOS = [
         "env_absent": _ADOPT_DROPPED_ENV_NAMES | {"IPAM_IDENTITY_FILE"},
         "identity_forbidden": True,
     },
+    {
+        # Work-plan package N4: seed (docs/WORK_PLAN.md, internal/seedcmd)
+        # takes no subcommand and no flags -- command is "" and _never_
+        # appended as a container arg (see _check_operator_job_manifest's
+        # seed-specific expected_args below), and, like abandon, table_key is
+        # None: it mounts no reviewed table. Unlike abandon it also resolves
+        # no identity at all regardless of whether identity.existingConfigMap
+        # is configured chart-wide (identity_forbidden), and unlike onboard
+        # it needs no pools configuration either, so env_present is the
+        # smallest of every combination in this list.
+        "name": "seed", "mode": "seed", "command": "",
+        "extra_args": [], "table_key": None, "run_id": "ci-seed",
+        "env_present": _SEED_ENV_NAMES, "env_absent": _WORKER_ENV_NAMES - _SEED_ENV_NAMES,
+        "identity_forbidden": True,
+    },
 ]
 
 
@@ -619,7 +655,13 @@ def _check_operator_job_manifest(report, name, combo, docs):
     # 0012) takes NO positional table-path argument at all -- the third
     # argument is its own first flag, and no "input" volume/mount may exist.
     has_table = combo["table_key"] is not None
-    if has_table:
+    if combo["mode"] == "seed":
+        # seed (work-plan package N4) takes no subcommand at all -- unlike
+        # every other mode, its command ("") is never appended as a second
+        # argument (templates/operator-job.yaml's `{{- if not $isSeed }}`
+        # guard around the command line).
+        expected_args = [combo["mode"], *combo["extra_args"]]
+    elif has_table:
         table_path = f"/var/run/platform-ipam/input/{combo['table_key']}"
         expected_args = [combo["mode"], combo["command"], table_path, *combo["extra_args"]]
     else:
@@ -696,16 +738,16 @@ def _check_operator_job_manifest(report, name, combo, docs):
     api_deployment_for_sa = _deployment_by_component(docs, "worker")
     worker_sa_name = (((api_deployment_for_sa.get("spec") or {}).get("template") or {}).get("spec") or {}).get(
         "serviceAccountName") if api_deployment_for_sa else None
-    if combo["mode"] == "onboard":
+    if combo["mode"] in ("onboard", "seed"):
         if sa_name == worker_sa_name:
-            problems.append(f"onboard's Job runs as the worker's own ServiceAccount ({sa_name!r}); it must be a dedicated one")
+            problems.append(f"{combo['mode']}'s Job runs as the worker's own ServiceAccount ({sa_name!r}); it must be a dedicated one")
         if pod_spec.get("automountServiceAccountToken") is not False:
-            problems.append("onboard's Job does not set automountServiceAccountToken: false")
+            problems.append(f"{combo['mode']}'s Job does not set automountServiceAccountToken: false")
         sa_doc = _service_account_by_name(docs, sa_name) if sa_name else None
         if sa_doc is None:
-            problems.append(f"no ServiceAccount named {sa_name!r} was rendered for onboard's dedicated identity")
+            problems.append(f"no ServiceAccount named {sa_name!r} was rendered for {combo['mode']}'s dedicated identity")
         elif sa_doc.get("metadata", {}).get("annotations"):
-            problems.append(f"onboard's dedicated ServiceAccount carries annotations (a possible cloud role): {sa_doc['metadata']['annotations']!r}")
+            problems.append(f"{combo['mode']}'s dedicated ServiceAccount carries annotations (a possible cloud role): {sa_doc['metadata']['annotations']!r}")
     else:
         if sa_name != worker_sa_name:
             problems.append(f"adopt's Job runs as {sa_name!r}, want the worker's own ServiceAccount {worker_sa_name!r}")
@@ -728,11 +770,11 @@ def _check_operator_job_manifest(report, name, combo, docs):
     job_cidrs, worker_cidrs = _egress_cidrs("-operator-job"), _egress_cidrs("-worker")
     if job_cidrs is None:
         problems.append("no NetworkPolicy was rendered for the operator Job's pods")
-    elif combo["mode"] == "onboard":
+    elif combo["mode"] in ("onboard", "seed"):
         if "10.0.99.0/24" in job_cidrs:
-            problems.append(f"onboard's NetworkPolicy carries the chart-wide egress list: {job_cidrs!r}")
+            problems.append(f"{combo['mode']}'s NetworkPolicy carries the chart-wide egress list: {job_cidrs!r}")
         if "10.0.20.0/24" not in job_cidrs:
-            problems.append(f"onboard's NetworkPolicy lacks its own egress entry: {job_cidrs!r}")
+            problems.append(f"{combo['mode']}'s NetworkPolicy lacks its own egress entry: {job_cidrs!r}")
     elif job_cidrs != worker_cidrs or "10.0.99.0/24" not in job_cidrs:
         problems.append(f"adopt's NetworkPolicy egress {job_cidrs!r} is not the worker's {worker_cidrs!r}")
     if problems:
@@ -820,6 +862,12 @@ def helm(report, args):
     # environment values on every run.
     ui_proxy_values = chart / "ci/ui-proxy-values.yaml"
     docker_or_helm = shutil.which("helm") or shutil.which("docker")
+    local_kind_values = chart / "ci/local-kind-values.yaml"
+    if local_kind_values.is_file() and docker_or_helm:
+        report.command("helm-lint-local-kind",
+                       _helm_argv("lint", "stage", [local_kind_values], chart, chart_path), cwd=ROOT)
+        report.command("helm-render-local-kind",
+                       _helm_argv("template", "stage", [local_kind_values], chart, chart_path), cwd=ROOT)
     for environment in ("stage", "prod"):
         values = ROOT / f"deploy/environments/{environment}/values.yaml"
         if not values.is_file():
@@ -874,9 +922,10 @@ def helm(report, args):
                           "Rendering succeeded with uiProxy.ingress.enabled and an empty "
                           "tlsSecretName; this must be refused")
 
-    # Work-plan package H3: operatorJob (opt-in Job for `adopt`/`onboard` in
-    # the cluster). Each of the four required combinations is validated
-    # against stage only -- the environment-specific interaction
+    # Work-plan packages H3/H7/N4: operatorJob (opt-in Job for `adopt`,
+    # `onboard` or `seed` in the cluster). Every entry of
+    # _OPERATOR_JOB_COMBOS is validated against stage only -- the
+    # environment-specific interaction
     # (IPAM_ENVIRONMENT's value, oidc/live-AWS requirements) is already
     # covered by the base per-environment checks above; operatorJob's own
     # values are orthogonal to which environment they are layered on.
@@ -991,6 +1040,33 @@ def helm(report, args):
                               "Rendering correctly failed: an unrecognized operatorJob.command for mode=onboard (e.g. \"drift\") is refused",
                               "Rendering succeeded with an unrecognized operatorJob.command for mode=onboard; this must be refused",
                               expect_in_log='is not supported for operatorJob.mode "onboard"')
+
+        # Work-plan package N4: seed's own guards -- the OPPOSITE shape of
+        # adopt/onboard's "command is required" guard, since seed takes no
+        # subcommand, no flags and no table at all.
+        seed_values = chart / "ci/operator-job-seed-values.yaml"
+        if seed_values.is_file():
+            argv = _helm_argv("template", "stage", [stage_values, seed_values], chart, chart_path)
+            argv += ["--set", "operatorJob.command=plan"]
+            _must_fail_render(report, "helm-operator-job-seed-rejects-command", argv,
+                              "Rendering correctly failed: operatorJob.mode=seed with a command set is refused",
+                              "Rendering succeeded with operatorJob.mode=seed and a command set; this must be refused",
+                              expect_in_log='must not be set when operatorJob.mode is "seed"')
+
+            argv = _helm_argv("template", "stage", [stage_values, seed_values], chart, chart_path)
+            argv += ["--set-json", 'operatorJob.args=["--table","table.json"]']
+            _must_fail_render(report, "helm-operator-job-seed-rejects-args", argv,
+                              "Rendering correctly failed: operatorJob.mode=seed with non-empty args is refused",
+                              "Rendering succeeded with operatorJob.mode=seed and non-empty args; this must be refused",
+                              expect_in_log='must be empty when operatorJob.mode is "seed"')
+
+            argv = _helm_argv("template", "stage", [stage_values, seed_values], chart, chart_path)
+            argv += ["--set-string", "operatorJob.input.existingConfigMap=platform-ipam-should-not-exist",
+                     "--set-string", "operatorJob.input.key=table.json"]
+            _must_fail_render(report, "helm-operator-job-seed-rejects-input-configmap", argv,
+                              "Rendering correctly failed: operatorJob.mode=seed with an input ConfigMap is refused",
+                              "Rendering succeeded with operatorJob.mode=seed and an input ConfigMap; this must be refused",
+                              expect_in_log='neither reads a reviewed table')
 
     report.add("cluster-verification", "NOT_CHECKED", "Cluster schema, identity, secrets, migrations, and rollout readiness require separate verification")
 

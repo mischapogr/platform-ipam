@@ -23,7 +23,7 @@ jobs:
         run: python3 -B -m py_compile deploy/compose/seed-netbox.py
       - name: Compose configuration
         run: scripts/ai/check-compose
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
         with:
           version: v3.17.3
       - name: Helm chart validation

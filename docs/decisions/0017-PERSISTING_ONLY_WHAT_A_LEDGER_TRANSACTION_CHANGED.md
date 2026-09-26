@@ -5,9 +5,12 @@ owner decided, on the analysis this record and the M4a measurements give, that
 the diff behind the unchanged port is the route and that per-aggregate
 transactions with row locks — the model ADR 0001 specified — remain the target,
 to be designed in their own record once M4d's two-writer numbers exist. Packages
-M4c and M4d start first and change no production code; whether M4e to M4g are
-built is decided from M4d's numbers, not from this record. Nothing here is
-built. Proposed by package M4b of the [work plan](../WORK_PLAN.md) against gap
+M4c and M4d supplied the differential and cost evidence; M4e is built, and
+M4f's implementation and database measurements are recorded below. Its full
+development-stack suite passed on 2026-09-23, as recorded below. On 2026-09-23
+the owner accepted a bounded M4g pilot policy; its implementation is under local
+verification. Proposed by package M4b of the
+[work plan](../WORK_PLAN.md) against gap
 **M4** of the owner's [overlap-migration analysis](../IP_OVERLAP_MIGRATION.md)
 -- "ledger operations use a global lock and rewrite state tables" -- and against
 what package M4a measured and recorded in [deployment
@@ -854,3 +857,136 @@ weakest form, two client loops against one replica rather than the configured
 topology. On these numbers the owner and the lead took M4e first and M4f after
 it on the harness, and set the projection package M4g aside as not urgent, a
 pass being bound by NetBox requests at every size measured.
+
+Built on 2026-09-22 by package M4e, the first store package of the cut above.
+`persistState` inserts only the events a transaction's own closure appended;
+a transaction knows which ones those are because `loadState` now returns,
+beside the state, the set of event ids it actually loaded, and an `Update`
+transaction loads none, so its set is always empty and nothing it appends is
+ever "already loaded" to filter out. `ON CONFLICT DO NOTHING` stays as the
+brace. `loadState` stops decoding `audit_events` on `Update`, and M4d's own
+review note is why: it is a read cost as well as a write one. `View` keeps
+loading events, unchanged and on purpose, because no production `View`
+closure reads them (every reader of `State.Events` in `internal/service` was
+found to be either an append or a test) and because the opt-in PostgreSQL
+tests that read audit history back, above all
+`TestPostgresAuditEventsRemainAppendOnly`, do so through `View` and had to
+keep passing unmodified. The consequence is a partial, honestly stated win
+on the read side: M4d's counting test now measures a flat two `audit_events`
+inserts per `Update` regardless of ledger age, from zero to a thousand
+historical events, where it once measured one insert per historical event;
+and a re-run of M4d's idle- and during-pass reservation-latency measurement
+at the same two sizes found roughly half the cost gone, not all of it --
+median idle latency at a thousand allocations fell from 4.85s to 2.646s, and
+during-pass from 5.72s to 2.844s, matching what leaving `View` untouched
+predicts, since a reservation pays the audit decode twice (`reserve`'s
+`View` pre-check and its planning `Update`) and only one of the two no
+longer does. M4c's differential harness passed unmodified, comparing all
+nine tables after every one of 150 generated steps, against a throw-away
+`postgres:17.5-alpine`; every existing test in
+`internal/storage/postgres_test.go` passed unmodified alongside it,
+including the append-only test. Four mutations were applied to a scratch
+copy and each was killed: an appended event dropped (caught by the
+differential harness and three separate tests), a loaded event re-offered
+(caught by a dedicated unit test built for exactly this, since a real
+`Update`'s always-empty loaded set cannot exercise it on its own), a loaded
+event deleted (caught by the append-only test), and `Update` reverted to
+load events eagerly (caught by a new, dedicated test asserting an `Update`
+closure's `State.Events` is empty at the start). A fifth named mutation, a
+read returning another allocation's events, does not apply: no
+per-allocation event reader was added, because none exists in production to
+need one -- `api/openapi.yaml`, every CLI verb under `cmd/`, and
+`internal/transport` were all checked and none lists an allocation's events
+today. The whole end-to-end suite ran in two halves against
+`platform-ipam-dev`, 70 then 53 tests, both `OK`; the main stack was left
+healthy and untouched throughout. M4f, the diff for the remaining eight
+tables, is the package that still carries the record's stated risk and is
+next; M4e touched one table only, by a stop, not a diff.
+
+Built on 2026-09-22 by package M4f, the last store package of the cut above.
+`persistState` stops rewriting the eight remaining tables unconditionally:
+`loadState` now also returns, for an `Update` only, an independent second
+snapshot of exactly what it read (decoded a second time from the same bytes,
+not copied, because a closure that mutates a map or slice field in place -- the
+only legal way to change one on a map-of-structs entry -- would otherwise
+corrupt a shared "before" picture through the reference); `persistState`
+classifies every row as added, changed (its freshly re-marshalled JSON bytes
+differ from the snapshot's) or removed, and writes only those, with deletion
+computed strictly from key-set membership, never from a byte comparison,
+exactly as this record requires. `allocation_keys` and `holds` ride on the
+allocations table's own classification (both are a pure function of one
+allocation, so no separate comparison is needed); `operation_barriers` is
+diffed against a picture derived, by the same formula `persistState` already
+applies at write time, from the SAME retained operations snapshot -- so all
+three write-only derived tables are covered without `loadState` ever adding a
+tenth `SELECT`. `View` also stops decoding `audit_events`, completing what M4e
+left half-done; the additive `domain.Ledger.Events(ctx, allocationID)` method,
+ordered by when each event happened, is now the store's only reader of the
+audit table, on both implementations, and every existing `Ledger` double picked
+it up automatically by embedding the interface. One finding changed the
+mechanism, not just its cost: the record's "compare against the raw bytes read
+off the wire" does not hold for this schema, because PostgreSQL's `jsonb`
+storage re-serializes on every read (keys sorted alphabetically at every depth)
+in a way that does not match `encoding/json.Marshal`'s struct-field-order
+output, so the diff compares two `Marshal` outputs this process itself produces
+-- one from the retained snapshot, one from the closure's result -- never the
+wire bytes; byte-stability of that comparison is proved as a property over
+generated entities (300 samples per type, map-key order, `time.Time` round
+trips) in a new file, `internal/storage/byte_stability_test.go`. M4c's harness
+took exactly the one accommodation this record allowed: the reloaded-state
+comparison no longer includes `Events` (Postgres's `View` now always returns
+none), and the equivalence it used to buy is now checked directly through
+`Ledger.Events` on both stores after every step; with that change it passed
+unmodified over 150 generated steps, all nine tables, and every existing test
+in `postgres_test.go` passed too, four of them moved from reading `View`'s
+state onto `Ledger.Events` without weakening what they assert. Seven mutants
+were applied to a scratch copy and all seven were killed, one of them (a
+removed operation's row surviving) reachable only by a new, direct, database-
+free test rather than the harness, because no production closure in
+`internal/service` ever deletes an operation and the harness's generator
+deliberately mirrors only shapes the service really produces; a second (the
+allocations upsert losing its `ON CONFLICT` clause) was reachable only through
+the harness's real database, as a genuine unique-constraint violation.
+`TestMeasureStatementsPerUpdate` lost its leading constant of nine, because a
+cold transaction with nothing loaded now issues zero unconditional deletes
+where the pre-M4f store issued nine regardless; a new, always-on counting test
+showed a thousand-row ledger on six tables (6,000 rows) with one row changed
+per table costing eight statements, not six thousand. A re-run of the idle-
+latency measurement on a throw-away third Compose project, seeded exactly as
+M4d and M4e did, found the median at roughly a thousand allocations fell from
+M4e's 2.646s to 1.528s, and, more tellingly, stopped growing with the ledger's
+size at all between 100 and ~1,000 allocations (1.384s to 1.528s, against M4e's
+0.588s-to-2.646s), confirming the record's prediction that removing `View`'s
+audit decode -- the half M4e left standing -- removes the age-driven term from
+both transactions of a reservation, not just one; the run shared its machine
+with other agents' heavy concurrent load, which raises every absolute number
+here well above M4e's but does not change the shape the measurement was built
+to show. The second project and its volumes were removed at the end; `platform-
+ipam-dev` was undisturbed throughout. Subsequent review found that a closure
+changing an allocation's tenant or key would leave its old composite-key row
+in `allocation_keys`: the ordinary service never rekeys an allocation, but the
+whole-state ledger port permits that state change. The diff now deletes old
+allocation and derived rows before writing changed identities, including a
+two-allocation key swap. A database-free test pins that ordering, and an opt-in
+PostgreSQL test checks the unique constraint and the final derived rows. The
+code path is implemented. On 2026-09-23 the pinned Go image passed all tests;
+the isolated PostgreSQL storage suite, including the key-swap test and generated
+differential sequence, passed against a fresh development database. The full
+development-stack e2e suite passed in two halves, 71 and 55 tests, against that
+same isolated project without resetting the existing development ledger. Q9's
+representative workload numbers and the deferred per-aggregate-transaction
+option remain undecided here.
+
+## M4g pilot policy accepted 2026-09-23
+
+The owner accepted an initial, explicitly bounded sizing target of **up to 1,000 committed allocations**, a **300-second full scan interval**, and **at most 15 minutes of NetBox projection lag after a successful cloud observation**. This is a pilot acceptance target, not evidence that a real estate has 1,000 allocations or that the target is met in stage/production. The 30-second development interval remains a development fixture. The 5,000-allocation measurement above remains outside this pilot envelope and requires a separate pass scheduling design.
+
+`reconciliation.projection_refresh_interval_seconds` triggers an observation-stamp write after 360 seconds. That trigger leaves one 300-second scheduling interval and the previously measured 161-second full pass inside the 15-minute healthy visibility target, with 79 seconds of margin. A pass still GETs each managed prefix, verifies identity, and immediately PATCHes changed lifecycle and ownership fields. It skips a PATCH when those fields agree and no newer observation is due. An unavailable NetBox or failed cloud observation does not become a successful fresh stamp. Zero in configuration defaults the trigger to the scan interval for compatibility. The pilot must measure complete pass time and reservation latency at 1,000 allocations with this code before the target is claimed as achieved.
+
+The pinned Go suite passed after the implementation. On the isolated 4.6.10 Compose stack, one managed prefix kept the same NetBox `last_updated` and `platform_last_observed_at` across 42 seconds while the development worker continued completing 30-second observations. This is a live no-op witness at a small ledger size, not the 1,000-allocation latency measurement.
+
+The fresh 4.6.10 project passed all 126 end-to-end tests. After its worker restarted with the final 360-second trigger, a second managed prefix again kept both NetBox timestamps unchanged across 42 seconds; the ledger's latest completed observation advanced to `2026-09-23T09:57:03Z` during that check. This validates the final fixture's no-op path without claiming the pilot-scale latency bound.
+
+**Pilot-scale local measurement, 2026-09-23.** The stopped, isolated `platform-ipam-e2e-m4g` Compose project was resumed on the exact 4.6.10 candidate with 1,000 matching synthetic committed allocations and NetBox prefixes added to its existing 31 managed prefixes. The synthetic ledger carried one completed operation, one idempotency record and ten audit events per allocation, plus five fixed findings. A temporary, project-only configuration used the pilot's 300-second scan and 360-second stamp trigger; the development pool quota was raised for reservation sampling. No shared development volume or tracked fixture was changed. NetBox access logs showed a complete initial pass of 1,000 synthetic GETs and 1,000 PATCHes, all HTTP 200, over 155 seconds. An immediate second pass after a worker restart showed 1,000 synthetic GETs, **zero synthetic PATCHes**, all HTTP 200, over 64 seconds. The second pass made four PATCHes for four ordinary allocations newly committed during the first pass. These are request-span timings from one local host, not stage or production latency guarantees.
+
+Four successful reservations issued during the first pass returned HTTP 201 with a 1.833-second median and 2.044-second worst response time. A fifth was refused with `pool_exhausted` because the small development pool had no eligible CIDR left. Five earlier idle attempts returned `dependency_unavailable` because the stopped worker's cloud observation had expired; they are not successful idle-latency samples and are excluded from the comparison. The local changed-pass timing puts the policy's 360-second trigger plus one 300-second scheduling interval plus a 155-second pass at 815 seconds, 85 seconds inside the 900-second target under healthy observations. The pilot-scale local timing gate is met; actual customer estate sizing, sustained load, and stage/production visibility remain unverified.

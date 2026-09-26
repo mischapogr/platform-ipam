@@ -2,7 +2,7 @@
 # are deliberately separate from the platform ledger and worker.
 services:
   netbox:
-    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    image: docker.io/netboxcommunity/netbox:v4.7.1-5.1.1@sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74
     environment:
       DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
       REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
@@ -62,7 +62,7 @@ services:
       - ./ui-proxy/entrypoint.sh:/entrypoint.sh:ro
 
   netbox-worker:
-    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    image: docker.io/netboxcommunity/netbox:v4.7.1-5.1.1@sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74
     environment:
       DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox_dev_password}
       REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox_redis_dev_password}
@@ -153,11 +153,11 @@ services:
   # NetBox adapter authenticates with. The image's own SUPERUSER_* bootstrap
   # only issues v2 tokens, which use a different Authorization header. Also
   # creates the read-only operator groups (package A2, docs/GUI_AUTHENTICATION.md)
-  # and, when NETBOX_E2E_VIEWER_TOKEN is set, a development viewer user for
-  # tests/e2e/test_e2e_netbox_roles.py.
+  # and, when their tokens are set, development viewer and inventory maintainer
+  # users for tests/e2e/test_e2e_netbox_roles.py.
   netbox-bootstrap:
     profiles: [bootstrap]
-    image: docker.io/netboxcommunity/netbox:v4.6.7-5.0.2
+    image: docker.io/netboxcommunity/netbox:v4.7.1-5.1.1@sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
@@ -175,6 +175,7 @@ services:
       NETBOX_SUPERUSER_EMAIL: ${NETBOX_SUPERUSER_EMAIL:-admin@example.invalid}
       NETBOX_SUPERUSER_PASSWORD: ${NETBOX_SUPERUSER_PASSWORD:?a development NetBox superuser password is required}
       NETBOX_E2E_VIEWER_TOKEN: ${NETBOX_E2E_VIEWER_TOKEN:?a 40-character development NetBox viewer token is required}
+      NETBOX_E2E_MAINTAINER_TOKEN: ${NETBOX_E2E_MAINTAINER_TOKEN:-}
     env_file:
       - ./netbox/netbox.env
     depends_on:

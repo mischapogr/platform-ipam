@@ -50,6 +50,7 @@ type MoveResult struct {
 	Disposition   string               `json:"disposition"`
 	WaveID        string               `json:"wave_id,omitempty"`
 	Owner         string               `json:"owner,omitempty"`
+	Target        *Target              `json:"target,omitempty"`
 	Approval      *ApprovalResult      `json:"approval,omitempty"`
 	DependsOn     []string             `json:"depends_on,omitempty"`
 	Blockers      []BlockerResult      `json:"blockers,omitempty"`

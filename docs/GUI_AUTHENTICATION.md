@@ -1,9 +1,10 @@
 # Operator UI authentication
 
 Status: implemented and locally verified, 2026-09-18. `basic` mode (packages
-A2, A3, A6) is wired and tested against the real Compose stack: 5 tests in
-`tests/e2e/test_e2e_ui_proxy.py` (A3) plus 14 tests and 5 guard-removal
-mutations in `tests/e2e/test_e2e_ui_auth.py` (A6), both run automatically by
+A2, A3, A6) is wired and tested against the real Compose stack: 6 tests in
+`tests/e2e/test_e2e_ui_proxy.py` (A3, one of them package T2's e2e quota
+canary) plus 14 tests and 5 guard-removal mutations in
+`tests/e2e/test_e2e_ui_auth.py` (A6), both run automatically by
 `./tests/e2e/run-e2e.sh`, and an opt-in browser check
 (`tests/e2e/browser_smoke.py`). `entra` mode (package A4) and `ldap` mode
 (package A5) are implemented as optional Compose overlays; `entra` is
@@ -133,7 +134,7 @@ Not verified here: any behaviour. This table establishes names and defaults only
 
 | Mode | Local verification | Still required at onboarding |
 | --- | --- | --- |
-| `basic` | Full, against the real Compose stack: 5 tests in `test_e2e_ui_proxy.py` (A3), 14 tests plus 5 guard-removal mutations in `test_e2e_ui_auth.py` (A6), and an opt-in browser check (`browser_smoke.py`, a real login through `ui-proxy`'s HTTP Basic) | TLS certificate and secret handling in the target environment |
+| `basic` | Full, against the real Compose stack: 6 tests in `test_e2e_ui_proxy.py` (A3, plus package T2's e2e quota canary), 14 tests plus 5 guard-removal mutations in `test_e2e_ui_auth.py` (A6), and an opt-in browser check (`browser_smoke.py`, a real login through `ui-proxy`'s HTTP Basic) | TLS certificate and secret handling in the target environment |
 | `entra` | Wiring only, against a **mock OIDC issuer** (`navikt/mock-oauth2-server`) standing in for Entra ID, in `tests/e2e/ui_mode_entra.py` via `tests/e2e/run-ui-entra.sh` | A real Microsoft Entra ID tenant: app registration, redirect URI, real group claims (object IDs), conditional access, MFA, token overage behaviour |
 | `ldap` | Wiring only, against an **OpenLDAP-compatible test server** (`osixia/openldap`) standing in for Active Directory, in `tests/e2e/ui_mode_ldap.py` via `tests/e2e/run-ui-ldap.sh` | Real AD behaviour: `sAMAccountName`, nested groups, LDAPS CA chain, service-account lockout policy |
 | Helm `uiProxy` | Wiring only: `helm lint --strict` and `helm template` for stage and prod, both with `uiProxy` at its default (disabled) and, additively, enabled through a CI-only values overlay; plus running the chart's rendered Caddyfile under the pod's exact security constraints (read-only root filesystem, UID/GID 10001, `drop: [ALL]` + `NET_BIND_SERVICE`, no privilege escalation) | An actual Kubernetes cluster -- `scripts/ai/checks.py`'s `helm()` check reports `cluster-verification: NOT_CHECKED` explicitly |
@@ -152,7 +153,7 @@ A green local run in `entra` or `ldap` mode, or a green Helm lint/render, proves
 
 The fallback mode, and the one that needs no overlay: `docker compose -f compose.yaml -f compose.netbox.yaml up -d` (`deploy/compose/README.md`) is already `basic` mode. `ui-proxy` (`deploy/compose/ui-proxy/Caddyfile`, started by `deploy/compose/ui-proxy/entrypoint.sh`) hashes the plaintext `NETBOX_UI_PASSWORD` from `.env` into a bcrypt hash at container start and verifies it with `basic_auth`; `deploy/compose/netbox/netbox.env` sets `REMOTE_AUTH_ENABLED=true`, `REMOTE_AUTH_HEADER=HTTP_X_REMOTE_USER`, `REMOTE_AUTH_AUTO_CREATE_USER=true`, `REMOTE_AUTH_DEFAULT_GROUPS=platform-operators`; `deploy/compose/netbox/bootstrap-groups.py` creates the `platform-operators` (view-only) and `platform-inventory-maintainers` (view + add + change on prefixes and IP ranges only) groups every mode relies on.
 
-Verified: `tests/e2e/test_e2e_ui_proxy.py` (package A3, 5 tests -- no credential, a forged header without a credential, a valid credential, a forged header *with* a valid credential, and the `/api/` block) and `tests/e2e/test_e2e_ui_auth.py` (package A6, 14 tests plus 5 guard-removal mutations -- the fuller matrix: wrong/unknown credential, both header spellings, the forged group header, write-permission enforcement through the UI form itself, `/api/`+`/graphql/` bypass attempts including `/api;x=1/...`, the healthcheck leaking nothing, and NetBox's port never being published) both run automatically in `./tests/e2e/run-e2e.sh`'s default suite, against the real, shared `platform-ipam-dev` stack. `tests/e2e/browser_smoke.py` (opt-in, `IPAM_E2E_BROWSER=1`) additionally proves a real Chromium browser, authenticated with `NETBOX_UI_USER`/`NETBOX_UI_PASSWORD`, can find and render an allocation through the proxy.
+Verified: `tests/e2e/test_e2e_ui_proxy.py` (package A3, 6 tests -- no credential, a forged header without a credential, a valid credential, a forged header *with* a valid credential, the `/api/` block, and package T2's e2e quota canary, the suite's own last test) and `tests/e2e/test_e2e_ui_auth.py` (package A6, 14 tests plus 5 guard-removal mutations -- the fuller matrix: wrong/unknown credential, both header spellings, the forged group header, write-permission enforcement through the UI form itself, `/api/`+`/graphql/` bypass attempts including `/api;x=1/...`, the healthcheck leaking nothing, and NetBox's port never being published) both run automatically in `./tests/e2e/run-e2e.sh`'s default suite, against the real, shared `platform-ipam-dev` stack. `tests/e2e/browser_smoke.py` (opt-in, `IPAM_E2E_BROWSER=1`) additionally proves a real Chromium browser, authenticated with `NETBOX_UI_USER`/`NETBOX_UI_PASSWORD`, can find and render an allocation through the proxy.
 
 Still required at onboarding: TLS termination outside loopback (ADR 0006 rule 7 -- every local run stays inside the Compose network, in plaintext); rotating `NETBOX_UI_PASSWORD` in a real deployment's secret store rather than a single shared `.env` value; and, if the static user list ever needs more than one person, a real secret-management story beyond that.
 
@@ -234,7 +235,17 @@ Not built, not tested -- only these settings are noted for whoever onboards a re
 | `LDAP_CA_CERT_FILE` (not `AUTH_LDAP_*` -- certificate settings use the bare `LDAP_` prefix, per the "Verified in image" table) | mount the domain's CA bundle read-only into the NetBox container and point this at its path, e.g. `/etc/ssl/certs/corp-ca.pem` |
 | NetworkPolicy egress | `deploy/helm/platform-ipam/values.yaml` defaults NetworkPolicy egress to `[]` (section 1 audit); a Kubernetes NetBox reaching real domain controllers over LDAPS needs an explicit egress rule to them, which package A7's optional `ui-proxy` chart block does not add on NetBox's behalf -- whoever operates that NetBox must add it, the same way ADR 0006 already leaves "NetBox reachable only through the proxy" to them |
 
-**Verified locally only against an OpenLDAP-compatible test server** (`osixia/openldap`, plain LDAP, no TLS, flat `groupOfNames` groups, no nesting). `sAMAccountName`, nested AD group evaluation, LDAPS certificate trust chains, and real domain-controller latency/availability are all Active Directory behaviour this package does not and cannot prove from a developer machine -- the same limit section 3 and ADR 0006 already state for this mode.
+**Additional local Samba AD gate (LS1).** The opt-in
+`compose.ui-samba-ad.yaml` overlay uses a pinned Samba AD container with
+`sAMAccountName`, a group nested inside `platform-operators`, and LDAPS.
+`tests/e2e/run-ui-samba-ad.sh up|wait|bootstrap|test|stop` runs the seven
+LDAP UI tests against that domain, checks both users are not superusers,
+and proves the generated CA is required for an LDAPS bind. On 2026-09-23 all
+checks passed, and the AD users survived a container recreate after both
+`/etc/samba` and `/var/lib/samba` were persisted. The Samba container needs
+privileged mode for its filesystem extended attributes. This is a local AD
+protocol test; Windows AD, an enterprise CA and domain policy remain
+unverified. The original OpenLDAP overlay remains the fast gate.
 
 ## 7. Entra ID mode (package A4)
 
@@ -306,10 +317,11 @@ test relies on that filter instead.
 Everything above is verified locally against `mock-oidc`
 (section 3, "local verification" for `entra`):
 the redirect to the issuer, the header trust and stripping, the
-`--allowed-group` refusal, and that NetBox lands an authenticated user in
-`platform-operators` only. **None of it has been run against a real
+`--allowed-group` refusal using a group object ID, refusal of a token with
+an overage pointer but no `groups` list, and that NetBox lands an authenticated
+user in `platform-operators` only. **None of it has been run against a real
 Microsoft Entra ID tenant.** Conditional access, MFA, nested/dynamic groups,
-the "groups overage" claim (below), token lifetime and refresh behaviour,
+actual overage resolution, token lifetime and refresh behaviour,
 and Microsoft's own rate limits are all unverified here, per ADR 0006's
 "Consequences" section.
 
@@ -345,8 +357,10 @@ and Microsoft's own rate limits are all unverified here, per ADR 0006's
   -- not a group name. A user in many groups can trigger Entra's "groups
   overage" behaviour, where the token carries a `_claim_names`/`hasgroups`
   indicator instead of the flat array and a Microsoft Graph call is needed
-  to resolve real membership; this has not been exercised here; if it comes
-  up in practice, restructure the security group used for gating (fewer,
+  to resolve real membership. The mock issuer confirms that a token without
+  the flat group list is refused; it does not exercise Microsoft Graph lookup.
+  If overage comes up in practice, restructure the security group used for
+  gating (fewer,
   more specific groups) rather than trying to raise the token's limit.
 - **User claim.** `--user-id-claim=preferred_username`, matching this
   overlay -- Entra ID tokens carry `preferred_username` (typically the
@@ -373,7 +387,7 @@ Verified: `helm lint --strict` and `helm template` for stage and prod, with `uiP
 
 | File | How it runs | What it covers |
 | --- | --- | --- |
-| `tests/e2e/test_e2e_ui_proxy.py` | Default suite (`./tests/e2e/run-e2e.sh`, matches the `test_e2e_*.py` glob) | `basic` mode minimum proof (package A3, 5 tests) |
+| `tests/e2e/test_e2e_ui_proxy.py` | Default suite (`./tests/e2e/run-e2e.sh`, matches the `test_e2e_*.py` glob) | `basic` mode minimum proof (package A3, 5 tests) plus package T2's e2e quota canary (1 test, the suite's own last test) |
 | `tests/e2e/test_e2e_ui_auth.py` | Default suite | `basic` mode's full security matrix (package A6, 14 tests, 5 guard-removal mutations) |
 | `tests/e2e/browser_smoke.py` | Opt-in: `IPAM_E2E_BROWSER=1 python3 tests/e2e/browser_smoke.py` | A real browser finds and renders an allocation through `ui-proxy`'s HTTP Basic |
 | `tests/e2e/ui_mode_entra.py` | Opt-in, via `tests/e2e/run-ui-entra.sh` (not matched by the `test_e2e_*.py` glob -- see below) | `entra` mode against the mock OIDC issuer (package A4, section 7) |

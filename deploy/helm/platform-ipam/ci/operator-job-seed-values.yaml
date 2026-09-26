@@ -1,0 +1,37 @@
+# CI-only overlay for scripts/ai/checks.py's helm() check (work-plan package
+# N4). Layered on top of a real environment values file with an extra -f, so
+# operatorJob's mode: seed path is additively validated on every run without
+# ever changing what actually gets deployed.
+#
+# Deliberately sets NEITHER command NOR args NOR input.existingConfigMap/key:
+# `platform-ipam seed` takes no subcommand, no flags and no table at all --
+# this overlay demonstrates that the least-privilege render succeeds with
+# nothing beyond operatorJob.enabled/mode/runId and the NetBox destination.
+# Also deliberately does NOT set identity.existingConfigMap: seed resolves no
+# domain.Principal and reads no identity file, so this combination
+# demonstrates the least-privilege claim alongside onboard's own overlay.
+#
+# Not a deployment environment. Never referenced by deploy/environments/* or
+# by the application; only by scripts/ai/check-helm.
+operatorJob:
+  enabled: true
+  mode: seed
+  command: ""
+  args: []
+  runId: ci-seed
+  input:
+    existingConfigMap: ""
+    key: ""
+  networkPolicy:
+    egress:
+      - cidr: 10.0.20.0/24
+        ports:
+          - {protocol: TCP, port: 443}
+# The chart-wide egress list (what api and worker get: the database, AWS, the
+# OIDC issuer). Set here only so the helm check can tell it from seed's own
+# list: seed's NetworkPolicy must never contain it, exactly like onboard's.
+networkPolicy:
+  egress:
+    - cidr: 10.0.99.0/24
+      ports:
+        - {protocol: TCP, port: 5432}

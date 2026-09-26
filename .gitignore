@@ -17,6 +17,9 @@ deploy/compose/runtime/
 # e2e scratch workspace (built provider binary, generated Terraform config)
 tests/e2e/.workspace/
 
+# Local work-plan runner state and logs; never part of a published checkout.
+.work-plan-runs/
+
 # --- Local tooling and machine state; never part of a published checkout ---
 # Editor and IDE configuration.
 .idea/

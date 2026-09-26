@@ -317,6 +317,10 @@ func TestBothEncodersCarryTheSameFacts(t *testing.T) {
 	r := Derive(plan, report, in, []DerivedEvidenceFile{evActive(target)}, Options{})
 
 	jsonText, textText := renderBoth(t, r)
+	if r.Moves[0].Target == nil || r.Moves[0].Target.AllocationKey != target.AllocationKey ||
+		!strings.Contains(jsonText, `"allocation_key": "`+target.AllocationKey+`"`) {
+		t.Error("JSON report omitted the reviewed target identity")
+	}
 	if !strings.Contains(jsonText, string(r.Moves[0].SubjectFact)) {
 		t.Errorf("JSON does not carry the subject fact %q", r.Moves[0].SubjectFact)
 	}

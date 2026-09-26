@@ -369,6 +369,54 @@ func TestPostgresIndependentLedgersDoNotLoseWritesOrDuplicateKey(t *testing.T) {
 	}
 }
 
+// The differential store must preserve the old full-rewrite result even if
+// a whole-state closure changes two allocations' composite keys at once.
+// The old allocation_keys rows must be removed before either new allocation
+// row is written, or PostgreSQL's unique constraint refuses a valid swap.
+func TestPostgresAllocationKeySwapLeavesExactlyTheNewDerivedRows(t *testing.T) {
+	db := requireIsolatedPostgres(t)
+	ledger := db.openLedger()
+	if err := ledger.Migrate(db.ctx); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		state.Allocations["alloc_a"] = postgresAllocation("alloc_a", "key_a")
+		state.Allocations["alloc_b"] = postgresAllocation("alloc_b", "key_b")
+		return nil
+	}); err != nil {
+		t.Fatalf("seed allocations: %v", err)
+	}
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		for id, key := range map[string]string{"alloc_a": "key_b", "alloc_b": "key_a"} {
+			a := state.Allocations[id]
+			a.AllocationKey = key
+			state.Allocations[id] = a
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("swap allocation keys: %v", err)
+	}
+	rows, err := ledger.pool.Query(db.ctx, `SELECT allocation_id, allocation_key FROM allocation_keys`)
+	if err != nil {
+		t.Fatalf("read derived keys: %v", err)
+	}
+	defer rows.Close()
+	got := map[string]string{}
+	for rows.Next() {
+		var id, key string
+		if err := rows.Scan(&id, &key); err != nil {
+			t.Fatalf("scan derived key: %v", err)
+		}
+		got[id] = key
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read derived keys: %v", err)
+	}
+	if len(got) != 2 || got["alloc_a"] != "key_b" || got["alloc_b"] != "key_a" {
+		t.Fatalf("allocation_keys after swap = %v, want exactly alloc_a:key_b and alloc_b:key_a", got)
+	}
+}
+
 // Abandoning an adoption is the one operation that removes a ledger row (ADR
 // 0012, package H2b), and it does so by removing an allocation and its
 // idempotency record from the state maps inside a Ledger.Update. Everything
@@ -443,16 +491,29 @@ func TestPostgresAbandoningAnAllocationDropsItsRowsAndFreesItsKey(t *testing.T) 
 		if operation.Adoption == nil || *operation.Adoption != reviewed {
 			return fmt.Errorf("the operation lost the reviewed record: %#v", operation.Adoption)
 		}
-		seen := map[string]bool{}
-		for _, event := range state.Events {
-			seen[event.ID] = true
-		}
-		if !seen["evt_planned"] || !seen["evt_abandoned"] {
-			return fmt.Errorf("audit events did not outlive the allocation: %#v", state.Events)
+		// package M4f: View no longer decodes audit_events at all (the events
+		// check that used to live here moved to Ledger.Events below, since
+		// that is the only remaining reader of audit history).
+		if len(state.Events) != 0 {
+			return fmt.Errorf("View unexpectedly carried audit history: %#v", state.Events)
 		}
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+	// package M4f: this is the same "audit events did not outlive the
+	// allocation" assertion the old View closure made, unweakened, reached
+	// through the additive Ledger.Events method instead of through View.
+	events, err := reloaded.Events(db.ctx, hold.ID)
+	if err != nil {
+		t.Fatalf("Events: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, event := range events {
+		seen[event.ID] = true
+	}
+	if !seen["evt_planned"] || !seen["evt_abandoned"] {
+		t.Fatalf("audit events did not outlive the allocation: %#v", events)
 	}
 	// The derived rows go with the allocation, because persistState rewrites
 	// them from the same map.
@@ -588,16 +649,29 @@ func TestPostgresCancellingAReservationDropsItsRowsAndFreesItsKey(t *testing.T) 
 		if !ok || finding.Status != "RESOLVED" || finding.AllocationID != hold.ID {
 			return fmt.Errorf("the resolved finding did not outlive the allocation: %#v", finding)
 		}
-		seen := map[string]bool{}
-		for _, event := range state.Events {
-			seen[event.ID] = true
-		}
-		if !seen["evt_reserve_planned"] || !seen["evt_reserve_cancelled"] {
-			return fmt.Errorf("audit events did not outlive the allocation: %#v", state.Events)
+		// package M4f: View no longer decodes audit_events at all (the events
+		// check that used to live here moved to Ledger.Events below, since
+		// that is the only remaining reader of audit history).
+		if len(state.Events) != 0 {
+			return fmt.Errorf("View unexpectedly carried audit history: %#v", state.Events)
 		}
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+	// package M4f: this is the same "audit events did not outlive the
+	// allocation" assertion the old View closure made, unweakened, reached
+	// through the additive Ledger.Events method instead of through View.
+	events, err := reloaded.Events(db.ctx, hold.ID)
+	if err != nil {
+		t.Fatalf("Events: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, event := range events {
+		seen[event.ID] = true
+	}
+	if !seen["evt_reserve_planned"] || !seen["evt_reserve_cancelled"] {
+		t.Fatalf("audit events did not outlive the allocation: %#v", events)
 	}
 	for _, table := range []string{"allocation_keys", "holds", "operation_barriers"} {
 		if got := db.countRows(t, table); got != 0 {
@@ -613,6 +687,84 @@ func TestPostgresCancellingAReservationDropsItsRowsAndFreesItsKey(t *testing.T) 
 		return nil
 	}); err != nil {
 		t.Fatalf("the allocation key was not released: %v", err)
+	}
+}
+
+// TestPostgresUpdateDoesNotLoadAuditHistory is package M4e's read-side proof,
+// against a real database: Update no longer decodes audit_events at all, so
+// a closure's st.Events is empty at the start of every Update regardless of
+// how much history the ledger already carries -- while View, deliberately
+// left unchanged, still sees the whole history. It exists to catch the
+// mutation "events loaded eagerly again" (reverting Update's loadState call
+// to includeEvents=true).
+func TestPostgresUpdateDoesNotLoadAuditHistory(t *testing.T) {
+	db := requireIsolatedPostgres(t)
+	ledger := db.openLedger()
+	if err := ledger.Migrate(db.ctx); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	// Seed history the way a real ledger accumulates it, across two Updates.
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		state.Events = append(state.Events, domain.Event{
+			ID: "evt_hist_1", AllocationID: "alloc_history", TenantID: "tenant-a",
+			Action: "RESERVE_PLANNED", At: time.Now().UTC(),
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed first historical event: %v", err)
+	}
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		state.Events = append(state.Events, domain.Event{
+			ID: "evt_hist_2", AllocationID: "alloc_history", TenantID: "tenant-a",
+			Action: "RESERVE_COMMITTED", At: time.Now().UTC(),
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed second historical event: %v", err)
+	}
+
+	// A later Update's closure must not see that history: this is the read
+	// change. It never touches state.Events itself, exactly like every real
+	// service closure -- append-only or nothing at all.
+	var sawAtStart int
+	if err := ledger.Update(db.ctx, func(state *domain.State) error {
+		sawAtStart = len(state.Events)
+		return nil
+	}); err != nil {
+		t.Fatalf("unrelated update: %v", err)
+	}
+	if sawAtStart != 0 {
+		t.Fatalf("Update's closure saw %d historical audit events; want 0 -- Update must not load audit_events", sawAtStart)
+	}
+
+	// package M4f: View stopped loading audit_events too (it used to be the
+	// one place that still did; see postgres.go). A View closure now sees no
+	// history either, for the same reason an Update closure does not.
+	if err := ledger.View(db.ctx, func(state *domain.State) error {
+		if len(state.Events) != 0 {
+			return fmt.Errorf("View unexpectedly carried %d historical audit events; want 0 -- View must not load audit_events either, since package M4f", len(state.Events))
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// The history did not go anywhere: Ledger.Events, the additive method
+	// package M4f introduced, is the ledger's only remaining reader of
+	// audit_events, and every other test in this file that reads events back
+	// (TestPostgresAuditEventsRemainAppendOnly and both
+	// drops-its-rows-and-frees-its-key tests) relies on it now.
+	events, err := ledger.Events(db.ctx, "alloc_history")
+	if err != nil {
+		t.Fatalf("Events: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, e := range events {
+		seen[e.ID] = true
+	}
+	if !seen["evt_hist_1"] || !seen["evt_hist_2"] || len(seen) != 2 {
+		t.Fatalf("Events did not see the full audit history: %#v", events)
 	}
 }
 
@@ -638,16 +790,18 @@ func TestPostgresAuditEventsRemainAppendOnly(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("append second audit event: %v", err)
 	}
-	if err := ledger.View(db.ctx, func(state *domain.State) error {
-		seen := map[string]bool{}
-		for _, event := range state.Events {
-			seen[event.ID] = true
-		}
-		if !seen[first.ID] || !seen[second.ID] || len(seen) != 2 {
-			return fmt.Errorf("audit history is not append-only: %#v", state.Events)
-		}
-		return nil
-	}); err != nil {
-		t.Fatal(err)
+	// package M4f: audit history is read back through Ledger.Events now, not
+	// through View (which no longer decodes audit_events at all) -- the same
+	// append-only assertion, unweakened, reached a different way.
+	events, err := ledger.Events(db.ctx, "alloc_audit")
+	if err != nil {
+		t.Fatalf("Events: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, event := range events {
+		seen[event.ID] = true
+	}
+	if !seen[first.ID] || !seen[second.ID] || len(seen) != 2 {
+		t.Fatalf("audit history is not append-only: %#v", events)
 	}
 }

@@ -63,16 +63,29 @@ Use the same API/worker entry points and database migrations as Kubernetes. The 
 | `netbox-worker` | NetBox's own background work; distinct from the platform worker |
 | `netbox-db` | Separate NetBox PostgreSQL and volume |
 | `netbox-redis` / cache service as required | NetBox's required queue/cache configuration for the pinned image |
-| `seed` | Explicit one-shot development bootstrap for tenant, VRF, pools, custom fields, and sample inventory |
+| `seed` | Explicit one-shot development bootstrap for tenant, VRF, pools, custom fields, and sample inventory (`deploy/compose/seed-netbox.py`) -- development-only; the custom fields and tags it also creates are, since work-plan package N4, the same catalogue `platform-ipam seed` (a process mode, not a Compose service) creates or verifies in every environment, stage and prod included |
 
 ### Worker reconciliation pass cost (measured 2026-09-21, package M4a)
 
-The worker's `Tick` runs every `reconciliation.full_scan_interval_seconds` (30s in development;
-`cmd/platform-ipam/main.go`). Its last step, `syncProjections`
-(`internal/service/worker.go`), PATCHes **every** committed, non-released allocation's NetBox
-prefix on **every** pass, unconditionally, to refresh `platform_last_observed_at` and the other
-platform-owned custom fields -- known since package H4's end-to-end note. Gap M4 asked for measured
-behaviour at representative counts before deciding whether that cost is worth reducing.
+The accepted M4g pilot policy uses a 300-second scan and a 360-second NetBox
+observation-stamp refresh trigger to target at most 15 minutes of healthy
+projection lag at up to 1,000 committed allocations. The trigger is configured
+as `reconciliation.projection_refresh_interval_seconds`; zero defaults to the
+scan interval. Identity verification still performs a GET for every prefix,
+and lifecycle changes PATCH immediately. A failed observation remains stale;
+this display target does not change the ledger's admission or CIDR-reuse gates.
+The pilot's local pass and during-pass reservation latency were measured after
+M4g at 1,000 synthetic allocations: 155 seconds when all required a PATCH,
+64 seconds when none did, and four successful reservations with a 1.833-second
+median. This is local timing evidence, not a stage/production guarantee. See
+[ADR 0017](decisions/0017-PERSISTING_ONLY_WHAT_A_LEDGER_TRANSACTION_CHANGED.md).
+
+Before M4g, the worker's `Tick` ran every `reconciliation.full_scan_interval_seconds`
+(30s in development; `cmd/platform-ipam/main.go`). Its last step,
+`syncProjections` (`internal/service/worker.go`), PATCHed **every** committed,
+non-released allocation's NetBox prefix on **every** pass, unconditionally, to
+refresh `platform_last_observed_at` and the other platform-owned custom fields.
+The following M4a measurements describe that earlier implementation.
 
 **Method.** A throw-away Compose project (`-p platform-ipam-m4a`, own volumes, own host port,
 brought down with its volumes afterward) ran the same images against a synthetic ledger of
@@ -143,7 +156,7 @@ now 99%+ of wall time at every size measured -- the ledger write has gone from t
 effectively free, and what remains is (as expected) exactly the O(N) NetBox traffic the fix left
 alone.
 
-**What remains, stated plainly.** Two costs are unchanged by this package, on purpose (the narrowest
+**What remained after M4a (historical).** M4g later addressed item 1 for unchanged projections; see the current pilot policy above. Two costs were unchanged by this package, on purpose (the narrowest
 fix the numbers justified was batching the write, not skipping the PATCH):
 
 1. **The PATCH itself still runs once per committed allocation per pass**, whether or not anything
@@ -349,6 +362,220 @@ production idle latency. The findings seeded (five, fixed) and the observation-d
 Part 2's throw-away stack; Part 1's per-axis sweep is exact regardless, because it measures the code
 directly rather than a scenario.
 
+### The audit table alone, re-measured (2026-09-22, package M4e)
+
+[ADR 0017](decisions/0017-PERSISTING_ONLY_WHAT_A_LEDGER_TRANSACTION_CHANGED.md)'s decision one, cut
+down to the audit table alone per M4d's recommendation: `internal/storage/postgres.go`'s `persistState`
+stops re-offering every historical audit event on every `Ledger.Update` (`ON CONFLICT DO NOTHING` stays
+as the brace), and `loadState` stops decoding `audit_events` on every `Update` transaction -- the read
+finding M4d's review note added to this package's scope, beyond decision one's original write-only
+claim. `View` is deliberately left loading events exactly as before: the opt-in PostgreSQL tests that
+read audit history back (`TestPostgresAuditEventsRemainAppendOnly` above all) do so through `View`, and
+no production `View` closure anywhere in `internal/service` reads `State.Events` either (every one of
+the 38 call sites was checked; see the package's own report for the list), so `View`'s unchanged eager
+load costs those closures nothing they use, while still letting every existing test pass with zero
+modification. The consequence, stated plainly: this package removes roughly half of the audit-decode
+cost a reservation pays (the planning `Update`'s share), not all of it (the pre-check `View`'s share
+remains) -- see "what was not done" below.
+
+**Part 1, no database: the write term.** `internal/storage/measure_update_test.go`'s
+`TestMeasureStatementsPerUpdate` (`IPAM_MEASURE=1`) was restructured to reproduce what a real post-M4e
+`Update` transaction actually sees: every event a swept size's synthetic history contains is marked
+"already loaded" (the way an `Update` closure's `State.Events` is now always empty at the start, so
+everything a real closure appends is by construction new), and a fixed two new events are appended the
+way one real transaction's plan-then-commit pair does. Sweeping the "events" axis from 0 to 1,000 while
+holding this fixed:
+
+| Historical events (E) | Measured `audit_events` inserts | Total measured `Exec` calls |
+| ---: | ---: | ---: |
+| 0 | 2 | 36 |
+| 100 | 2 | 36 |
+| 1,000 | 2 | 36 |
+
+Before this package, at the baseline sizes used elsewhere in this sweep, the same axis produced 3, 103
+and 1,033 `audit_events` inserts respectively (M4d's own table above, "audit events" row) -- one insert
+per historical row, every time. After, it is flat at 2 (`newEventsPerUpdate`, the fixed count this
+measurement appends) at every size swept, including 1,000. `E` is gone from the write, exactly as ADR
+0017's decision one and this package's brief asked for. Two always-on unit tests independent of
+`IPAM_MEASURE` (`TestPersistStateInsertsEveryNewEvent`, `TestPersistStateSkipsAlreadyLoadedEvents`) pin
+this behaviour directly, against `persistState` called with an explicit `loadedEvents` set, so the
+filter is proven correct on its own terms and not only as a side effect of `Update` never populating it.
+
+**Part 2, a throw-away second stack: the read term.** A disposable Compose project
+(`-p platform-ipam-m4e`, `IPAM_API_PORT=18082`, `NETBOX_PORT=18095`, its own volumes, `DOCKER_CONFIG`
+pointed at a scratch directory), brought up, bootstrapped and seeded exactly as M4d's own section
+describes, reusing M4d's own scratch scripts unmodified (`_tmp/m4d/seed_prefixes.py`,
+`_tmp/m4d/gen_ledger_sql.py`, `_tmp/m4d/latency_probe.sh` -- the schema this package changed nothing
+about, so M4d's seeding SQL generator needed no changes either), at the same two sizes M4d used, 100
+then +900 more (1,000 committed allocations plus a few dozen of the measurement's own reservations,
+exactly as M4d's own section notes for its equivalent row, growing to 1,011 allocations and 10,022 audit
+events by the end of this run), each allocation carrying one committed allocation row, one completed
+reservation operation, one idempotency record and ten audit events, matching M4d's seeding exactly.
+
+*Reservation latency, idle versus during a worker pass, before (M4d, post-M4a code) against after
+(this package):*
+
+| Committed allocations | Idle median / worst -- before | Idle median / worst -- after | During-pass median / worst -- before | During-pass median / worst -- after | Samples |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 1.03s / 1.63s | 0.588s / 0.669s | 1.06s / 1.46s | 0.609s / 0.921s | 5 idle, 5-6 during-pass |
+| ~1,000 | 4.85s / 5.02s | 2.646s / 2.940s | 5.72s / 6.23s | 2.844s / 3.079s | 5 idle, 5 during-pass |
+
+The read cost is not gone, but it fell by roughly half at every size and in both idle and during-pass
+conditions: idle median fell 43% at 100 (1.03s to 0.588s) and 45% at ~1,000 (4.85s to 2.646s);
+during-pass median fell 43% at 100 (1.06s to 0.609s) and 50% at ~1,000 (5.72s to 2.844s). This matches
+what the code predicts rather than a claim of eliminating the term: `reserve`'s pre-check `View`
+(`service.go:179-222`) and its planning `Update` (`service.go:271-376`) each paid `loadState`'s full
+audit-history decode before this package; only the `Update` half of that pair no longer does, so a
+two-transaction reservation should see close to half its audit-decode cost removed, which is what both
+rows above show, at both sizes and in both worker states. **This is the package's own considered
+trade-off, not an oversight**: extending the same fix to `View` would have required either changing
+`TestPostgresAuditEventsRemainAppendOnly` and the two drops-its-rows-and-frees-its-key tests (forbidden
+by this package's brief) or adding a second, additive read path solely to keep those three tests
+passing -- a larger change than the read finding on its own justified, and one this package's report
+flags as a decision for a follow-up rather than one it took unasked.
+
+**What was not re-measured.** Pass wall time itself: ADR 0017 states plainly that decision one "does not
+make a read cheaper" in general and "does not shorten a worker pass, because after M4a the pass is
+NetBox-bound" -- this package's write and read changes are both inside `internal/storage`, upstream of
+the worker's NetBox traffic, so M4a's and M4d's own pass-time numbers were not expected to move and were
+not re-taken. A production topology (three api, two worker replicas) and a genuine multi-replica
+two-writer run were not attempted here either, for the same reasons M4d's own caveats give.
+
+**Cleanup verified.** The second project's containers, network and every named volume were removed with
+`docker compose ... down -v`; `platform-ipam-dev` (the suite's own project) was never stopped and was
+confirmed healthy, on the same ten services, immediately afterward.
+
+### The remaining eight tables' diff, and `View`'s own audit read stopped (2026-09-22, package M4f)
+
+[ADR 0017](decisions/0017-PERSISTING_ONLY_WHAT_A_LEDGER_TRANSACTION_CHANGED.md)'s last store package. `internal/storage/postgres.go`'s
+`persistState` stops rewriting the other eight tables unconditionally and writes only what changed: `loadState`
+now also returns, for an `Update` transaction only, an independent second `*domain.State` snapshot of exactly
+what it read (View passes `false` and gets none, since a `View` closure never calls `persistState` and would pay
+for a snapshot nothing uses); `persistState` classifies every row of every table as added (a key in the closure's
+result absent from that snapshot -- `INSERT`), changed (a key in both whose freshly re-marshalled JSON bytes
+differ from the snapshot's -- `INSERT ... ON CONFLICT (pk) DO UPDATE`, one statement, no read) or removed (a key in
+the snapshot absent from the closure's result -- `DELETE`, by primary key, **computed from key-set membership
+alone, never from a byte comparison** -- the one rule ADR 0017 says must never fail the other way). `allocation_keys`
+and `holds` ride on the allocations table's own added/changed/removed classification (both are a pure function of
+one allocation's current value, so no separate load or comparison is needed for them); `operation_barriers` is
+diffed against a picture derived from the SAME retained operations snapshot by the identical formula
+`persistState` already applies at write time (`pendingBarrierDomains`), so all three derived, write-only tables
+are covered without loadState ever adding a tenth `SELECT`. `View` also stops decoding `audit_events` (Update
+already had, package M4e); the additive `domain.Ledger.Events(ctx, allocationID)` method -- ordered by when each
+event happened, id as a tiebreaker -- is now the store's only remaining reader of the audit table, implemented
+identically on `PostgresLedger` and `MemoryLedger`, and every existing `Ledger` double picked it up automatically
+by embedding `domain.Ledger`.
+
+**A finding that changed the mechanism, not just its cost.** `persistState` already marshalled every entity to
+JSON in order to write it, so the ADR's own text reads as "compare against the raw bytes `loadState` read off the
+wire." That is unsound for this schema: every payload column is `jsonb`, and PostgreSQL's `jsonb` storage
+re-serializes on every read -- object keys sorted alphabetically at every nesting level, whitespace normalised --
+which does not match `encoding/json.Marshal`'s struct-field-order output for anything with more than one field
+(verified against a throw-away `postgres:17.5-alpine`: `{"z":1,"a":2}` round-trips through a `jsonb` column as
+`{"a": 2, "z": 1}`). Comparing raw wire bytes against a fresh `Marshal` would have made nearly every unchanged
+multi-field row look "changed" -- safe (a spurious `UPDATE`, never a lost write) but silently defeating the
+optimisation's entire purpose. The mechanism actually built: `loadState` decodes each row's bytes a SECOND time
+into the retained snapshot (an independent object graph, not a copy of the value handed to the closure, because
+Go copies a struct's map/slice/pointer fields by reference and a closure that mutates one of those in place --
+the only legal way to change a map field of a map-of-structs entry -- would otherwise corrupt the "before" picture
+through the shared reference); `persistState` then compares `json.Marshal` of the snapshot's value against
+`json.Marshal` of the closure's result, both produced by this process, so `jsonb`'s wire-format reordering never
+enters the comparison on either side. Byte-stability of that comparison -- would an unchanged value ever look
+"changed" (safe) or, less obviously, could two representations of the same value differ enough to fool the
+comparison the OTHER way (not safe) -- is proved as a property over generated entities in
+`internal/storage/byte_stability_test.go`, covering every one of the five marshalled types this store persists,
+map-key insertion order, and `time.Time` round trips across mixed locations and sub-second precisions: 300 samples
+per type, all stable, plus a dedicated map-key-order case and a dedicated `time.Time` case.
+
+**M4c's harness passed with its one allowed change.** `TestDifferentialMemoryAndPostgresAgreeOverGeneratedSequences`
+required exactly the accommodation ADR 0017 named in advance: the reloaded-state comparison no longer includes
+`Events` at all (Postgres's `View` now always returns none, while the memory store's still returns everything --
+comparing "always nil" against "the full history" would assert a difference the two stores are now deliberately
+allowed to have, not catch a defect), and the audit-history equivalence it used to get from that comparison is now
+checked directly, per allocation id, through `Ledger.Events` on both stores after every step. With that one change
+the harness passed unmodified over its full 150-step generated sequence (10 distinct allocation ids), comparing
+all nine tables row by row after every step, exactly as M4c built it. Every existing test in
+`internal/storage/postgres_test.go` passed too; four of them (`TestPostgresAbandoningAnAllocationDropsItsRowsAndFreesItsKey`,
+`TestPostgresCancellingAReservationDropsItsRowsAndFreesItsKey`, `TestPostgresUpdateDoesNotLoadAuditHistory`,
+`TestPostgresAuditEventsRemainAppendOnly`) moved their audit-history assertions from reading `View`'s state onto
+`Ledger.Events`, unweakened -- each still proves exactly what it proved before, reached through the method that
+now actually carries that data.
+
+**Mutation table**, against a throw-away `postgres:17.5-alpine` (and, for three of the seven, a DB-free direct
+`persistState` call -- a compile error is never counted as a kill):
+
+| # | Mutant | Killed by |
+| --- | --- | --- |
+| A | A removed allocation's row (and `allocation_keys`/`holds`) survives | `TestPersistStateDeletesEveryRemovedRow`; the differential harness; both drops-its-rows tests |
+| D | A removed operation's row survives | `TestPersistStateDeletesEveryRemovedRow` **only** -- see below |
+| E | A stale `operation_barriers` row survives after its domain's last pending operation leaves | `TestPersistStateDeletesEveryRemovedRow`; the differential harness; the cancel drops-its-rows test |
+| F | A changed allocation is never rewritten (existence alone reads as "unchanged") | `TestMeasureStatementsPerUpdateProportionalToChange`; the differential harness |
+| G | A domain's barrier row is not rewritten when its winning operation's own content changes | `TestPersistStateBarrierFollowsItsWinningOperation` (dedicated) |
+| I | The allocations upsert loses its `ON CONFLICT` clause | The differential harness **only** -- a real unique-constraint violation, unreachable without a database |
+| J | A removed idempotency record survives | `TestPersistStateDeletesEveryRemovedRow`; the differential harness; both drops-its-rows tests |
+
+All seven killed. Mutant D is the one honestly-reported gap in the harness's own coverage: no production closure
+in `internal/service` ever deletes an operation from `State.Operations` (an abandon or cancel marks one terminal
+and keeps it; grepped every `delete(st.Operations` and `delete(state.Operations` site -- none exist), so M4c's
+generator, which deliberately mirrors only shapes the service really produces, cannot reach that branch, and a
+mutant there survived the full 150-step run untouched. `TestPersistStateDeletesEveryRemovedRow` was added because
+of this finding: a direct, DB-free `persistState` call exercising every one of the nine tables' removed path at
+once, independent of whether today's service happens to produce that shape, because the diff's promise ("a key
+present in loaded and absent from the closure's result is deleted") is general, not conditioned on current
+callers. Mutant I is the mirror case: unreachable without a real database, because a fake `pgx.Tx` cannot enforce
+a unique constraint.
+
+**The counting test shows a write proportional to what changed.** `TestMeasureStatementsPerUpdate` (`IPAM_MEASURE=1`)
+lost its leading "9 +": a cold transaction (nothing loaded) now issues zero `DELETE` statements, where the pre-M4f
+store issued nine unconditionally, loaded or not; every per-axis sweep at 0/100/1,000 still matches the rest of
+the formula exactly, table by table. `TestMeasureStatementsPerUpdateProportionalToChange`, new and always-on
+(no database, no flag), is package M4f's own answer to the question M4d's formula could only pose: a thousand-row
+ledger on all six primary tables (6,000 rows total) with exactly one row changed on each axis produced
+
+| allocations | allocation_keys | holds | operations | idempotency_requests | observations | findings | coverage | operation_barriers | total |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 0 | 8 |
+
+eight statements, not six thousand -- every one of them the single changed row on its axis, nothing else touched.
+
+**The latency re-run.** A disposable Compose project (`-p platform-ipam-m4f`, `IPAM_API_PORT=18083`,
+`NETBOX_PORT=18096`, its own volumes, `DOCKER_CONFIG` pointed at a scratch directory, images built from this
+package's own private working copy so the numbers reflect the diff, not the pre-M4f checkout), seeded exactly as
+M4d and M4e did, reusing their scratch scripts unmodified (`_tmp/m4d/seed_prefixes.py`, `_tmp/m4d/gen_ledger_sql.py`,
+`_tmp/m4d/latency_probe.sh`), at the same two sizes: 100 then +900 more (1,005 allocations by the end, the extra
+five from the measurement's own reservations, matching M4e's equivalent growth). Idle samples with the m4f
+project's own worker container stopped, during-pass with it running, five `POST /v1/allocations` samples each
+against `pool_dev_euc1`:
+
+| Committed allocations | Idle median / worst | During-pass median / worst | Samples |
+| ---: | ---: | ---: | ---: |
+| 100 | 1.384s / 1.657s | (not sampled at this size) | 5 idle |
+| ~1,000 | 1.528s / 1.720s | 2.127s / 2.271s | 5 idle, 5 during-pass |
+
+**Idle latency at ~1,000 allocations fell from M4e's 2.646s median to 1.528s -- a 42% reduction -- and, more
+tellingly, idle latency barely grew at all between 100 and ~1,000 allocations this time** (1.384s to 1.528s, tenth-order,
+against M4e's 0.588s-to-2.646s 4.5x growth over the same range). This is exactly what the record predicts: M4e
+left `View` loading the whole audit history, so `reserve`'s pre-check `View` still paid the age-driven decode of
+ten thousand audit rows at ~1,000 allocations regardless of what M4e's `Update`-only fix did; M4f removes that
+read too, so the one term that grew with the ledger's age rather than its size is gone from BOTH transactions of
+a reservation, not just one. **This measurement's absolute numbers are not directly comparable to M4a's, M4d's or
+M4e's in one respect M4e's were not exposed to**: this run shared the sandbox machine with several other agents'
+concurrent, CPU-heavy processes (observed at times exceeding 500% CPU from unrelated containers), which is almost
+certainly why even the 100-allocation idle median here (1.384s) is well above M4e's post-fix 100-allocation median
+(0.588s) despite no code-path difference between them at that size -- the absolute latencies reflect a busier
+machine, not a regression; the *shape* (near-flat across the two sizes, where M4e's was not) is the finding this
+measurement was built to show, and it holds. During-pass was not separately sampled at 100 allocations (the ledger
+had already grown past that size before during-pass sampling began); only the ~1,000 row is populated.
+
+**What was not re-measured or re-attempted, as M4e's own section states its equivalents.** Pass wall time itself:
+this package's changes are upstream of the worker's NetBox traffic, so M4a's and M4d's own pass-time numbers were
+not expected to move and were not re-taken. A production topology (three api, two worker replicas) and a genuine
+multi-replica two-writer run were not attempted here either.
+
+**Cleanup verified.** The `platform-ipam-m4f` project's containers, network and every named volume were removed
+with `docker compose ... down -v` (confirmed: zero matching volumes, zero matching containers immediately after);
+`platform-ipam-dev` was never stopped and was confirmed healthy, on the same ten services, throughout.
+
 Base Compose should be able to use an external development NetBox by configuration; the NetBox override adds the complete local stack. Verify upstream image-specific startup, migration, worker, Redis, and healthcheck settings rather than copying unpinned commands. Upstream provides a Docker-based NetBox deployment project. [NetBox Docker](https://github.com/netbox-community/netbox-docker).
 
 All dependencies need healthchecks; migration completion and actual readiness should gate startup. `depends_on` ordering by itself does not establish application readiness. Store generated local credentials in ignored local files or local secret mounts; commit variable names and placeholders only. Do not expose database or Redis ports by default.
@@ -417,19 +644,25 @@ today. See [GUI authentication](GUI_AUTHENTICATION.md) section 8 and the
 [chart README](../deploy/helm/platform-ipam/README.md) for the values reference and what enabling it
 requires of the external NetBox.
 
-### Running `adopt` and `onboard` in the cluster: `operatorJob`
+### Running `adopt`, `onboard` and `seed` in the cluster: `operatorJob`
 
-An optional `operatorJob` block (work-plan package H3) adds an opt-in Job that runs
-`platform-ipam adopt` or `platform-ipam onboard` in the cluster, instead of a hand-built one-off Job
-or Pod holding database, NetBox and cloud credentials by hand. It is disabled by default and,
-disabled, changes nothing in the rendered manifests. Each run is named with a required, caller-
-supplied `runId`, so a `helm upgrade` that leaves the block enabled with the same `runId` cannot
-silently re-run an `apply`; it is not a Helm hook, so it never gates a release the way the migration
-Job does. `mode: onboard` gets NetBox credentials and the pools configuration only (no database URL,
-no cloud role); `mode: adopt` gets exactly what the `worker` Deployment gets, including its
-ServiceAccount. See the [chart README](../deploy/helm/platform-ipam/README.md#optional-operatorjob)
+An optional `operatorJob` block (work-plan packages H3 and N4) adds an opt-in Job that runs
+`platform-ipam adopt`, `platform-ipam onboard` or `platform-ipam seed` in the cluster, instead of a
+hand-built one-off Job or Pod holding database, NetBox and cloud credentials by hand. It is disabled
+by default and, disabled, changes nothing in the rendered manifests. Each run is named with a
+required, caller-supplied `runId`, so a `helm upgrade` that leaves the block enabled with the same
+`runId` cannot silently re-run an `apply`; it is not a Helm hook, so it never gates a release the way
+the migration Job does. `mode: onboard` gets NetBox credentials and the pools configuration only (no
+database URL, no cloud role); `mode: adopt` gets exactly what the `worker` Deployment gets, including
+its ServiceAccount; `mode: seed` (work-plan package N4) gets NetBox credentials only -- no database
+URL, no cloud role, no pools configuration at all (`internal/seedcmd`'s settings load nothing but the
+NetBox origin and token) -- and, unlike `adopt`/`onboard`, takes no `command` and no `args`: `seed`
+is the whole invocation, so `operatorJob.command`/`operatorJob.args` must be left empty and
+`operatorJob.input` must name no table, or the render is refused. See the
+[chart README](../deploy/helm/platform-ipam/README.md#optional-operatorjob)
 for the full values reference and least-privilege table, and the
-[adoption runbook](../deploy/runbooks/ADOPTION.md) section 3 for the operating procedure. Validated
+[adoption runbook](../deploy/runbooks/ADOPTION.md) section 3 (for `adopt`/`onboard`) or the
+[seed runbook](../deploy/runbooks/SEED.md) (for `seed`) for the operating procedure. Validated
 by `helm lint`/`helm template` only; never run against a real cluster.
 
 `adopt` and `worker` authenticate no HTTP caller (`cmd/platform-ipam/main.go` builds

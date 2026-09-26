@@ -1,0 +1,17 @@
+# Local operator workspace overlay. Add after compose.netbox.yaml.
+services:
+  netbox:
+    image: platform-ipam-netbox-workspace:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/compose/netbox/ui/Dockerfile
+    volumes:
+      - ./netbox/ui/plugins.py:/etc/netbox/config/plugins.py:ro
+
+  netbox-worker:
+    image: platform-ipam-netbox-workspace:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/compose/netbox/ui/Dockerfile
+    volumes:
+      - ./netbox/ui/plugins.py:/etc/netbox/config/plugins.py:ro

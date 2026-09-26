@@ -1,0 +1,2 @@
+account_id,account_name,region,stage,error
+100000000099,nonprod-application-100,us-east-1,describe-vpcs,AccessDenied (synthetic)

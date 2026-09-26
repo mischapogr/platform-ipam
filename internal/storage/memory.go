@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"sync"
 
 	"github.com/mischapogr/platform-ipam/internal/domain"
@@ -46,6 +47,47 @@ func (l *MemoryLedger) Update(ctx context.Context, fn func(*domain.State) error)
 }
 
 func (l *MemoryLedger) Ready(context.Context) error { return nil }
+
+// Events returns allocationID's full audit history, ordered exactly as
+// PostgresLedger.Events orders it (At ascending, id as a tiebreaker) --
+// "the memory ledger gives the same answers" (package M4f). Unlike the
+// Postgres store, the memory ledger never stopped carrying every event in
+// l.state.Events (View and Update here still clone the whole state on every
+// call, package M4e's and M4f's read changes are Postgres-only), so this is
+// a filter over what View already returns, not a separate code path with its
+// own chance to disagree.
+func (l *MemoryLedger) Events(ctx context.Context, allocationID string) ([]domain.Event, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	var out []domain.Event
+	for _, e := range l.state.Events {
+		if e.AllocationID == allocationID {
+			out = append(out, e)
+		}
+	}
+	sortEvents(out)
+	return out, nil
+}
+
+// sortEvents is the one definition of "audit history order" both Ledger
+// implementations use, so that a caller comparing the two (M4c's
+// differential harness) never has to normalise an ordering difference that
+// was really just two independent sort implementations agreeing by
+// accident. At-ascending is the order a person reading "what happened to
+// this allocation" actually wants; id, an opaque random token, is only a
+// tiebreaker for two events an application clock recorded at the same
+// instant.
+func sortEvents(events []domain.Event) {
+	sort.Slice(events, func(i, j int) bool {
+		if !events[i].At.Equal(events[j].At) {
+			return events[i].At.Before(events[j].At)
+		}
+		return events[i].ID < events[j].ID
+	})
+}
 
 // Snapshot returns a detached copy, useful for deterministic tests.
 func (l *MemoryLedger) Snapshot(ctx context.Context) (*domain.State, error) {

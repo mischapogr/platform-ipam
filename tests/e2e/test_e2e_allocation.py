@@ -173,7 +173,8 @@ class AllocationE2ETest(unittest.TestCase):
         fields = row.get("custom_fields") or {}
         self.assertEqual(fields.get("platform_allocation_id"), allocation["id"])
         self.assertEqual(fields.get("platform_allocation_key"), key)
-        self.assertEqual(fields.get("platform_state"), "RESERVED")
+        state = fields.get("platform_state")
+        self.assertEqual(state.get("value") if isinstance(state, dict) else state, "RESERVED")
         self.assertEqual(fields.get("platform_pool_id"), POOL_ID)
 
     def test_netbox_holds_no_managed_prefix_the_api_does_not_know(self):

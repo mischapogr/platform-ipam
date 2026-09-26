@@ -454,7 +454,8 @@ class AdoptE2ETest(_AdoptFixtureCase):
         fields = prefixes[cls.vpc_cidr].get("custom_fields") or {}
         self.assertEqual(fields.get("platform_allocation_id"), cls.vpc_allocation_id)
         self.assertEqual(fields.get("platform_allocation_key"), cls.vpc_key)
-        self.assertEqual(fields.get("platform_state"), "RESERVED")
+        state = fields.get("platform_state")
+        self.assertEqual(state.get("value") if isinstance(state, dict) else state, "RESERVED")
         # The import tag and provenance fields survive adoption (ADR 0010).
         tags = [t["slug"] for t in prefixes[cls.vpc_cidr].get("tags", [])]
         self.assertIn("platform-ipam-imported", tags)

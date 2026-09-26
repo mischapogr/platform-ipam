@@ -31,6 +31,11 @@ func TestPolicySafety(t *testing.T) {
 		t.Fatal("outside exclusion accepted")
 	}
 	cfg, _ = Load("../../examples/config/pools.yaml", "", "development")
+	cfg.Reconciliation.ProjectionRefreshInterval = -1
+	if Validate(cfg, "development") == nil {
+		t.Fatal("negative projection refresh interval accepted")
+	}
+	cfg, _ = Load("../../examples/config/pools.yaml", "", "development")
 	cfg.Lifecycle.QuarantineHours = 0
 	if Validate(cfg, "prod") == nil {
 		t.Fatal("production bypass accepted")
@@ -79,6 +84,38 @@ func TestLocalExtraCredentialsRequireDevelopment(t *testing.T) {
 	}
 	if err := dev.Validate("api"); err != nil {
 		t.Fatalf("IPAM_LOCAL_EXTRA_CREDENTIALS refused in development: %v", err)
+	}
+}
+
+func TestAWSEmulatorEndpointRequiresDevelopment(t *testing.T) {
+	base := Settings{
+		Environment: "stage", DatabaseURL: "postgres://localhost/ipam?sslmode=verify-full",
+		AuthMode: "local", AWSMode: "live", NetBoxURL: "https://netbox.stage.example.org",
+		NetBoxToken: "netbox-token",
+	}
+	if err := base.Validate("worker"); err != nil {
+		t.Fatalf("stage worker baseline: %v", err)
+	}
+	for _, variant := range []struct {
+		name string
+		set  func(*Settings)
+	}{
+		{"global", func(s *Settings) { s.AWSEndpointURL = "http://moto:5000" }},
+		{"EC2", func(s *Settings) { s.AWSEC2EndpointURL = "http://moto:5000" }},
+		{"STS", func(s *Settings) { s.AWSSTSEndpointURL = "http://moto:5000" }},
+	} {
+		t.Run(variant.name, func(t *testing.T) {
+			s := base
+			variant.set(&s)
+			if err := s.Validate("worker"); err == nil || !strings.Contains(err.Error(), "custom AWS endpoints") {
+				t.Fatalf("stage worker accepted emulator endpoint: %v", err)
+			}
+			s.Environment = "development"
+			s.DatabaseURL = "postgres://localhost/ipam?sslmode=disable"
+			if err := s.Validate("worker"); err != nil {
+				t.Fatalf("development worker rejected emulator endpoint: %v", err)
+			}
+		})
 	}
 }
 

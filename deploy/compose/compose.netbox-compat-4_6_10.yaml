@@ -1,0 +1,8 @@
+# Explicit 4.6.10 probe overlay; the default Compose stack now uses this exact digest too.
+services:
+  netbox:
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8
+  netbox-worker:
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8
+  netbox-bootstrap:
+    image: docker.io/netboxcommunity/netbox:v4.6.10-5.0.2@sha256:91b823a05cb51004f07acc2228ccc2993f38b0f0bf711b403b0fdf85e51277e8

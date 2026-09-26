@@ -6,7 +6,7 @@ Status: implemented adapter and local UI integration, 2026-09-08; operator UI ac
 
 Reuse NetBox as the operator inventory UI. Deploy or connect its API for core allocation; enabling user access to its UI is a separate optional milestone. The UI should help an operator answer: which pool contains this VPC, who requested it, which AWS account/region uses it, what subnets belong to it, and why a released range remains held?
 
-Do not build a new frontend or require an embedded iframe for v1. Offer a normal SSO-protected NetBox URL, optionally deep-linked from platform allocation responses and internal documentation. The API/provider must work when these links are absent. This is an integration of NetBox's existing application, not a standalone frontend package mounted into the platform API.
+Do not build a standalone frontend or require an embedded iframe for v1. Offer a normal SSO-protected NetBox URL, optionally deep-linked from platform allocation responses and internal documentation. The API/provider must work when these links are absent. This is an integration of NetBox's existing application, not a frontend mounted into the platform API. For the later overlap/migration workflow, [ADR 0020](decisions/0020-NETBOX_MIGRATION_WORKSPACE.md) adds an optional local, read-only NetBox plugin that renders the existing offline reports.
 
 ## 2. Inventory mapping
 
@@ -41,6 +41,8 @@ Use these platform-prefixed custom fields on managed Prefixes; names are a propo
 
 Set exact matching for identity fields, group them as “Platform allocation”, and show operator-relevant fields in object views. UI-only editing restrictions on custom fields are useful presentation controls, but backend authorization must independently prevent mutation. NetBox supports custom-field grouping, filtering, and visibility. [NetBox custom fields](https://netbox.readthedocs.io/en/stable/customization/custom-fields/).
 
+The table above is a proposed schema and predates the onboarding-import fields ADR 0007 and [ADR 0016](decisions/0016-SOURCE_AWARE_REFRESH_AND_REMOVAL_OF_IMPORTED_OCCUPANCY.md) added (`platform_import_batch`, `platform_import_source`, `platform_import_contributors`, `platform_import_contributors_reconstructed`) and the `platform-ipam-imported` tag. The authoritative, current catalogue -- every field, its NetBox type, its object types, and the one choice set each selection field references -- is the Go source of truth in `internal/netbox/seed.go` (work-plan package N4); `deploy/compose/seed-netbox.py`'s own `FIELDS`/`CHOICE_SETS`/`TAGS` declarations are asserted equal to it by a test (`internal/netbox/seed_test.go`'s `TestSeedFieldsMatchPythonScript`), so the two cannot drift apart silently.
+
 Custom-field values are recovery markers, not database uniqueness guarantees. The platform ledger enforces unique tenant/key identity. NetBox prefix uniqueness and the adapter's identity checks provide a separate protection against exact duplicate inventory records.
 
 ## 3. Lifecycle projection
@@ -59,13 +61,23 @@ NetBox container utilization measures child-prefix occupancy, while ordinary Pre
 
 ## 4. Adapter boundary and version gate
 
+[ADR 0019](decisions/0019-EXACT_NETBOX_RELEASE_SUPPORT.md) qualifies exact image
+releases. `v4.7.1-5.1.1` passed the full 126-test isolated Compose suite,
+six mock-Entra and seven OpenLDAP UI checks, the optional plugin
+build/migrations/API probe, and a 4.6.10 backup/restore
+forward-upgrade rehearsal. Its digest is pinned in the local Compose release.
+The adapter accepts both 4.6 string and 4.7 `{value, label}` selection custom
+field responses. Stage and production still need their own NetBox image
+promotion and restore evidence; see the
+[4.7 upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md).
+
 The adapter exposes methods such as read domain inventory, find by allocation marker, create exact prefix, update owned metadata, and delete verified managed prefix. It translates those calls to the pinned NetBox REST API. Business logic never imports NetBox response structs outside this boundary.
 
 For each supported release, verify prefix create/read/update/delete, VRF behavior, pagination, custom-field lookup, validation errors, token format, timeout behavior, and audit logging. Record compatibility as tested release pairs, not “latest supported”. Stable documentation may describe newer features than the selected deployment. [NetBox REST API](https://netbox.readthedocs.io/en/stable/integrations/rest-api/).
 
 NetBox has an available-prefix operation, but the platform's reservation uses the exact persisted candidate/recovery protocol in the [implementation plan](IMPLEMENTATION_PLAN.md). Avoid retrying an unconstrained “allocate next” write after a lost response. Test alternate write paths too: managed-domain access must not permit another actor to bypass the platform's holds or create partially overlapping prefixes.
 
-Bootstrap custom fields, roles, VRFs, and pool containers through a separately scoped administrative job. Runtime credentials only need relevant inventory operations. Bootstrap is idempotent by stable identifiers, refuses conflicting pre-existing definitions, and produces a reviewable change report. It never edits or removes unowned objects automatically.
+Bootstrap custom fields and the import tag through a separately scoped administrative job: `platform-ipam seed` (work-plan package N4, `internal/seedcmd`), the process mode this section used to describe only as a procedure. It reads nothing but the NetBox origin and token -- no database, no OIDC, no cloud, no identities -- creates or verifies every custom field, choice set and tag `internal/netbox` relies on, and is idempotent by stable identifiers: an existing definition of another type, or with different `object_types`, is a conflict (`exit 3`) and is never rewritten. It prints one JSON report per run, listing every object as `created`, `present` or `conflict`, to stdout; exit `4` means NetBox itself was unreachable or misconfigured. Run it once against a new NetBox before the first onboarding import, and again after any upgrade that adds a field -- see [the deployment doc](DEPLOYMENT.md#running-adopt-onboard-and-seed-in-the-cluster-operatorjob) for the `operatorJob` Helm shape and the [seed runbook](../deploy/runbooks/SEED.md) for the full procedure. It creates fields and tags ONLY -- the development tenant, VRF, pool container and sample inventory stay `deploy/compose/seed-netbox.py`'s own development-only bootstrap, which this mode does not replace. Runtime credentials only need relevant inventory operations. It never edits or removes unowned objects automatically.
 
 On updates, modify only owned fields and preserve unrelated description/tags/metadata unless the field's ownership contract says otherwise. Treat manual changes to CIDR, VRF, parent pool, or identity markers as drift requiring investigation; do not silently overwrite them. A deleted managed prefix is an incident and cannot make a held range free.
 

@@ -1,0 +1,35 @@
+{
+  "pools": [
+    {
+      "allowed_prefix_lengths": [
+        22,
+        24
+      ],
+      "authority": "platform-ipam",
+      "cidr": "10.64.0.0/16",
+      "id": "replacement-eu-central-1",
+      "region": "eu-central-1"
+    },
+    {
+      "allowed_prefix_lengths": [
+        22,
+        24
+      ],
+      "authority": "platform-ipam",
+      "cidr": "10.65.0.0/16",
+      "id": "replacement-eu-west-1",
+      "region": "eu-west-1"
+    },
+    {
+      "allowed_prefix_lengths": [
+        22,
+        24
+      ],
+      "authority": "platform-ipam",
+      "cidr": "10.66.0.0/16",
+      "id": "replacement-us-east-1",
+      "region": "us-east-1"
+    }
+  ],
+  "version": 1
+}

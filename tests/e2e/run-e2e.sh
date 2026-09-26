@@ -40,7 +40,12 @@ cd "$COMPOSE_DIR"
 
 [ -f .env ] || { echo "deploy/compose/.env is missing; run ./create-env.sh" >&2; exit 2; }
 # shellcheck disable=SC1091
+requested_project=${COMPOSE_PROJECT_NAME:-}
 set -a; . ./.env; set +a
+if [ -n "$requested_project" ]; then
+  COMPOSE_PROJECT_NAME=$requested_project
+  export COMPOSE_PROJECT_NAME
+fi
 
 : "${IPAM_ENVIRONMENT:?IPAM_ENVIRONMENT must be set}"
 : "${COMPOSE_PROJECT_NAME:=platform-ipam-dev}"
@@ -54,7 +59,11 @@ case "$COMPOSE_PROJECT_NAME" in
 esac
 
 compose() {
-  docker compose --env-file .env -f compose.yaml -f compose.netbox.yaml "$@"
+  if [ -n "${IPAM_E2E_COMPOSE_OVERLAY:-}" ]; then
+    docker compose --env-file .env -f compose.yaml -f compose.netbox.yaml -f "$IPAM_E2E_COMPOSE_OVERLAY" "$@"
+  else
+    docker compose --env-file .env -f compose.yaml -f compose.netbox.yaml "$@"
+  fi
 }
 
 RUN_ID=${IPAM_E2E_RUN_ID:-$(date -u +%Y%m%d%H%M%S)}

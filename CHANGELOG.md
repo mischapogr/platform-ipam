@@ -9,8 +9,51 @@ between minor versions.
 
 ## [Unreleased]
 
+### Changed
+
+- Local Compose NetBox and the optional AWS plugin base now pin the qualified
+  `v4.7.1-5.1.1` image digest. The adapter reads both 4.6 and 4.7 selection
+  custom-field responses; an isolated full suite, a 4.6.10-to-4.7.1 database
+  restore rehearsal and the plugin migrations/API probe passed. See
+  [the upgrade runbook](deploy/runbooks/NETBOX_4_7_UPGRADE.md).
+
 ### Added
 
+- An optional local NetBox migration workspace displays offline overlap,
+  address planning, migration progress and separately collected AWS topology evidence. A
+  read-only topology collector records VPC routes, TGW attachments, route
+  tables, associations and propagations with explicit coverage gaps. The
+  migration report now includes its reviewed, CIDR-free target identity.
+- Local Compose probes now cover Moto EC2/STS, Samba AD with LDAPS, an exact
+  NetBox 4.6.10 candidate and its optional AWS plugin, while a kind probe
+  exercises Helm controller behavior. The public provider route has a local
+  filesystem-mirror installation and checksum rehearsal.
+- M4g skips unchanged NetBox projection PATCHes and refreshes the operator
+  observation stamp on a separate bounded cadence. The 1,000-allocation pilot
+  timing remains an acceptance gate.
+- The development NetBox bootstrap can create a write-enabled, group-limited
+  inventory maintainer test account. The e2e role test checks prefix create,
+  change, and denied delete, then removes only its verified test prefix (A2).
+- New network imports keep contributor identities in `platform_import_contributors`
+  and cap the purpose description at NetBox's 200-rune limit. `onboard remove`
+  accepts the new description format while preserving the check for prefixes
+  imported before it (work-plan package M9c).
+- The end-to-end suite documents its per-module allocation quota and checks
+  the committed count at the end of its second half (work-plan package T2).
+- `platform-ipam seed`, a new process mode that creates or verifies every
+  NetBox custom field, choice set and tag `internal/netbox` relies on --
+  idempotent and conflict-detecting (an existing definition of another type,
+  or with different object types, is reported, never rewritten), reading
+  only the NetBox origin and token (no database, no OIDC, no cloud, no
+  pools/identity configuration). Closes the gap `deploy/compose/seed-netbox.py`
+  left for stage and production, where an import used to fail with a bare
+  `400` until an operator created the fields by hand. `internal/netbox/seed.go`
+  is now the single source of truth for the field/tag catalogue;
+  `deploy/compose/seed-netbox.py`'s own declarations are asserted equal to
+  it by a test so the two cannot drift apart silently. The Helm
+  `operatorJob` gains `mode: seed` (least privilege: NetBox settings only,
+  no subcommand, no flags, no input table). See
+  [the seed runbook](deploy/runbooks/SEED.md) (work-plan package N4).
 - `internal/storage` gains a differential harness that replays deterministic,
   seeded sequences of ledger transactions against both `PostgresLedger` and
   `MemoryLedger`, comparing reloaded state, all nine tables row by row, and
@@ -138,9 +181,26 @@ between minor versions.
   unless `IPAM_MEASURE=1`), that counts `persistState`'s round trips per `Ledger.Update` against a
   counting fake of `pgx.Tx`, confirming ADR 0017's formula `9 + 3A + O + P + R + D + F + C + E`
   exactly at every swept size; it ships no production change (ADR 0017, package M4d).
+- `internal/storage`'s `PostgresLedger.Update` no longer re-offers or decodes the ledger's full audit
+  history: `persistState` inserts only the events a transaction's own closure appended, and `Update`'s
+  `loadState` call skips `audit_events` entirely, removing a write and read cost that grew with the
+  ledger's age rather than its size. `View` is unchanged, still loading events eagerly, so this is a
+  partial read-side win, roughly half of a reservation's audit-decode cost; measured before/after at
+  100 and ~1,000 committed allocations in `docs/DEPLOYMENT.md`'s dated measurement section (ADR 0017,
+  package M4e).
+- `internal/storage`'s `persistState` now writes only what a `Ledger.Update` closure actually changed
+  across the remaining eight tables (added / changed / removed per row, deletion always computed from
+  key-set membership, never from content), instead of an unconditional full rewrite. An allocation
+  whose tenant or key changes clears its old derived rows before the new identity is written; `View` stops
+  decoding `audit_events` too, and the additive `domain.Ledger.Events(ctx, allocationID)` method is now
+  the store's only reader of the audit table. A thousand-row ledger with one row changed per table now
+  costs eight statements instead of six thousand, and idle reservation latency at ~1,000 allocations
+  stopped growing with the ledger's size at all in a re-measurement, both in `docs/DEPLOYMENT.md`'s
+  dated measurement section (ADR 0017, package M4f).
 
 ### Fixed
 
+- `networkRowsForCIDR` ordered a CIDR's collapsed networks rows by `SourceRow` alone with an unstable `sort.Slice`; since each input file restarts its own row numbering at 1 (package M1b1), a multi-file import whose row numbers collided at one CIDR could produce a different merged description, AWS-field choice, and contributor order depending on which file was named first on the command line. Now sorted by `SourceFile`, then `SourceRow`, then `ResourceID`/`AccountID` for a genuine tie, with `sort.SliceStable` (work-plan package C10, found by M9b1's review).
 - `GET /v1/allocations/{id}` now answers `409 allocation_pending` (with the pending operation's id in
   `error.details.operation_id`) for the owning tenant's own uncommitted allocation while its `RESERVE`
   or `ADOPT` is still `PENDING`, as `docs/API_V1.md` had promised since v1 but `Service.Get` never

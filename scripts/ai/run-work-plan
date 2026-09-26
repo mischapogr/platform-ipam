@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+"""Run an explicit work-plan queue sequentially with model routing and gates."""
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+
+ROOT = Path(__file__).resolve().parents[2]
+QUEUE = ROOT / "scripts/ai/work-plan-queue.json"
+SCHEMA = ROOT / "scripts/ai/work-plan-result.schema.json"
+RUNS = ROOT / ".work-plan-runs"
+CODEX_ROUTES = {
+    "S": ("gpt-6-luna", "low"),
+    "M": ("gpt-6-sol", "medium"),
+    "L": ("gpt-6-sol", "high"),
+    "X": ("gpt-6-astra", "high"),
+}
+CODEX_ESCALATE = {
+    "S": ("gpt-6-sol", "medium"),
+    "M": ("gpt-6-sol", "high"),
+    "L": ("gpt-6-astra", "high"),
+    "X": ("gpt-6-astra", "xhigh"),
+}
+CLAUDE_ROUTES = {
+    "S": ("haiku", "low"),
+    "M": ("sonnet", "medium"),
+    "L": ("sonnet", "high"),
+    "X": ("opus", "high"),
+}
+CLAUDE_ESCALATE = {
+    "S": ("sonnet", "medium"),
+    "M": ("sonnet", "high"),
+    "L": ("opus", "high"),
+    "X": ("opus", "xhigh"),
+}
+ROUTES = {"codex": CODEX_ROUTES, "claude": CLAUDE_ROUTES}
+ESCALATE = {"codex": CODEX_ESCALATE, "claude": CLAUDE_ESCALATE}
+ID_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+
+def item_digest(item):
+    return hashlib.sha256(json.dumps(item, sort_keys=True).encode()).hexdigest()
+
+
+def load_queue(path):
+    data = json.loads(path.read_text())
+    if data.get("schema_version") != 1 or not isinstance(data.get("items"), list):
+        raise ValueError("Queue must have schema_version 1 and an items list")
+    seen = set()
+    for item in data["items"]:
+        if not isinstance(item, dict) or not ID_PATTERN.fullmatch(item.get("id", "")):
+            raise ValueError("Every item needs a unique uppercase ID")
+        if item["id"] in seen:
+            raise ValueError(f"Duplicate queue ID: {item['id']}")
+        seen.add(item["id"])
+        if (item.get("tier") not in CODEX_ROUTES or not isinstance(item.get("title"), str)
+                or not item["title"].strip() or not isinstance(item.get("prompt"), str)
+                or not item["prompt"].strip()):
+            raise ValueError(f"Invalid tier, title or prompt for {item['id']}")
+        checks = item.get("checks")
+        if not isinstance(checks, list) or not checks or not all(
+            isinstance(check, list) and check and all(isinstance(arg, str) and arg for arg in check)
+            for check in checks
+        ):
+            raise ValueError(f"Invalid checks for {item['id']}")
+        if not isinstance(item.get("allow_existing_changes", False), bool):
+            raise ValueError(f"Invalid allow_existing_changes for {item['id']}")
+        if not isinstance(item.get("check_first", False), bool):
+            raise ValueError(f"Invalid check_first for {item['id']}")
+    return data["items"]
+
+
+def load_state(path):
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text())
+    if not isinstance(data, dict):
+        raise ValueError("Run state is not an object")
+    return data
+
+
+def save_state(path, state):
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+    os.replace(temporary, path)
+
+
+def is_complete(item, state):
+    record = state.get(item["id"], {})
+    return record.get("status") == "complete" and record.get("digest") == item_digest(item)
+
+
+def git_dirty():
+    result = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=normal"],
+        cwd=ROOT, capture_output=True, text=True, check=True,
+    )
+    return bool(result.stdout.strip())
+
+
+def execute(command, log_path, stderr_path=None):
+    with log_path.open("w") as log:
+        if stderr_path is None:
+            result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
+        else:
+            with stderr_path.open("w") as errors:
+                result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=errors)
+    return result.returncode
+
+
+def run_checks(item, directory):
+    for number, check in enumerate(item["checks"], start=1):
+        log_path = directory / f"check-{number}.log"
+        print(json.dumps({"item": item["id"], "phase": "check", "command": check, "log": str(log_path)}), flush=True)
+        code = execute(check, log_path)
+        if code:
+            return code, check, log_path
+    return 0, None, None
+
+
+def agent_turn(item, tool, model, effort, attempt_dir, prior_failure=None, claude_permission_mode="auto"):
+    result_path = attempt_dir / "result.json"
+    log_path = attempt_dir / ("codex.jsonl" if tool == "codex" else "claude.json")
+    prompt = (
+        f"Queue item {item['id']}: {item['title']}. Read AGENTS.md, then only the "
+        "work-plan section and contracts needed for this item. "
+        + item["prompt"]
+        + " Final response must match the supplied JSON schema. Use status "
+        "ready_for_checks only when your work is ready for external validation; "
+        "use blocked when a required decision or capability is missing."
+    )
+    if prior_failure:
+        prompt += f" The previous external gate failed. Read its local log at {prior_failure}; repair the cause, then return a new result."
+    if tool == "codex":
+        command = [
+            "codex", "exec", "-C", str(ROOT), "--approve-for-me",
+            "--sandbox", "workspace-write", "-m", model,
+            "-c", f'model_reasoning_effort="{effort}"',
+            "--json", "--output-schema", str(SCHEMA),
+            "--output-last-message", str(result_path), prompt,
+        ]
+        stderr_path = None
+    else:
+        command = [
+            "claude", "-p", prompt, "--model", model, "--effort", effort,
+            "--permission-mode", claude_permission_mode,
+            "--output-format", "json", "--json-schema", SCHEMA.read_text(),
+        ]
+        stderr_path = attempt_dir / "claude.stderr.log"
+    print(json.dumps({"item": item["id"], "phase": tool, "model": model, "effort": effort, "log": str(log_path)}), flush=True)
+    code = execute(command, log_path, stderr_path)
+    if code:
+        return "blocked", f"{tool} exited {code}; see {log_path}" + (f" and {stderr_path}" if stderr_path else "")
+    try:
+        if tool == "codex":
+            result = json.loads(result_path.read_text())
+        else:
+            result = json.loads(log_path.read_text())["structured_output"]
+    except (OSError, KeyError, TypeError):
+        return "blocked", f"{tool} did not return structured output; see {log_path}"
+    except json.JSONDecodeError:
+        return "blocked", f"{tool} did not return valid JSON; see {log_path}"
+    if (not isinstance(result, dict) or result.get("status") not in ("ready_for_checks", "blocked")
+            or not isinstance(result.get("summary"), str)):
+        return "blocked", f"{tool} returned an invalid result; see {log_path}"
+    return result["status"], result["summary"]
+
+
+def run_item(item, state, runs, tool="codex", claude_permission_mode="auto"):
+    if git_dirty() and not item.get("allow_existing_changes", False):
+        return "blocked", "Working tree has existing changes; use an isolated worktree or explicitly permit the baseline in the queue"
+    item_dir = runs / item["id"]
+    item_dir.mkdir(mode=0o700, exist_ok=True)
+    failure_log = None
+    if item.get("check_first", False):
+        precheck_dir = item_dir / "precheck"
+        precheck_dir.mkdir(mode=0o700, exist_ok=True)
+        code, check, failure_log = run_checks(item, precheck_dir)
+        if code == 0:
+            summary = "All configured external gates passed without a model turn"
+            state[item["id"]] = {"status": "complete", "digest": item_digest(item), "summary": summary}
+            return "complete", summary
+        if code == 2:
+            return "blocked", f"Check incomplete (exit 2): {check}; see {failure_log}"
+    for attempt in (1, 2):
+        attempt_dir = item_dir / f"attempt-{attempt}"
+        attempt_dir.mkdir(mode=0o700, exist_ok=True)
+        model, effort = (ROUTES if attempt == 1 else ESCALATE)[tool][item["tier"]]
+        status, summary = agent_turn(item, tool, model, effort, attempt_dir, failure_log, claude_permission_mode)
+        if status == "blocked":
+            return "blocked", summary
+        code, check, failure_log = run_checks(item, attempt_dir)
+        if code == 2:
+            return "blocked", f"Check incomplete (exit 2): {check}; see {failure_log}"
+        if code == 0:
+            state[item["id"]] = {"status": "complete", "digest": item_digest(item), "summary": summary}
+            return "complete", summary
+    return "failed", f"External check still fails after one repair attempt; see {failure_log}"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--tool", choices=("codex", "claude"), default="codex",
+                        help="Select the active coding agent explicitly (default: codex)")
+    parser.add_argument("--claude-permission-mode", choices=("auto", "acceptEdits"), default="auto",
+                        help="Claude Code permission mode; auto requires account support")
+    choice = parser.add_mutually_exclusive_group()
+    choice.add_argument("--all", action="store_true", help="Run every pending item in queue order")
+    choice.add_argument("--item", help="Run a specific queue item")
+    choice.add_argument("--list", action="store_true", help="Show routing and local completion state without running Codex")
+    args = parser.parse_args()
+    items = load_queue(QUEUE)
+    state_path = RUNS / "state.json"
+    state = load_state(state_path)
+    if args.list:
+        for item in items:
+            model, effort = ROUTES[args.tool][item["tier"]]
+            print(json.dumps({"id": item["id"], "tool": args.tool, "tier": item["tier"], "model": model, "effort": effort,
+                              "status": "complete" if is_complete(item, state) else "pending"}))
+        return 0
+    selected = [item for item in items if not is_complete(item, state)]
+    if args.item:
+        selected = [item for item in items if item["id"] == args.item]
+        if not selected:
+            parser.error(f"Unknown queue item: {args.item}")
+        if is_complete(selected[0], state):
+            print(json.dumps({"item": args.item, "status": "complete", "message": "Already completed for this queue definition"}))
+            return 0
+    elif not args.all:
+        selected = selected[:1]
+    if not selected:
+        print(json.dumps({"status": "complete", "message": "No pending queue items"}))
+        return 0
+    RUNS.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with (RUNS / "runner.lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        state = load_state(state_path)
+        for item in selected:
+            if is_complete(item, state):
+                continue
+            status, summary = run_item(item, state, RUNS, args.tool, args.claude_permission_mode)
+            state[item["id"]] = {"status": status, "digest": item_digest(item), "summary": summary}
+            save_state(state_path, state)
+            print(json.dumps({"item": item["id"], "status": status, "summary": summary}), flush=True)
+            if status != "complete":
+                return 2 if status == "blocked" else 1
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(json.dumps({"status": "blocked", "reason": str(error)}), file=sys.stderr)
+        sys.exit(2)

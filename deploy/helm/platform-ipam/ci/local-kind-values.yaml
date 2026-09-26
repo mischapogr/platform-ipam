@@ -1,0 +1,41 @@
+# Local chart-controller probe only. The image is replaced at invocation
+# with the locally built tests/kind probe digest and loaded into kind.
+deploymentEnvironment: stage
+image:
+  repository: platform-ipam/kind-probe
+  pullPolicy: Never
+api:
+  replicas: 1
+worker:
+  replicas: 1
+database:
+  existingSecret: platform-ipam-kind-database
+netbox:
+  url: https://netbox.kind.invalid
+  existingSecret: platform-ipam-kind-netbox
+auth:
+  mode: oidc
+  issuer: https://oidc.kind.invalid
+  audience: platform-ipam-kind
+aws:
+  mode: live
+policy:
+  configMapName: platform-ipam-kind-policy
+ingress:
+  enabled: false
+networkPolicy:
+  enabled: false
+podDisruptionBudget:
+  enabled: false
+ui:
+  inventoryLinksEnabled: false
+  netboxBaseURL: https://netbox.kind.invalid
+uiProxy:
+  enabled: true
+  upstream: https://netbox.kind.invalid
+  basicAuth:
+    existingSecret: platform-ipam-kind-ui-basic
+  ingress:
+    enabled: false
+  networkPolicy:
+    egress: []

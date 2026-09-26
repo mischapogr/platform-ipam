@@ -1,0 +1,67 @@
+To: awsopensourcecredits@amazon.com
+Subject: AWS Cloud Credits for Open Source application - Platform-IPAM
+
+Hello AWS Open Source team,
+
+I would like to apply for AWS Cloud Credits for Open Source for Platform-IPAM:
+https://github.com/mischapogr/platform-ipam
+
+The application form linked from your program page returned HTTP 403 when I
+tried to access it. Could you send me a working copy? I have included the
+project details and proposed use of credits below, and can transfer them to
+the form when it is available.
+
+Platform-IPAM is an Apache 2.0 licensed, pre-release project for
+policy-controlled IPv4 VPC and subnet allocation on AWS. It reserves
+non-overlapping CIDRs through a REST API, CLI, and Terraform provider,
+records allocation identity in a durable ledger, and presents network
+inventory in NetBox. Its read-only AWS reconciliation design treats
+incomplete account or Region observations as unknown rather than proof that
+address space is free. The project also provides organization inventory,
+overlap assessment, and reviewed migration-planning workflows. These
+capabilities address problems AWS customers face when separately managed
+VPCs later need to connect through Transit Gateway or other network paths.
+
+The local Docker Compose stack has end-to-end tests across REST, CLI,
+Terraform, and the operator inventory. Live AWS Organizations, cross-account
+IAM, VPC/subnet observations, and Transit Gateway topology have not yet been
+validated. AWS credits would let us run repeatable integration tests in
+dedicated sandbox accounts and publish reproducible results and fixes for
+the community.
+
+I have approximately ten years of hands-on AWS experience and have earned
+the AWS Certified Cloud Practitioner certification.
+[Optional: I currently work for COMPANY. This application is in my personal
+capacity; my employer is not sponsoring the request.]
+
+I propose two short-lived test cycles per month for 12 months. They would
+cover Organizations discovery and least-privilege cross-account read roles
+across two Regions; temporary VPCs, primary and secondary CIDRs, and subnets;
+partial and denied observations; read-only Transit Gateway attachment and
+route observations; and reservation, binding, deletion, and safe-reuse
+behavior. Temporary infrastructure would be removed after each cycle.
+
+My proposed credit request is USD 2,400 for 12 months, allocated as follows:
+
+  Temporary VPC/Transit Gateway networking and data transfer  USD 1,200
+  Short-lived compute for test runners and services          USD   600
+  Logs, artifacts, and small storage                         USD   120
+  Pricing variance and failed-run retries                    USD   480
+  Total                                                      USD 2,400
+
+This is a planning estimate for 24 time-boxed runs, with no always-on EKS
+cluster or NAT gateway. I will recalculate it for the actual Regions, run
+durations, and data transfer before submitting the completed form.
+
+The repository includes contribution and security guidance, a code of
+conduct, CI, a changelog, and recent maintenance activity. Project links:
+
+  Repository:    https://github.com/mischapogr/platform-ipam
+  License:       https://github.com/mischapogr/platform-ipam/blob/main/LICENSE
+  Contributing:  https://github.com/mischapogr/platform-ipam/blob/main/CONTRIBUTING.md
+
+Thank you for considering the project.
+
+[Applicant name]
+[Role / project affiliation]
+[Contact email]

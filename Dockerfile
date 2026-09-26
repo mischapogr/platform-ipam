@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -trimpath -ldflags="-s -w" \
     -o /out/platform-ipam ./cmd/platform-ipam
 
-FROM alpine:3.22.1 AS release
+FROM alpine:3.24.2 AS release
 # Open Container Initiative annotations, so a pulled image can be traced back
 # to its source and licence without consulting the registry listing.
 LABEL org.opencontainers.image.title="platform-ipam" \

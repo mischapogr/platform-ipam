@@ -51,3 +51,8 @@ tests/e2e/.workspace/
 
 # Output of the organization inventory procedure: account names and network layout.
 inventory/
+
+# Local AWS credits application materials may contain personal/account details.
+/docs/AWS_OSS_CREDITS_APPLICATION.md
+/docs/AWS_OSS_CREDITS_APPLICATION.txt
+/docs/sponsorship/

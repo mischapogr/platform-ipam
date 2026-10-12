@@ -90,6 +90,17 @@ the file's lowercase SHA-256 `sha256`. Required checks are `plan`, `apply`,
 `vulnerability_scan`.
 Absent, failed, altered or unreviewed evidence does not qualify a release.
 
+For future releases, place the exact-binary attribution packet at
+`release-evidence/provider-attribution/` in that provider checkout. Use the
+[retained RC packet](qualification/PROVIDER_ATTRIBUTION_2026_10_12/README.md)
+as its structure: `PUBLISHED_BINARY.json` binds the provider version, binary
+SHA-256 and every retained file; `INVENTORY.json`, `BUILD_INFO.txt` and the
+licence/notice texts retain the linked dependency evidence. Regenerate the
+binary binding and verify the dependency/version set for each new candidate.
+The signed workflows require this packet and include it with the immutable
+source's project LICENSE/NOTICE. Complete package-specific attribution review
+remains distinct from the mechanical file-integrity checks.
+
 For a local RC, retain the exact unsigned release binary/package hashes and
 Terraform patch version. Run the committed Terraform lifecycle assertions
 against the isolated API using that binary; apply the inspected saved new-key
@@ -158,13 +169,18 @@ namespace is selected, preserve the unreachable development source address. Then
 python3 scripts/release/package-provider.py \
   --binary /tmp/terraform-provider-platformipam_v0.1.0-rc.1 \
   --manifest providers/terraform/terraform-registry-manifest.json \
+  --notices /tmp/provider-attribution-reviewed \
+  --project-license LICENSE --project-notice NOTICE \
   --version 0.1.0-rc.1 --out /tmp/platformipam-rc-assets
 python3 scripts/release/check-provider-assets.py \
   --directory /tmp/platformipam-rc-assets --version 0.1.0-rc.1
 ```
 
-The deterministic ZIP contains one executable `linux_amd64` binary. The
-manifest declares protocol 6.0, and checksums cover the ZIP and manifest. These
+The deterministic ZIP contains one executable `linux_amd64` binary, project
+LICENSE/NOTICE and regular files under `THIRD_PARTY_NOTICES/`. Its embedded
+`CONTENTS.json` binds every added file and the exact binary. Old binary-only
+archives remain verifiable for historical releases. The manifest declares
+protocol 6.0, and checksums cover the ZIP and manifest. These
 assets are unsigned; they cannot be ingested as a signed Registry release.
 Registry doc filenames follow
 [HashiCorp's required structure](https://developer.hashicorp.com/terraform/registry/providers/docs).
@@ -199,3 +215,8 @@ and notice files for its 25 linked Go modules and the Go 1.26.9 licence. Review
 the complete linked-package attribution requirements before distribution and
 retain the notices with the released binary/source. The copied root files
 and project `LICENSE`/`NOTICE` are an inventory, not a legal compliance finding.
+
+Package changes require a new provider version and fresh qualification of that
+exact archive. Preserve the published `0.1.0-rc.1` assets and existing consumer
+lock checksums, as required by
+[HashiCorp's publication guidance](https://developer.hashicorp.com/terraform/registry/providers/publishing).

@@ -88,7 +88,14 @@ class ProviderMirrorOptionsTest(unittest.TestCase):
         version = "0.1.0-rc.1"
         package = self.root / "provider.zip"
         with zipfile.ZipFile(package, "w") as archive:
-            archive.writestr(f"terraform-provider-platformipam_v{version}", b"synthetic binary fixture")
+            header = bytearray(64)
+            header[:6] = b"\x7fELF\x02\x01"
+            header[16:18] = (2).to_bytes(2, "little")
+            header[18:20] = (62).to_bytes(2, "little")
+            entry = zipfile.ZipInfo(f"terraform-provider-platformipam_v{version}")
+            entry.create_system = 3
+            entry.external_attr = 0o100755 << 16
+            archive.writestr(entry, header + b"synthetic executable fixture")
         evidence = self.root / "evidence"
         source = "registry.terraform.io/mischapogr/platformipam"
         result = self.run_script(IPAM_PROVIDER_VERSION=version, IPAM_PROVIDER_PACKAGE=str(package),

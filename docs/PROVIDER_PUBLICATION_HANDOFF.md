@@ -17,7 +17,7 @@ custody remain separate inputs.
 | --- | --- | --- |
 | GitHub account | `mischapogr` | Explicitly selected; repository/API authorization remains required. |
 | Terraform Registry namespace | `mischapogr` | Confirm authorized namespace enrollment. |
-| Provider repository | `mischapogr/terraform-provider-platformipam` | Create the public repository. |
+| Provider repository | `mischapogr/terraform-provider-platformipam` | Created publicly; bootstrap commit `4ac9817` is pushed and provider CI passed. |
 | Repository owner | `mischapogr` | Selected account; bootstrap/push requires access. |
 | Signing-key owner | Project founder | Supply the actual GitHub account and registered public-key fingerprint. |
 | Signing-key storage | `platform-ipam/terraform-provider/signing-key` | Confirm this secret-store reference and custody; no secret values belong here. |
@@ -29,7 +29,22 @@ See the historical [lookup record](qualification/PUBLIC_NAMESPACE_2026_10_12.jso
 These responses establish no public entry was returned; they do not establish
 registrability, namespace control or authorization. GitHub CLI authentication
 is also unavailable in this workspace. No organization, repository, signing
-key or Registry enrollment has been created by this continuation.
+key or Registry enrollment was created during that earlier lookup. The
+maintainer subsequently created the selected public repository and cloned it
+at `~/Projects/platform/terraform-provider-platformipam`.
+
+The provider bootstrap is committed as
+`4ac9817700b4b50264cf92671ff8f94a0769bc6e`, mirroring monorepo source
+`cbc591f22a0f844072a9809749cdecf284ad9c3e`. A clean committed checkout matches
+all 18 provider source files plus the root LICENSE and NOTICE. Formatting,
+42 provider test/subtest passes, a build and workflow lint passed locally;
+[provider CI](https://github.com/mischapogr/terraform-provider-platformipam/actions/runs/38236582661)
+also passed. IDE metadata is excluded from publication.
+
+Use the public Registry's **Publish > Provider** flow. HCP Terraform's
+**Add Module** wizard expects Terraform configuration modules and cannot
+publish this Go provider. A signed GitHub release remains required before
+the Registry can ingest its first version.
 
 The supplied public signing key is RSA-4096 with primary fingerprint
 `F1EAE2D8ED6BF46AEEE8889E136F9D1E6B3B2BE8`. Its Registry registration and

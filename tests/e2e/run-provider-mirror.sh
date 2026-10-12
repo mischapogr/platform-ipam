@@ -101,7 +101,8 @@ if terraform init -input=false -lockfile=readonly -no-color > "$WORK/tampered.lo
   echo "tampered provider package was accepted" >&2
   exit 1
 fi
-if ! rg -qi 'checksum|does not match|doesn.t match' "$WORK/tampered.log"; then
+# Standard hosted runners provide grep; ripgrep is not a prerequisite here.
+if ! grep -Eiq 'checksum|does not match|doesn.t match' "$WORK/tampered.log"; then
   cat "$WORK/tampered.log" >&2
   echo "tampered provider package failed for an unexpected reason" >&2
   exit 1

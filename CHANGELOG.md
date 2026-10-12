@@ -11,6 +11,15 @@ between minor versions.
 
 ### Changed
 
+- Development builds and checks use Go 1.26.9 and patched Go dependencies
+  after the preview audit found reachable standard-library and provider
+  dependency vulnerabilities.
+- Terraform replacement, create recovery, metadata state and release receipt
+  handling now enforce the allocation identity contract. Planning/import
+  integration coverage includes read-only replacement and existing-ID import.
+- Pilot reviews validate all collection timestamps in UTC; saved-history
+  summaries check snapshot integrity before reading evidence counts.
+
 - Local Compose NetBox and the optional AWS plugin base now pin the qualified
   `v4.7.1-5.1.1` image digest. The adapter reads both 4.6 and 4.7 selection
   custom-field responses; an isolated full suite, a 4.6.10-to-4.7.1 database
@@ -18,6 +27,13 @@ between minor versions.
   [the upgrade runbook](deploy/runbooks/NETBOX_4_7_UPGRADE.md).
 
 ### Added
+
+- Registry provider documentation, deterministic unsigned RC packaging,
+  immutable source/documentation mirror checks, and digest-bound release
+  qualification. Simulation RC notes state that AWS API/AWS integration is not
+  yet ready; stable releases require authorized live AWS acceptance. See the
+  [release runbook](docs/TERRAFORM_PROVIDER_RELEASE.md) and
+  [preview audit](docs/PREVIEW_CANDIDATE.md).
 
 - An optional local NetBox migration workspace displays offline overlap,
   address planning, migration progress and separately collected AWS topology evidence. A

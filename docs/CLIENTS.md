@@ -348,6 +348,14 @@ CI uses a stable service/environment/region/generation allocation key across ret
 
 Before applying a saved plan, run a mandatory policy check of `terraform show -json`: for every `platformipam_allocation` change whose actions include both create and delete, require a known new `allocation_key` different from the old one. Reject an unchanged or unknown replacement key, including taint-driven and `-replace` changes. The provider's immutable-field diagnostics alone cannot guard all Terraform-core replacement causes. Consumer CI/modules must ship this guard alongside the provider, and local recovery instructions must make the same check. Direct deliberate CLI bypass remains outside this operating guarantee.
 
+The exported provider repository includes `scripts/check-replacement-plan.py`.
+Pin it to the reviewed provider tag/commit, run
+`python3 scripts/check-replacement-plan.py --plan-json tfplan.json`, stop on
+failure and apply the same saved plan. In this monorepo the helper lives at
+`providers/terraform/scripts/check-replacement-plan.py`; the
+[release runbook](TERRAFORM_PROVIDER_RELEASE.md) shows the complete command
+sequence.
+
 After independent verification, a recovery command can be `terraform -chdir=examples/terraform/vpc untaint platformipam_allocation.vpc`, followed by a new inspected plan. Untaint only removes Terraform's taint marker; it does not repair remote state. [Terraform untaint](https://developer.hashicorp.com/terraform/cli/commands/untaint), [Terraform plan JSON](https://developer.hashicorp.com/terraform/internals/json-format).
 
 An Ansible `uri` caller can use the same JSON body and headers and treat `[200, 201, 202]` as protocol successes, then poll the operation/allocation. Check mode must remain read-only. Reserve/release steps need persisted identities and explicit AWS teardown; `changed_when` alone does not implement lifecycle safety.

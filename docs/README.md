@@ -8,6 +8,8 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [API v1](API_V1.md) | Requests, responses, ownership, idempotency, lifecycle, release, and errors |
 | [Finding codes](FINDINGS.md) | Every finding the platform raises: severity, scope, who sees it, what raises it, what resolves it and what to do; kept complete by a source-parsing test |
 | [Clients](CLIENTS.md) | Terraform provider implementation, usage, imports, REST, Python, AWS CLI, and future clients |
+| [Provider release](TERRAFORM_PROVIDER_RELEASE.md) | Immutable OSS source mirror, Registry assets, signing and separate simulation RC/live stable qualification |
+| [Preview candidate](PREVIEW_CANDIDATE.md) | Current development RC audit, simulation evidence, source/asset hashes and unready AWS integration |
 | [AWS integration](AWS_INTEGRATION.md) | VPC/subnet inventory, cross-account IAM, EKS identity, coverage, onboarding, and optional AWS native IPAM |
 | [NetBox integration](NETBOX_INTEGRATION.md) | Inventory mapping, adapter, native IPAM UI, access control, and optional visualization extensions |
 | [NetBox 4.7 upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md) | Exact local image, restore rehearsal, promotion gates, and rollback by backup restore |
@@ -47,6 +49,7 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [ADR 0021](decisions/0021-SEPARATE_AWS_TOPOLOGY_EVIDENCE.md) | Opt-in read-only AWS topology evidence stays separate from intended connectivity assessment |
 | [ADR 0022](decisions/0022-PILOT_ADDRESS_READINESS_AND_POOL_AUTHORITY.md) | Address readiness and advisory candidates stay separate from network readiness and allocation authority |
 | [ADR 0023](decisions/0023-IMMUTABLE_PILOT_SNAPSHOTS.md) | Opt-in immutable derived pilot snapshots; uploaded source files remain request-scoped |
+| [ADR 0024](decisions/0024-BROWSER_RESERVATION_IDENTITY_AND_REVIEW_AUTHORITY.md) | Proposed browser reservation identity and review authority for PILOT-3; owner decision pending |
 | [ADR 0006](decisions/0006-OPERATOR_UI_AUTHENTICATION.md) | One proxy in front of the NetBox UI, with basic, Entra ID and LDAP modes |
 | [ADR 0007](decisions/0007-ONBOARDING_IMPORT_AS_UNMANAGED_OCCUPANCY.md) | Existing networks are imported as unmanaged occupancy, not as allocations |
 | [ADR 0008](decisions/0008-PLATFORM_OWNED_OPERATOR_UI.md) | Proposed: no platform-owned operator UI, and a NetBox plugin if that changes |

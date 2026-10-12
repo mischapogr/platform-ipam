@@ -1,0 +1,470 @@
+{
+  "assets_sha256": {
+    "terraform-provider-platformipam_0.1.0-rc.1_SHA256SUMS": "0d892ed3c6e5e920f11c0bbe19d57a19008fb2ca6e70cea019b9c7d8cf130dc2",
+    "terraform-provider-platformipam_0.1.0-rc.1_linux_amd64.zip": "bcca180bf5173fe25534dd518383feb69785e3a67bdb7f62f533c5a76508a671",
+    "terraform-provider-platformipam_0.1.0-rc.1_manifest.json": "f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32"
+  },
+  "aws_readiness_notice": "AWS API/AWS integration is not yet ready",
+  "base_commit": "e0ac3ade94b7c16610b3b03bdca59ee74c26e3a1",
+  "candidate": "0.1.0-rc.1",
+  "candidate_metadata": {
+    "path": "dist/terraform-provider-platformipam/0.1.0-rc.1/CANDIDATE.json",
+    "sha256": "67b6b4360bc0a1440ad0dafcc190ed3104a06024e81987aeccd81e451d4cea99"
+  },
+  "checks": {
+    "compose": {
+      "scope": "local/static/synthetic; external runtime gates unchanged",
+      "status": "PASSED"
+    },
+    "contract": {
+      "scope": "local/static/synthetic; external runtime gates unchanged",
+      "status": "PASSED"
+    },
+    "core_go_security": {
+      "configuration": [
+        {
+          "db": "https://vuln.go.dev",
+          "db_last_modified": "2026-10-08T22:31:09Z",
+          "go_version": "go1.26.9",
+          "protocol_version": "v1.0.0",
+          "scan_level": "symbol",
+          "scan_mode": "source",
+          "scanner_name": "govulncheck",
+          "scanner_version": "v1.8.0"
+        }
+      ],
+      "other_finding_count": 0,
+      "reachable_summary": [],
+      "status": "PASSED"
+    },
+    "e2e_shellcheck": {
+      "status": "PASSED"
+    },
+    "exact_rc_mirror": {
+      "scope": "filesystem mirror init/schema/readonly lock/tamper rejection; not published-origin acceptance",
+      "status": "PASSED"
+    },
+    "full_simulation_e2e": {
+      "boundary": "124 unchanged cases passed in both full runs; after correcting import-test JSON assumptions, both Terraform cases passed against the isolated fixture stack with distinct keys. No service/provider runtime source change between these runs.",
+      "other_cases_passed_in_full_run": 124,
+      "single_final_full_suite_pass": false,
+      "status": "PASSED_COMBINED_RUNS",
+      "targeted_terraform_cases": {
+        "duration_seconds": 83.329,
+        "skips": 0,
+        "status": "PASSED",
+        "tests": 2
+      },
+      "unique_tests": 126
+    },
+    "helm": {
+      "scope": "local/static/synthetic; external runtime gates unchanged",
+      "status": "PASSED"
+    },
+    "moto_ec2_sts": {
+      "package_counts": {
+        "pass": 1
+      },
+      "passed_tests": [],
+      "skipped_tests": [],
+      "status": "PASSED",
+      "test_counts": {
+        "pass": 1
+      }
+    },
+    "netbox_workspace": {
+      "duration_seconds": 1.082,
+      "skips": 0,
+      "status": "PASSED",
+      "tests": 9
+    },
+    "operator_browser": {
+      "duration_seconds": 9.223,
+      "skips": 0,
+      "status": "PASSED",
+      "tests": 1
+    },
+    "pilot_chronology": {
+      "duration_seconds": 0.055,
+      "skips": 0,
+      "status": "PASSED",
+      "tests": 23
+    },
+    "platform_go": {
+      "package_counts": {
+        "pass": 14,
+        "skip": 2
+      },
+      "passed_tests": [],
+      "skipped_tests": [
+        "TestMotoEC2STSProtocol",
+        "TestDifferentialMemoryAndPostgresAgreeOverGeneratedSequences",
+        "TestMeasureStatementsPerUpdate",
+        "TestPostgresExplicitMigrationAndReady",
+        "TestPostgresReloadPreservesExactIdempotencyKey",
+        "TestPostgresReloadPreservesTheReviewedAdoptionRecord",
+        "TestPostgresReloadPreservesTheFindingResourceIdentity",
+        "TestPostgresUpdateRollbackDoesNotPersistState",
+        "TestPostgresIndependentLedgersDoNotLoseWritesOrDuplicateKey",
+        "TestPostgresAllocationKeySwapLeavesExactlyTheNewDerivedRows",
+        "TestPostgresAbandoningAnAllocationDropsItsRowsAndFreesItsKey",
+        "TestPostgresCancellingAReservationDropsItsRowsAndFreesItsKey",
+        "TestPostgresUpdateDoesNotLoadAuditHistory",
+        "TestPostgresAuditEventsRemainAppendOnly"
+      ],
+      "status": "PASSED_WITH_SKIPS",
+      "test_counts": {
+        "pass": 1592,
+        "skip": 14
+      }
+    },
+    "postgres": {
+      "package_counts": {
+        "pass": 1
+      },
+      "passed_tests": [],
+      "skipped_tests": [
+        "TestMeasureStatementsPerUpdate"
+      ],
+      "status": "PASSED_WITH_SKIPS",
+      "test_counts": {
+        "pass": 28,
+        "skip": 1
+      }
+    },
+    "provider_go": {
+      "package_counts": {
+        "pass": 2
+      },
+      "passed_tests": [
+        "TestDataSourceReadNamesThePendingOperationRatherThanReportingAbsence",
+        "TestAllocationSchemaHasReplacementModifiersAndTimeouts",
+        "TestModifyPlanRejectsImmutableChangeWithSameAllocationKey",
+        "TestModifyPlanRejectsOptionalImmutableChangesWithSameKey/add_parent",
+        "TestModifyPlanRejectsOptionalImmutableChangesWithSameKey/remove_parent",
+        "TestModifyPlanRejectsOptionalImmutableChangesWithSameKey/remove_availability_zone",
+        "TestModifyPlanRejectsOptionalImmutableChangesWithSameKey",
+        "TestModifyPlanRetiredAllocationsAllowDestroyOrNewGeneration",
+        "TestModifyPlanPreservesStableIdentityOnlyForMetadataUpdate",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient/vpc",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient/vpc_parent",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient/subnet_missing_parent",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient/subnet_unknown_parent",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient/long_description",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient/reserved_label",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient/null_label",
+        "TestValidateConfigChecksScopeAndMetadataWithoutConfiguredClient",
+        "TestReserveKeyFitsAPIForMaximumLengthAllocationKey",
+        "TestReadRetainsStateOnAmbiguous404",
+        "TestReadRetainsStateOnAllocationPendingAndNamesTheOperation",
+        "TestCreateMetadataFailureKeepsCommittedIdentityAndTaintRecoveryGuidance",
+        "TestCreateDoesNotRecoverAnAllocationWithDifferentImmutableIdentity",
+        "TestCreateRetriesSameIdempotencyKeyAfterTransientResponse",
+        "TestMetadataRevisionConflictAndAmbiguousRetryKeepCorrectKeys",
+        "TestImportUsesPlatformIDAndDoesNotReserve",
+        "TestDeleteRemovesStateAfterDurableQuarantineAcceptance",
+        "TestDeleteRetainsStateWithoutMatchingQuarantineReceipt",
+        "TestProviderSourceNeverConstructsADeleteOnOperations",
+        "TestCreateRetriesSameKeyAfterLostResponse",
+        "TestCreatePollsAsyncOperationThenReadsCommittedAllocation",
+        "TestCreateTimeoutLeavesPendingReservationAndRetryRecoversSameIdentity",
+        "TestCreateSurfacesAFailedOperationWithoutFabricatingAnHTTPStatus",
+        "TestRead404IsTypedAndPreservedForFailClosedHandling",
+        "TestGetAllocationDecodesAllocationPendingDetails",
+        "TestReadAllocationToleratesOperatorOnlyFields",
+        "TestHTTPRequiresExplicitLoopbackOptIn",
+        "TestReadRejectsIncompleteOrMismatchedSuccess",
+        "TestDeleteRequiresMatchingQuarantineReceipt",
+        "TestDeleteRetriesChildConflictWithinDeadline",
+        "TestDeleteChildConflictPreservesFailureAtDeadline",
+        "TestGetPoolFollowsOpaquePagination",
+        "TestGetPoolRejectsRepeatedPaginationCursor"
+      ],
+      "skipped_tests": [],
+      "status": "PASSED",
+      "test_counts": {
+        "pass": 42
+      }
+    },
+    "provider_go_security": {
+      "configuration": [
+        {
+          "db": "https://vuln.go.dev",
+          "db_last_modified": "2026-10-08T22:31:09Z",
+          "go_version": "go1.26.9",
+          "protocol_version": "v1.0.0",
+          "scan_level": "symbol",
+          "scan_mode": "source",
+          "scanner_name": "govulncheck",
+          "scanner_version": "v1.8.0"
+        }
+      ],
+      "finding_count": 0,
+      "reachable_advisories": [],
+      "status": "PASSED"
+    },
+    "release_and_portable_policy": {
+      "duration_seconds": 2.403,
+      "skips": 0,
+      "status": "PASSED",
+      "tests": 37
+    },
+    "restart_persistence": {
+      "boundary": "isolated development, fake cloud, ordinary api/worker restart with volumes retained",
+      "persisted_rows": {
+        "allocations": 5,
+        "keys": 5
+      },
+      "same_allocation_identity": {
+        "allocation_key": "e2e-preview20261010terraform-terraform",
+        "cidr": "10.64.4.0/22",
+        "id": "alloc_c128ce61889520427a1aa0c42f8e67b8"
+      },
+      "same_netbox_prefix_id": 126,
+      "status": "PASSED",
+      "tenant_allocation_count_before_and_after": 5
+    },
+    "runtime_source_match": {
+      "mismatches": [],
+      "production_and_workspace_inputs_compared": 95,
+      "scope": "Go production code/module graphs/Dockerfiles and workspace Python/templates match the qualified source snapshot; generated env and preview-only compose overlay excluded",
+      "status": "PASSED"
+    },
+    "stubbed_aws": {
+      "scope": "local/static/synthetic; external runtime gates unchanged",
+      "status": "PASSED"
+    },
+    "workflow_lint": {
+      "status": "PASSED"
+    },
+    "workspace_browser": {
+      "duration_seconds": 23.77,
+      "skips": 0,
+      "status": "PASSED",
+      "tests": 1
+    }
+  },
+  "created_at": "2026-10-10T14:02:47.707100+00:00",
+  "date": "2026-10-10",
+  "evidence": {
+    "aws-simulation-final.log": {
+      "path": ".work-plan-runs/preview-20261010/aws-simulation-final.log",
+      "sha256": "d92e957aec8512a3feefd04ca1268bd6b68fe693e7320d8e147b297463e2ee4a"
+    },
+    "compose-result.json": {
+      "path": ".work-plan-runs/preview-20261010/compose-result.json",
+      "sha256": "4c39f0c2f52f4810abba252d1cdf253e7e9697a7cce01468456c305e9034e4f0"
+    },
+    "compose.log": {
+      "path": ".work-plan-runs/preview-20261010/compose.log",
+      "sha256": "e3b4e74fd848ba43b3c340f97f1cfcc008153c4024f3a22277af30265fcad7e2"
+    },
+    "contract-final.log": {
+      "path": ".work-plan-runs/preview-20261010/contract-final.log",
+      "sha256": "e74c24285e388a6aadd26dea64cbde03c7ee7bfe05da6669d9c8bc3cd18f4016"
+    },
+    "core-tests-patched.jsonl": {
+      "path": ".work-plan-runs/preview-20261010/core-tests-patched.jsonl",
+      "sha256": "7c2cbf17eaeb9ca530cd4cd2eff66949c9c37cb4a8ceba769f98c0481e687def"
+    },
+    "core-vulnerability-patched-result.json": {
+      "path": ".work-plan-runs/preview-20261010/core-vulnerability-patched-result.json",
+      "sha256": "4e2da344a5e68020ba67e4ed4ad7379947b2052e1a1e1c51e136e359dc34a96e"
+    },
+    "core-vulnerability-patched.jsonl": {
+      "path": ".work-plan-runs/preview-20261010/core-vulnerability-patched.jsonl",
+      "sha256": "99156c2fe3d4c2e684c6733251f69c049e0be0be6deaefeafaedcc47ec06d47a"
+    },
+    "e2e-first-suite.log": {
+      "path": ".work-plan-runs/preview-20261010/e2e-first-suite.log",
+      "sha256": "8695f7c58e80a5b90ca3cc07ba99b9cc54d758dd894b18edabaaee33b8888281"
+    },
+    "e2e-second-suite.log": {
+      "path": ".work-plan-runs/preview-20261010/e2e-second-suite.log",
+      "sha256": "74d3c7a9cc378499c024aa6542d158f546d3d7aac8e4ad16838105173af90add"
+    },
+    "e2e-shellcheck-final.log": {
+      "path": ".work-plan-runs/preview-20261010/e2e-shellcheck-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "e2e.log": {
+      "path": ".work-plan-runs/preview-20261010/e2e.log",
+      "sha256": "74d3c7a9cc378499c024aa6542d158f546d3d7aac8e4ad16838105173af90add"
+    },
+    "helm-result.json": {
+      "path": ".work-plan-runs/preview-20261010/helm-result.json",
+      "sha256": "63c5ecdf3eed2340849b979cc5109bf1822ecb37fc3c1fb5fa6c8a64c892d626"
+    },
+    "helm.log": {
+      "path": ".work-plan-runs/preview-20261010/helm.log",
+      "sha256": "b851d0bcd6d8886b57d6f8f59a17998ff9d3af61b336fb3d774f23cdad5a289e"
+    },
+    "image-provenance.jsonl": {
+      "path": ".work-plan-runs/preview-20261010/image-provenance.jsonl",
+      "sha256": "e085c9d1d7ecf691c6208404bc7581c65cabf64400f7640ced965bc77cf0282b"
+    },
+    "moto-tests-build.log": {
+      "path": ".work-plan-runs/preview-20261010/moto-tests-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "moto-tests.jsonl": {
+      "path": ".work-plan-runs/preview-20261010/moto-tests.jsonl",
+      "sha256": "cc4ff8911966e637ab790eba56be006e98c1ff150ca5ea40b5c58d4e2a08f49f"
+    },
+    "netbox-plugin-tests.log": {
+      "path": ".work-plan-runs/preview-20261010/netbox-plugin-tests.log",
+      "sha256": "7c6ec8b41d6d449433b60dd2dd3d7e1777bce6ea9bb62697769e8b3a2e140ce8"
+    },
+    "normal-after-import-result.json": {
+      "path": ".work-plan-runs/preview-20261010/normal-after-import-result.json",
+      "sha256": "b0a543d9733dc79d0518725f21e2764545954b61ec27cbd783b5b7769ef36f81"
+    },
+    "operator-browser.log": {
+      "path": ".work-plan-runs/preview-20261010/operator-browser.log",
+      "sha256": "b018de794c6c91c068c7faf906a16d29b7cd9643959b0e8c860d5d9ae0b3ba66"
+    },
+    "pilot-final.log": {
+      "path": ".work-plan-runs/preview-20261010/pilot-final.log",
+      "sha256": "aee872034fb60d2ce5d62d7e3a7c3d25ce6469611e3710ec5305452338473612"
+    },
+    "postgres-tests.jsonl": {
+      "path": ".work-plan-runs/preview-20261010/postgres-tests.jsonl",
+      "sha256": "6af61754317b5326c201d4896d7c8471c6d0fc751a0f191d4e241770f0317d62"
+    },
+    "provider-build-info.txt": {
+      "path": ".work-plan-runs/preview-20261010/provider-build-info.txt",
+      "sha256": "3bf4740ed7dbb9d3239cc12b21190d1da32d5f4094368b3a52deb4c6263c4175"
+    },
+    "provider-dependencies.json": {
+      "path": ".work-plan-runs/preview-20261010/provider-dependencies.json",
+      "sha256": "47c4b0508747c87cd11318cd73179854056ebd435684feefe826ed89c7ff7ddc"
+    },
+    "provider-timeout-tests-final-build.log": {
+      "path": ".work-plan-runs/preview-20261010/provider-timeout-tests-final-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "provider-timeout-tests-final.jsonl": {
+      "path": ".work-plan-runs/preview-20261010/provider-timeout-tests-final.jsonl",
+      "sha256": "3b43237b763eea1dcf15061d778d81b63721fa161410dc1455d13949f3de7c2d"
+    },
+    "provider-vulnerability-final-result.json": {
+      "path": ".work-plan-runs/preview-20261010/provider-vulnerability-final-result.json",
+      "sha256": "03c634be80935d50ff676e90f30fbef29aa1388088b3d9ee189e36b3d67cb574"
+    },
+    "provider-vulnerability-final.jsonl": {
+      "path": ".work-plan-runs/preview-20261010/provider-vulnerability-final.jsonl",
+      "sha256": "cc41f6fb51ec640f8afc13179eb4f8ad4f0085c117943b02c78871586dd4c0d9"
+    },
+    "rc-mirror.log": {
+      "path": ".work-plan-runs/preview-20261010/rc-mirror.log",
+      "sha256": "524b7ee0f75868b1e55ce3aac4a2d69fcb4c94965e5c59f9809846b29831cb39"
+    },
+    "release-final.log": {
+      "path": ".work-plan-runs/preview-20261010/release-final.log",
+      "sha256": "6b5b01e0a0a12affd4510ce0e00e9dd9fbdfe9cdcf22b7f8cb28d9f2fefa62c1"
+    },
+    "restart-result.json": {
+      "path": ".work-plan-runs/preview-20261010/restart-result.json",
+      "sha256": "6bfe3b2f727b34244deeb92e0acdf8ca33ee3efb908a479ddcb507115eb3614b"
+    },
+    "runtime-input-match.json": {
+      "path": ".work-plan-runs/preview-20261010/runtime-input-match.json",
+      "sha256": "ffbd4323ba36fddc767355e3658a81db605e3052aeb3d1a97dcbf55a392a3a84"
+    },
+    "runtime-source-manifest.json": {
+      "path": ".work-plan-runs/preview-20261010/runtime-source-manifest.json",
+      "sha256": "092cbb2d1cf70fe95bf70c602a10136075990b1003e2e12cbe2e4aa1a2f1fe47"
+    },
+    "terraform-e2e-final.log": {
+      "path": ".work-plan-runs/preview-20261010/terraform-e2e-final.log",
+      "sha256": "b6ad35c1d3f133a89c04bcd90fdd6363c63917c5ef3478cf2ab845e004bd531a"
+    },
+    "terraform-refresh-diagnostic.log": {
+      "path": ".work-plan-runs/preview-20261010/terraform-refresh-diagnostic.log",
+      "sha256": "86962fe285f503b6ca15f6f24c132a6c0515588fd7ef043b8e36a5f0964c1040"
+    },
+    "terraform-version.json": {
+      "path": ".work-plan-runs/preview-20261010/terraform-version.json",
+      "sha256": "09f4ba6b8f2a2a5b849864d5f96925af7e2eb3eb9dcefdf46dc67f5c0452c084"
+    },
+    "workflow-lint-final.log": {
+      "path": ".work-plan-runs/preview-20261010/workflow-lint-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "workspace-browser.log": {
+      "path": ".work-plan-runs/preview-20261010/workspace-browser.log",
+      "sha256": "2d740b4e19969a15ad0807b4593897af3bec92ce7fe18c7d584e4328ad7e6e06"
+    }
+  },
+  "evidence_boundary": "simulation",
+  "immutable_source_commit": null,
+  "live_aws": "NOT_READY",
+  "local_preview": {
+    "api_url": "http://127.0.0.1:18080",
+    "credentials": "private generated deploy/compose/.env; not included in this record",
+    "project": "platform-ipam-preview-e2e-20261010",
+    "source_snapshot": "/tmp/platform-ipam-preview-20261010/checkout",
+    "state": "RUNNING_LOCAL_ONLY",
+    "workspace_url": "http://127.0.0.1:18010/plugins/platform-ipam/"
+  },
+  "maintainer_release_attestation": false,
+  "open_gates": [
+    "PILOT-1",
+    "PILOT-2",
+    "PILOT-3",
+    "OPS-1",
+    "REL-1",
+    "ENV-1",
+    "SCALE-1"
+  ],
+  "plan_counts": {
+    "historical_package_rows_complete": 88,
+    "historical_package_rows_total": 88,
+    "historical_unique_package_ids": 87,
+    "includes_design_only_packages": true,
+    "open_acceptance_gates": 7,
+    "previous_audit_fixes_complete": 4
+  },
+  "platform": "linux_amd64",
+  "provider_address": "registry.example.com/platform/platformipam",
+  "qualification": "QUALIFIED_FOR_LOCAL_DEVELOPMENT_SIMULATION",
+  "registry_publication": "NOT_PUBLISHED",
+  "release_inputs_pending": [
+    "durable_repository_and_registry_namespace",
+    "reviewed_committed_main_source",
+    "named_maintainer_evidence_review",
+    "registered_signer_and_key_custody",
+    "authenticated_publication_and_registry_enrollment",
+    "linked_package_attribution_review",
+    "normal_published_origin_installation"
+  ],
+  "schema_version": 1,
+  "signing": "UNSIGNED",
+  "source_manifest": {
+    "path": "docs/qualification/PREVIEW_2026_10_10_SOURCE.json",
+    "sha256": "8b0e100f0ee46572340efb7f8655e64bd28f11841c3b6bda9a4c3520ec647cc8"
+  },
+  "source_review": {
+    "maintainer_publication_approval": false,
+    "remaining_concrete_findings": 0,
+    "reviewer": "independent /root/preview_audit agent",
+    "scope": "tenant authorization, replay/recovery/reclamation, workspace reports, pilot chronology, provider lifecycle and release source integrity"
+  },
+  "source_status": "uncommitted_working_tree",
+  "terraform_refresh_only_cli_limitation": {
+    "acceptance": "saved plan invariants, applied identity and empty normal plan",
+    "symptom": "false change exit code despite no resource/output change",
+    "upstream_fix": "https://github.com/hashicorp/terraform/pull/37886",
+    "upstream_target": "1.15",
+    "version": "1.14.9"
+  },
+  "unqualified_scopes": [
+    "live_AWS_API_IAM_VPC_and_reclamation",
+    "customer_pilot_acceptance",
+    "real_identity_provider",
+    "stage_production_rollout",
+    "representative_customer_load",
+    "additional_OS_architectures",
+    "container_and_Python_vulnerability_certification"
+  ]
+}

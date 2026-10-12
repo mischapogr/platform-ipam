@@ -4,6 +4,14 @@
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+VERSION=${IPAM_PROVIDER_VERSION:-0.1.0}
+python3 - "$ROOT" "$VERSION" <<'PY'
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(sys.argv[1]) / 'scripts/release'))
+from provider_release import names
+names(sys.argv[2])
+PY
 WORK=$(mktemp -d /tmp/platform-ipam-provider-mirror.XXXXXX)
 cleanup() {
   docker run --rm -v "$WORK/config:/work" --entrypoint rm \
@@ -13,14 +21,27 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 mkdir -p "$WORK/build" "$WORK/mirror/registry.example.com/platform/platformipam" "$WORK/config"
 
-docker run --rm \
-  -v "$ROOT:/src:ro" -v "$WORK/build:/out" -v ipam-gomod:/go/pkg/mod \
-  -w /src/providers/terraform -e CGO_ENABLED=0 \
-  golang:1.26.8-bookworm go build -buildvcs=false \
-  -o /out/terraform-provider-platformipam_v0.1.0 .
-
-PACKAGE="$WORK/mirror/registry.example.com/platform/platformipam/terraform-provider-platformipam_0.1.0_linux_amd64.zip"
-zip -q -j "$PACKAGE" "$WORK/build/terraform-provider-platformipam_v0.1.0"
+PACKAGE="$WORK/mirror/registry.example.com/platform/platformipam/terraform-provider-platformipam_${VERSION}_linux_amd64.zip"
+BINARY="terraform-provider-platformipam_v${VERSION}"
+if [ -n "${IPAM_PROVIDER_PACKAGE:-}" ]; then
+  cp "$IPAM_PROVIDER_PACKAGE" "$PACKAGE"
+  python3 - "$PACKAGE" "$WORK/build/$BINARY" "$BINARY" <<'PY'
+from pathlib import Path
+import sys
+from zipfile import ZipFile
+with ZipFile(sys.argv[1]) as archive:
+    if archive.namelist() != [sys.argv[3]]:
+        raise SystemExit('provider archive must contain exactly the expected binary')
+    Path(sys.argv[2]).write_bytes(archive.read(sys.argv[3]))
+PY
+else
+  docker run --rm \
+    -v "$ROOT:/src:ro" -v "$WORK/build:/out" -v ipam-gomod:/go/pkg/mod \
+    -w /src/providers/terraform -e CGO_ENABLED=0 \
+    golang:1.26.9-bookworm go build -mod=readonly -buildvcs=false -trimpath \
+    -ldflags "-X main.version=$VERSION" -o "/out/$BINARY" .
+  zip -q -j "$PACKAGE" "$WORK/build/$BINARY"
+fi
 cat > "$WORK/terraform.rc" <<'EOF'
 provider_installation {
   filesystem_mirror {
@@ -32,12 +53,12 @@ provider_installation {
   }
 }
 EOF
-cat > "$WORK/config/main.tf" <<'EOF'
+cat > "$WORK/config/main.tf" <<EOF
 terraform {
   required_providers {
     platformipam = {
       source  = "registry.example.com/platform/platformipam"
-      version = "0.1.0"
+      version = "$VERSION"
     }
   }
 }
@@ -51,12 +72,12 @@ terraform() {
 }
 
 terraform init -input=false -no-color > "$WORK/init.log"
-python3 - "$WORK/config/.terraform.lock.hcl" <<'PY'
+python3 - "$WORK/config/.terraform.lock.hcl" "$VERSION" <<'PY'
 from pathlib import Path
 import sys
 lock = Path(sys.argv[1]).read_text()
 assert 'provider "registry.example.com/platform/platformipam"' in lock
-assert 'version     = "0.1.0"' in lock
+assert f'version     = "{sys.argv[2]}"' in lock
 assert 'h1:' in lock or 'zh:' in lock
 PY
 terraform providers schema -json > "$WORK/schema.json"
@@ -73,9 +94,9 @@ docker run --rm -v "$WORK/config:/work" --entrypoint rm \
   hashicorp/terraform:1.14 -rf /work/.terraform
 docker run --rm -v "$WORK/build:/build" --entrypoint sh \
   hashicorp/terraform:1.14 -c \
-  'printf "\nchanged provider binary\n" >> /build/terraform-provider-platformipam_v0.1.0'
+  'printf "\nchanged provider binary\n" >> "/build/$1"' sh "$BINARY"
 rm "$PACKAGE"
-zip -q -j "$PACKAGE" "$WORK/build/terraform-provider-platformipam_v0.1.0"
+zip -q -j "$PACKAGE" "$WORK/build/$BINARY"
 if terraform init -input=false -lockfile=readonly -no-color > "$WORK/tampered.log" 2>&1; then
   echo "tampered provider package was accepted" >&2
   exit 1

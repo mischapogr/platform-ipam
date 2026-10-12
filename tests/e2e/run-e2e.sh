@@ -34,14 +34,16 @@
 # under different run ids can pick the same CIDRs.
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 COMPOSE_DIR="$ROOT/deploy/compose"
 cd "$COMPOSE_DIR"
 
 [ -f .env ] || { echo "deploy/compose/.env is missing; run ./create-env.sh" >&2; exit 2; }
-# shellcheck disable=SC1091
 requested_project=${COMPOSE_PROJECT_NAME:-}
-set -a; . ./.env; set +a
+set -a
+# shellcheck disable=SC1091
+. ./.env
+set +a
 if [ -n "$requested_project" ]; then
   COMPOSE_PROJECT_NAME=$requested_project
   export COMPOSE_PROJECT_NAME
@@ -79,7 +81,10 @@ if [ -n "${IPAM_E2E_SKIP_PREPARE:-}" ]; then
 fi
 
 echo "==> building and starting the stack"
-compose up --build -d
+# A fresh NetBox database can take longer to migrate than its healthcheck's
+# startup window. Start inventory first and let the bounded readiness loop
+# observe recovery before starting services that require a healthy NetBox.
+compose up --build -d netbox
 
 echo "==> waiting for NetBox"
 deadline=$(( $(date +%s) + 900 ))
@@ -87,6 +92,9 @@ until [ "$(compose ps --format '{{.Health}}' netbox 2>/dev/null)" = "healthy" ];
   [ "$(date +%s)" -lt "$deadline" ] || { echo "NetBox did not become healthy" >&2; exit 1; }
   sleep 5
 done
+
+echo "==> starting the remaining services after inventory readiness"
+compose up --build -d
 
 echo "==> bootstrapping NetBox credentials and inventory"
 compose --profile bootstrap run --rm netbox-bootstrap >/dev/null
@@ -97,6 +105,7 @@ echo "==> resetting allocation state"
 compose stop api worker >/dev/null
 # Delete every NetBox prefix the platform manages. The pool container has no
 # allocation marker and is deliberately preserved.
+# shellcheck disable=SC2016
 compose --profile bootstrap run --rm -T \
   -e NETBOX_URL="${IPAM_NETBOX_URL:-http://netbox:8080}" \
   -e NETBOX_TOKEN="$IPAM_NETBOX_TOKEN" \

@@ -9,6 +9,7 @@
 crash.log
 bin/
 coverage.out
+/dist/
 deploy/compose/runtime/
 
 # Machine-local MCP registration (absolute paths to the shared launcher)

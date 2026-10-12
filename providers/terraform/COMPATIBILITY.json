@@ -4,7 +4,7 @@
   "platform_api_major": 1,
   "platform_release_versions": [],
   "qualification": {
-    "status": "pending",
+    "status": "qualified",
     "scope": "simulation",
     "terraform_cli_versions": ["1.14.9"],
     "platforms": ["linux_amd64"]

@@ -1,6 +1,6 @@
 # ADR 0018: Public Terraform provider release route
 
-Status: accepted as a release route, 2026-09-23. Publication remains gated; the durable Registry namespace is not selected.
+Status: accepted as a release route, 2026-09-23. The maintainer explicitly selected the existing `mischapogr` account on 2026-10-12; publication remains gated.
 
 ## Context
 
@@ -10,7 +10,7 @@ The [public Terraform Registry](https://developer.hashicorp.com/terraform/regist
 
 ## Decision
 
-- Publish the first consumer provider through `registry.terraform.io/<durable-organization>/platformipam`. The organization must be selected and controlled by the maintainer before a consumer creates Terraform state. Do not replace the placeholder with a personal or temporary address by inference.
+- Publish the first consumer provider through `registry.terraform.io/mischapogr/platformipam`. The maintainer explicitly selected this existing account as the durable namespace on 2026-10-12, superseding the earlier organization-only proposal. Namespace control and Registry enrollment must be confirmed before consumer state is created; the account choice is not inferred from the monorepo owner.
 - Keep one authoritative provider source. Produce the required public `terraform-provider-platformipam` repository and release assets from the same reviewed source revision; do not maintain two hand-edited implementations. Version the provider independently of the platform API, starting at `0.1.0` with the API v1 contract.
 - Start with the tested `linux_amd64` package. Add another OS/architecture only after a build, normal installation and acceptance check for that target. The package matrix is an explicit release artifact, not a claim inferred from Go cross-compilation.
 - Sign the checksums as the Registry requires, publish the manifest and provider documentation, then install the published package without `dev_overrides`. Commit consumer lock files generated from the published origin. The local mirror rehearsal is a preparatory check, not release acceptance.
@@ -19,7 +19,16 @@ The [public Terraform Registry](https://developer.hashicorp.com/terraform/regist
 
 ## Unresolved release inputs
 
-The organization namespace, signing-key custodian, release-repository ownership and sandbox access need named owners. No Registry publication, signed release, or real AWS acceptance has occurred. Until those inputs exist, examples retain the clearly unreachable placeholder and local development keeps ADR 0004's override.
+The namespace and provider repository are selected as `mischapogr` and
+`mischapogr/terraform-provider-platformipam`. Repository creation, authenticated
+Registry enrollment, signing-key custody/registration and source promotion to
+reviewed `main` remain open. No signed release or real AWS acceptance has
+occurred. Local development keeps ADR 0004's override.
+
+The supplied public RSA-4096 key has primary fingerprint
+`F1EAE2D8ED6BF46AEEE8889E136F9D1E6B3B2BE8`. Parsing this public key establishes
+format compatibility only; it does not establish registration, possession of
+the private key, backup custody or release authorization.
 
 ## GitHub Actions implementation (2026-09-25)
 
@@ -117,3 +126,12 @@ verifies the registered RSA/DSA primary fingerprint in an isolated temporary
 keyring. An RC is published as a GitHub prerelease; consumers must explicitly
 select its version. A local unsigned package remains separate from that
 signed, immutable-source release.
+
+## Repository bootstrap (2026-10-12)
+
+An explicit `--preview` source export may bootstrap the public repository from
+an immutable development commit before promotion to `main`. It labels the
+source as a preview in generated metadata and README. The default exporter
+still requires `main` ancestry, and the signing workflow always checks that
+ancestry and reviewed release qualification. Repository bootstrap creates no
+version tag or Registry release and does not approve source promotion.

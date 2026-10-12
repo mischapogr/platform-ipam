@@ -1,8 +1,9 @@
 # Terraform provider release
 
-The provider source is `providers/terraform`. Its public repository must be
-named `terraform-provider-platformipam` under the maintainer's selected durable
-namespace. [ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md)
+The provider source is `providers/terraform`. The maintainer selected the
+public repository `mischapogr/terraform-provider-platformipam` and Registry
+address `mischapogr/platformipam` on 2026-10-12.
+[ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md)
 defines source ownership and the first stable release gates.
 
 ## Release channels
@@ -43,6 +44,12 @@ working-tree edits cannot substitute different provider source, licence or
 attribution. Conflicting module-level `LICENSE` or `NOTICE` files are refused.
 Only release metadata in `.github/`, `.gitignore`, generated `README.md`,
 `RELEASE_QUALIFICATION.json` and `release-evidence/` may differ.
+
+For repository bootstrap before source promotion, `--preview` exports a
+committed development revision with explicit unpromoted/unsigned metadata.
+This exception is only for source review: the signing workflow still requires
+reviewed `main` ancestry and version/source-bound release qualification.
+Do not tag this bootstrap as a release.
 
 ## Qualification record
 

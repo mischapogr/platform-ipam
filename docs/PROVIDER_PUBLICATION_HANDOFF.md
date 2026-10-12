@@ -4,29 +4,41 @@ Updated 2026-10-12. The `0.1.0-rc.1` candidate remains an unsigned,
 uncommitted-source development preview for `linux_amd64`.
 **AWS API/AWS integration is not yet ready.**
 
-## Proposed ownership
+## Selected namespace and remaining ownership inputs
 
 [ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md) is an
-accepted release route. The following ownership proposal is **not approved or
-verified** and does not replace the unreachable development provider address.
+accepted release route. On 2026-10-12 the maintainer explicitly selected the
+existing `mischapogr` account for the public provider repository and Registry
+address `mischapogr/platformipam`. The earlier `platform-ipam` organization
+proposal is superseded. Repository creation, Registry enrollment and signing
+custody remain separate inputs.
 
 | Role | Proposed name or reference | Remaining input |
 | --- | --- | --- |
-| GitHub organization | `platform-ipam` | Confirm creation, ownership and durable control. |
-| Terraform Registry namespace | `platform-ipam` | Confirm authorized namespace enrollment. |
-| Provider repository | `platform-ipam/terraform-provider-platformipam` | Create under the confirmed organization. |
-| Organization owner | Project founder | Supply the actual GitHub account. |
+| GitHub account | `mischapogr` | Explicitly selected; repository/API authorization remains required. |
+| Terraform Registry namespace | `mischapogr` | Confirm authorized namespace enrollment. |
+| Provider repository | `mischapogr/terraform-provider-platformipam` | Create the public repository. |
+| Repository owner | `mischapogr` | Selected account; bootstrap/push requires access. |
 | Signing-key owner | Project founder | Supply the actual GitHub account and registered public-key fingerprint. |
 | Signing-key storage | `platform-ipam/terraform-provider/signing-key` | Confirm this secret-store reference and custody; no secret values belong here. |
 | Backup administrator | Second trusted GitHub account | Designate the actual account. |
 
-Unauthenticated public API lookups on 2026-10-12 returned HTTP 404 for the
-GitHub user, organization and proposed repository, and for the proposed
-Registry provider. See the [lookup record](qualification/PUBLIC_NAMESPACE_2026_10_12.json).
+Earlier unauthenticated public API lookups on 2026-10-12 returned HTTP 404 for
+the former `platform-ipam` user, organization, repository and Registry provider.
+See the historical [lookup record](qualification/PUBLIC_NAMESPACE_2026_10_12.json).
 These responses establish no public entry was returned; they do not establish
 registrability, namespace control or authorization. GitHub CLI authentication
 is also unavailable in this workspace. No organization, repository, signing
 key or Registry enrollment has been created by this continuation.
+
+The supplied public signing key is RSA-4096 with primary fingerprint
+`F1EAE2D8ED6BF46AEEE8889E136F9D1E6B3B2BE8`. Its Registry registration and
+private-key custody have not been verified. Only the public key was inspected.
+
+All six GitHub CI/CodeQL jobs passed on committed source
+`b181a58fd1c6bdf91d99abd09660f66a33889a08`, including the full end-to-end suite.
+That commit remains on the development branch; promotion to reviewed `main`
+is still required before signing a provider release.
 
 ## Portable review
 
@@ -88,7 +100,7 @@ explicitly reports that publication acceptance is false.
 
 ## Publication sequence
 
-1. Confirm the proposed organization, actual owner accounts and signing-key
+1. Create the repository under the selected account and confirm signing-key
    custody. Enroll the public key under the controlled Registry namespace.
 2. Review and commit the provider source and release tooling; promote the
    reviewed commit through the project's main-branch review flow.

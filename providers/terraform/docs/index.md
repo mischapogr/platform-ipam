@@ -8,7 +8,7 @@ description: |-
 
 The `platformipam` provider reserves address space through the Platform-IPAM API v1. It provides one allocation resource and read-only allocation and pool data sources. A separate AWS provider manages cloud infrastructure.
 
-**Preview limitation: AWS API/AWS integration is not yet ready.** Development verification uses the local API, simulated AWS observations and HTTP fixtures. There is no live AWS acceptance evidence. The provider source is Apache-2.0; signed public Registry distribution, a durable namespace and consumer installation from that published origin remain pending. `registry.example.com/platform/platformipam` below is an unpublished placeholder, usable only with an explicitly configured development override or test mirror.
+**Preview limitation: AWS API/AWS integration is not yet ready.** Development verification uses the local API, simulated AWS observations and HTTP fixtures. There is no live AWS acceptance evidence. The approved public source address is `mischapogr/platformipam`; signed Registry distribution and consumer installation from that published origin remain pending. The example below is for the first published RC and cannot be installed from the Registry yet. Local development continues to use an explicit development override or test mirror.
 
 ## Example Usage
 
@@ -16,7 +16,8 @@ The `platformipam` provider reserves address space through the Platform-IPAM API
 terraform {
   required_providers {
     platformipam = {
-      source = "registry.example.com/platform/platformipam"
+      source  = "mischapogr/platformipam"
+      version = "= 0.1.0-rc.1"
     }
   }
 }

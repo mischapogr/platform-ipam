@@ -6,6 +6,20 @@ address `mischapogr/platformipam` on 2026-10-12.
 [ADR 0018](decisions/0018-PUBLIC_TERRAFORM_PROVIDER_RELEASE_ROUTE.md)
 defines source ownership and the first stable release gates.
 
+## Independent versions and compatibility
+
+The provider and Platform-IPAM product have independent release versions.
+[`VERSION`](../providers/terraform/VERSION) names the planned provider version;
+[`COMPATIBILITY.json`](../providers/terraform/COMPATIBILITY.json) declares its
+API major and exact qualified product versions. The signed workflow rejects
+a tag that differs from either file. See the
+[version policy and compatibility matrix](../providers/terraform/COMPATIBILITY.md)
+and [provider changelog](../providers/terraform/CHANGELOG.md).
+
+The current RC requires API v1 but claims no qualified Platform-IPAM product
+release. API-document, Terraform plugin-protocol and resource-state-schema
+versions are distinct from either product's Semantic Version.
+
 ## Release channels
 
 An RC such as `0.1.0-rc.1` may be qualified with local simulation. Its

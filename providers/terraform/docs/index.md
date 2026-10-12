@@ -6,6 +6,13 @@ description: |-
 
 # Platform-IPAM Provider
 
+## Versioning and compatibility
+
+Provider versions follow Semantic Versioning independently of Platform-IPAM.
+The unpublished `0.1.0-rc.1` candidate requires API v1; no Platform-IPAM product
+release is qualified yet. See the provider repository's
+[compatibility matrix and version policy](https://github.com/mischapogr/terraform-provider-platformipam/blob/main/COMPATIBILITY.md).
+
 The `platformipam` provider reserves address space through the Platform-IPAM API v1. It provides one allocation resource and read-only allocation and pool data sources. A separate AWS provider manages cloud infrastructure.
 
 **Preview limitation: AWS API/AWS integration is not yet ready.** Development verification uses the local API, simulated AWS observations and HTTP fixtures. There is no live AWS acceptance evidence. The approved public source address is `mischapogr/platformipam`; signed Registry distribution and consumer installation from that published origin remain pending. The example below is for the first published RC and cannot be installed from the Registry yet. Local development continues to use an explicit development override or test mirror.

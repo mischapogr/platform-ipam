@@ -38,6 +38,11 @@ class ProviderExportTest(unittest.TestCase):
             "NOTICE": "Test attribution\n",
             "providers/terraform/go.mod": "module example.invalid/provider\n",
             "providers/terraform/main.go": "package main\n",
+            "providers/terraform/VERSION": "0.1.0-rc.1\n",
+            "providers/terraform/COMPATIBILITY.json": "{}\n",
+            "providers/terraform/COMPATIBILITY.md": "# Compatibility\n",
+            "providers/terraform/CHANGELOG.md": "# Changelog\n",
+            "providers/terraform/scripts/check-compatibility.py": "# test compatibility fixture\n",
             "providers/terraform/terraform-registry-manifest.json": "{}\n",
             "providers/terraform/docs/index.md": "# Provider\n",
             "providers/terraform/docs/resources/allocation.md": "# Allocation resource\n",
@@ -63,7 +68,8 @@ class ProviderExportTest(unittest.TestCase):
         self.assertGreater(count, 0)
         self.assertEqual((destination / "SOURCE_COMMIT").read_text(), source_ref + "\n")
         self.assertFalse((destination / ".github/PREVIEW_SOURCE.json").exists())
-        for path in ("go.mod", "main.go", "terraform-registry-manifest.json", "scripts/check-replacement-plan.py"):
+        for path in ("go.mod", "main.go", "terraform-registry-manifest.json", "scripts/check-replacement-plan.py",
+                     "VERSION", "COMPATIBILITY.json", "COMPATIBILITY.md", "CHANGELOG.md", "scripts/check-compatibility.py"):
             expected = subprocess.check_output(
                 ["git", "show", f"{source_ref}:providers/terraform/{path}"], cwd=self.repository)
             self.assertEqual((destination / path).read_bytes(), expected)
@@ -87,6 +93,18 @@ class ProviderExportTest(unittest.TestCase):
         destination = self.root / "provider"
         with self.assertRaisesRegex(ValueError, "full lowercase commit SHA"):
             exporter.export("main", destination)
+        self.assertFalse(destination.exists())
+
+    def test_missing_committed_version_metadata_prevents_export(self):
+        subprocess.run(["git", "rm", "-q", "providers/terraform/COMPATIBILITY.json"],
+                       cwd=self.repository, check=True)
+        subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                        "commit", "-q", "-m", "missing compatibility"], cwd=self.repository, check=True)
+        source_ref = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.repository,
+                                             text=True).strip()
+        destination = self.root / "incomplete-provider"
+        with self.assertRaisesRegex(ValueError, "missing required provider files"):
+            exporter.export(source_ref, destination)
         self.assertFalse(destination.exists())
 
     def test_verification_uses_committed_bytes_even_when_source_worktree_changes(self):

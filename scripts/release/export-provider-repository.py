@@ -65,9 +65,11 @@ def export(source_ref, destination, preview=False):
         files.append((target, object_id, mode))
     required = {Path(path) for path in (
         "LICENSE", "NOTICE", "go.mod", "main.go", "terraform-registry-manifest.json",
+        "VERSION", "COMPATIBILITY.json", "COMPATIBILITY.md", "CHANGELOG.md",
         "docs/index.md", "docs/resources/allocation.md",
         "docs/data-sources/allocation.md", "docs/data-sources/pool.md",
         "scripts/check-replacement-plan.py",
+        "scripts/check-compatibility.py",
     )}
     if not required <= {item[0] for item in files}:
         raise ValueError("reviewed source is missing required provider files")
@@ -89,7 +91,11 @@ def export(source_ref, destination, preview=False):
             ("Registry publication, main promotion, signer custody and named review "
              "remain separate release gates.\n" if preview else
              "Registry publication, the source namespace, signing key and sandbox "
-             "acceptance remain separate release gates.\n"),
+             "acceptance remain separate release gates.\n") +
+            "\nProvider versions are independent of Platform-IPAM. See "
+            "[COMPATIBILITY.md](COMPATIBILITY.md) for the version policy and "
+            "qualified product pairings; `VERSION` and `COMPATIBILITY.json` "
+            "must match the release tag.\n",
             encoding="utf-8",
         )
         if preview:

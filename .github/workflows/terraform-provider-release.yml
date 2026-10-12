@@ -82,6 +82,13 @@ jobs:
         run: |
           python3 platform-ipam-source/scripts/release/check-provider-qualification.py \
             --mirror provider-mirror --source-ref "$SOURCE_REF" --version "$VERSION"
+      - name: Require version and compatibility qualification to match the release attestation
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          python3 platform-ipam-source/providers/terraform/scripts/check-compatibility.py \
+            --expected-version "$VERSION" --release \
+            --qualification provider-mirror/RELEASE_QUALIFICATION.json
       - name: Verify provider formatting and unit tests before signing
         working-directory: platform-ipam-source/providers/terraform
         env:

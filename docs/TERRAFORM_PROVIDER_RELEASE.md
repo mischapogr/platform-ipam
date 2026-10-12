@@ -89,6 +89,30 @@ the file's lowercase SHA-256 `sha256`. Required checks are `plan`, `apply`,
 `vulnerability_scan`.
 Absent, failed, altered or unreviewed evidence does not qualify a release.
 
+For a local RC, retain the exact unsigned release binary/package hashes and
+Terraform patch version. Run the committed Terraform lifecycle assertions
+against the isolated API using that binary; apply the inspected saved new-key
+replacement plan and verify the old allocation's persisted quarantine and
+retired-key refusal. Provider fixture tests supply deterministic timeout and
+ambiguous-read cases. They must assert unchanged identity, not merely nonempty
+state. Retain each command's exit status and reject skipped required tests.
+
+The normal-install rehearsal can test the public identity without publishing:
+
+```sh
+IPAM_PROVIDER_VERSION=0.1.0-rc.1 \
+IPAM_PROVIDER_SOURCE=registry.terraform.io/mischapogr/platformipam \
+IPAM_PROVIDER_PACKAGE=/tmp/rc-assets/terraform-provider-platformipam_0.1.0-rc.1_linux_amd64.zip \
+IPAM_PROVIDER_MIRROR_EVIDENCE=/tmp/rc-mirror-evidence \
+  tests/e2e/run-provider-mirror.sh
+```
+
+The evidence directory must be absent or empty. The script retains installation,
+schema, readonly-lock and tamper-refusal results and reports the exact CLI
+version and original package hash. This is local mirror acceptance, not an
+installation from the published Registry. Keep raw credentials, plans and
+state out of public evidence; publish sanitized logs and selected assertions.
+
 RC records additionally require `release_channel: "rc"`,
 `evidence_boundary: "simulation"`, `live_aws: "NOT_READY"` and
 `aws_readiness_notice: "AWS API/AWS integration is not yet ready"`.

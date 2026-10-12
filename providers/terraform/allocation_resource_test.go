@@ -222,13 +222,15 @@ func TestReadRetainsStateOnAmbiguous404(t *testing.T) {
 	s := allocationSchema(ctx)
 	state := tfsdk.State{Schema: s}
 	model := testAllocationModel()
+	model.ID = types.StringValue("alloc_01")
+	model.CIDR = types.StringValue("10.64.0.0/20")
 	if diags := state.Set(ctx, &model); diags.HasError() {
 		t.Fatal(diags)
 	}
 	response := resource.ReadResponse{State: state}
 	(&allocationResource{api: api}).Read(ctx, resource.ReadRequest{State: state}, &response)
-	if !response.Diagnostics.HasError() || response.State.Raw.IsNull() {
-		t.Fatalf("diagnostics=%v state removed=%v", response.Diagnostics, response.State.Raw.IsNull())
+	if !response.Diagnostics.HasError() || !response.State.Raw.Equal(state.Raw) {
+		t.Fatalf("diagnostics=%v state changed=%v", response.Diagnostics, !response.State.Raw.Equal(state.Raw))
 	}
 }
 
@@ -257,13 +259,15 @@ func TestReadRetainsStateOnAllocationPendingAndNamesTheOperation(t *testing.T) {
 	s := allocationSchema(ctx)
 	state := tfsdk.State{Schema: s}
 	model := testAllocationModel()
+	model.ID = types.StringValue("alloc_01")
+	model.CIDR = types.StringValue("10.64.0.0/20")
 	if diags := state.Set(ctx, &model); diags.HasError() {
 		t.Fatal(diags)
 	}
 	response := resource.ReadResponse{State: state}
 	(&allocationResource{api: api}).Read(ctx, resource.ReadRequest{State: state}, &response)
-	if !response.Diagnostics.HasError() || response.State.Raw.IsNull() {
-		t.Fatalf("diagnostics=%v state removed=%v", response.Diagnostics, response.State.Raw.IsNull())
+	if !response.Diagnostics.HasError() || !response.State.Raw.Equal(state.Raw) {
+		t.Fatalf("diagnostics=%v state changed=%v", response.Diagnostics, !response.State.Raw.Equal(state.Raw))
 	}
 	if !strings.Contains(response.Diagnostics[0].Detail(), "op_still_pending_01") {
 		t.Fatalf("diagnostic detail=%q, want it to name the pending operation", response.Diagnostics[0].Detail())

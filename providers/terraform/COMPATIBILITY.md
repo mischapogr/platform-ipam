@@ -10,7 +10,7 @@ status. Neither file creates a release. A release tag is `v` followed by
 
 | Provider candidate | Required Platform-IPAM API | Qualified Platform-IPAM product releases | Terraform CLI / target | Status |
 | --- | --- | --- | --- | --- |
-| `0.1.0-rc.1` (unpublished) | v1 (`/v1`) | None yet | `1.14.9` / `linux_amd64` | Simulation tooling exercised; qualification of the current release source is pending |
+| `0.1.0-rc.1` | v1 (`/v1`) | None yet | `1.14.9` / `linux_amd64` | Simulation-qualified source snapshot; exact source and evidence recorded in `RELEASE_QUALIFICATION.json` |
 
 An API major requirement is necessary, but does not prove compatibility with
 every service implementing that API. This checkout has no Platform-IPAM
@@ -19,9 +19,9 @@ OpenAPI `info.version: 1.0.0-draft` describes the API document; it is not a
 Platform-IPAM product version. `SOURCE_COMMIT` identifies the exact monorepo
 source exported into the public provider repository.
 
-Terraform 1.14.9 was exercised in the historical local simulation qualification;
-that evidence is not fresh qualification of this candidate's current source.
-Other Terraform versions and targets are unqualified. The Registry manifest's
+Terraform 1.14.9 is the simulation-qualified CLI for this candidate. Publication
+requires a maintainer-reviewed attestation for the exact exported source and
+all eleven checks. Other Terraform versions and targets are unqualified. The Registry manifest's
 protocol 6.0 identifies the Terraform plugin protocol, not a service API or
 product version.
 

@@ -1,6 +1,7 @@
 """Scoped local checks with compact JSON output and private temporary logs."""
 
 import argparse
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -202,43 +203,16 @@ def aws(report, args):
                "Every scenario here runs against a stubbed aws CLI; nothing has run against a real AWS Organization")
 
 
-def replacement_errors(plan):
-    if not isinstance(plan, dict) or not isinstance(plan.get("format_version"), str):
-        raise ValueError("Expected terraform show -json plan with format_version")
-    if not re.fullmatch(r"1\.\d+", plan["format_version"]):
-        raise ValueError("Only Terraform plan JSON format major version 1 is supported")
-    if "planned_values" not in plan or "resource_changes" not in plan:
-        raise ValueError("Plan must include planned_values and resource_changes; state JSON is not a plan")
-    if not isinstance(plan["planned_values"], dict) or not isinstance(plan["resource_changes"], list):
-        raise ValueError("Invalid planned_values or resource_changes")
-    if plan.get("errored"):
-        raise ValueError("Cannot approve an errored plan")
-    if plan.get("complete") is False or plan.get("deferred_changes"):
-        raise ValueError("Cannot approve an incomplete or deferred plan")
-    errors = []
-    for resource in plan["resource_changes"]:
-        if not isinstance(resource, dict) or "type" not in resource or "mode" not in resource:
-            raise ValueError("Malformed resource change")
-        if resource["mode"] != "managed" or resource["type"] != "platformipam_allocation":
-            continue
-        change = resource["change"]
-        actions = change["actions"]
-        if not isinstance(actions, list) or not actions:
-            raise ValueError("Missing allocation change actions")
-        if "create" not in actions or "delete" not in actions:
-            continue
-        before, after = change.get("before") or {}, change.get("after") or {}
-        unknown = change.get("after_unknown", {})
-        key_unknown = unknown is True or (isinstance(unknown, dict) and unknown.get("allocation_key"))
-        old, new = before.get("allocation_key"), after.get("allocation_key")
-        if key_unknown or not isinstance(old, str) or not isinstance(new, str) or not new or old == new:
-            errors.append(resource.get("address", "unknown allocation"))
-    return errors
+_plan_policy_spec = importlib.util.spec_from_file_location(
+    "platformipam_plan_policy", ROOT / "providers/terraform/scripts/check-replacement-plan.py")
+_plan_policy = importlib.util.module_from_spec(_plan_policy_spec)
+_plan_policy_spec.loader.exec_module(_plan_policy)
+replacement_errors = _plan_policy.replacement_errors
 
 
 # Pinned images, matching ADR 0002: a check must not depend on the host
 # happening to carry a correct Go or Terraform toolchain.
-GO_IMAGE = "golang:1.26.8-bookworm"
+GO_IMAGE = "golang:1.26.9-bookworm"
 TERRAFORM_IMAGE = "hashicorp/terraform:1.14"
 HELM_IMAGE = "alpine/helm:3.17.3"
 PYTHON_IMAGE = "python:3.13-alpine"
@@ -267,7 +241,8 @@ def terraform_ready(report):
                    "No host Terraform; the pinned image is used instead")
         return False
     try:
-        result = subprocess.run(["terraform", "version"], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(["terraform", "version"], capture_output=True, text=True,
+                                timeout=10, env={**os.environ, "CHECKPOINT_DISABLE": "1"})
         match = re.search(r"Terraform v(\d+)\.(\d+)\.(\d+)", result.stdout)
         version = tuple(map(int, match.groups())) if match else None
         if result.returncode or version is None or version < (1, 6, 0) or version[0] != 1:
@@ -288,6 +263,9 @@ terraform_ready.ok = False
 
 
 def provider(report, args):
+    report.command("provider-source-export",
+                   [sys.executable, "-m", "unittest", "tests.release.test_export_provider_repository"],
+                   cwd=ROOT)
     files = sorted((ROOT / "examples/terraform").rglob("*.tf"))
     use_docker = not terraform_ready(report) and shutil.which("docker")
     if files and (use_docker or terraform_ready.ok):

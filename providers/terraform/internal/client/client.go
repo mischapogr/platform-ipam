@@ -257,8 +257,8 @@ func (c *Client) GetAllocation(ctx context.Context, id string) (*Allocation, err
 	if err != nil {
 		return nil, err
 	}
-	if allocation.ID == "" {
-		allocation.ID = id
+	if allocation.ID != id || allocation.AllocationKey == "" || allocation.CIDR == "" || allocation.State == "" {
+		return nil, fmt.Errorf("GET returned an incomplete or mismatched allocation for %s", id)
 	}
 	return &allocation, nil
 }
@@ -278,6 +278,9 @@ func (c *Client) FindAllocationByKey(ctx context.Context, key string) (*Allocati
 	if len(response.Items) > 1 {
 		return nil, fmt.Errorf("allocation key %q returned multiple allocations", key)
 	}
+	if response.Items[0].AllocationKey != key || response.Items[0].ID == "" || response.Items[0].CIDR == "" || response.Items[0].State == "" {
+		return nil, fmt.Errorf("key lookup returned an incomplete or mismatched allocation for %q", key)
+	}
 	return &response.Items[0], nil
 }
 
@@ -294,34 +297,62 @@ func (c *Client) UpdateAllocation(ctx context.Context, id, etag, key string, pat
 // 204 means the allocation has already reached RELEASED. An ambiguous 404 is
 // returned to the caller so Terraform can preserve state and fail closed.
 func (c *Client) DeleteAllocation(ctx context.Context, id string) (*Allocation, bool, error) {
-	var allocation Allocation
-	status, err := c.doJSON(ctx, http.MethodDelete, "/v1/allocations/"+url.PathEscape(id), nil, "", &allocation, nil)
-	if err != nil {
-		return nil, false, err
+	for {
+		var allocation Allocation
+		status, err := c.doJSON(ctx, http.MethodDelete, "/v1/allocations/"+url.PathEscape(id), nil, "", &allocation, nil)
+		if err != nil {
+			var apiErr *HTTPError
+			if !errors.As(err, &apiErr) || apiErr.Status != http.StatusConflict || apiErr.Code != "children_present" {
+				return nil, false, err
+			}
+			// Children can enter quarantine while Terraform tears down their
+			// dependency graph. Retry only this conflict under Delete's deadline.
+			select {
+			case <-ctx.Done():
+				return nil, false, fmt.Errorf("child allocations still block release: %w", ctx.Err())
+			case <-time.After(c.pollInterval):
+				continue
+			}
+		}
+		if status == http.StatusNoContent {
+			return nil, true, nil
+		}
+		if status == http.StatusAccepted {
+			if allocation.ID != id || allocation.State != "QUARANTINED" {
+				return nil, false, fmt.Errorf("DELETE accepted without a QUARANTINED receipt for allocation %s", id)
+			}
+			return &allocation, true, nil
+		}
+		return &allocation, false, fmt.Errorf("DELETE returned unexpected HTTP %d", status)
 	}
-	if status == http.StatusNoContent {
-		return nil, true, nil
-	}
-	if status == http.StatusAccepted {
-		return &allocation, true, nil
-	}
-	return &allocation, false, fmt.Errorf("DELETE returned unexpected HTTP %d", status)
 }
 
 func (c *Client) GetPool(ctx context.Context, id string) (*Pool, error) {
-	var response struct {
-		Items []Pool `json:"items"`
-	}
-	_, err := c.doJSON(ctx, http.MethodGet, "/v1/pools", nil, "", &response, nil)
-	if err != nil {
-		return nil, err
-	}
-	for _, pool := range response.Items {
-		if pool.ID == id {
-			return &pool, nil
+	path := "/v1/pools"
+	seen := map[string]bool{}
+	for {
+		var response struct {
+			Items      []Pool `json:"items"`
+			NextCursor string `json:"next_cursor"`
 		}
+		_, err := c.doJSON(ctx, http.MethodGet, path, nil, "", &response, nil)
+		if err != nil {
+			return nil, err
+		}
+		for _, pool := range response.Items {
+			if pool.ID == id {
+				return &pool, nil
+			}
+		}
+		if response.NextCursor == "" {
+			return nil, &HTTPError{Status: http.StatusNotFound, Code: "not_found", Message: "pool was not found"}
+		}
+		if seen[response.NextCursor] {
+			return nil, fmt.Errorf("pool listing returned a repeated pagination cursor")
+		}
+		seen[response.NextCursor] = true
+		path = "/v1/pools?cursor=" + url.QueryEscape(response.NextCursor)
 	}
-	return nil, &HTTPError{Status: http.StatusNotFound, Code: "not_found", Message: "pool was not found"}
 }
 
 func (c *Client) doJSON(ctx context.Context, method, path string, body any, idempotency string, success any, accepted any) (int, error) {

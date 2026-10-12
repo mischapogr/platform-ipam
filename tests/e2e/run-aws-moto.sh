@@ -19,7 +19,7 @@ case "${1:-}" in
     docker run --rm --network "${PROJECT}_default" \
       -e IPAM_TEST_MOTO_URL=http://moto:5000 \
       -v "$ROOT:/workspace:ro" -w /workspace \
-      docker.io/golang:1.26.8-bookworm \
+      docker.io/golang:1.26.9-bookworm \
       go test ./internal/cloud -run TestMotoEC2STSProtocol -count=1 -v
     ;;
   stop)

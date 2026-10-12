@@ -1,0 +1,35 @@
+/artifacts/terraform-provider-platformipam_v0.1.0-rc.1: go1.26.9
+	path	github.com/mischapogr/platform-ipam/providers/terraform
+	mod	github.com/mischapogr/platform-ipam/providers/terraform	(devel)	
+	dep	github.com/fatih/color	v1.18.0	h1:S8gINlzdQ840/4pfAwic/ZE0djQEH3wM94VfqLTZcOM=
+	dep	github.com/golang/protobuf	v1.5.4	h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
+	dep	github.com/hashicorp/go-hclog	v1.6.3	h1:Qr2kF+eVWjTiYmU7Y31tYlP1h0q/X3Nl3tPGdaB11/k=
+	dep	github.com/hashicorp/go-plugin	v1.7.0	h1:YghfQH/0QmPNc/AZMTFE3ac8fipZyZECHdDPshfk+mA=
+	dep	github.com/hashicorp/go-uuid	v1.0.3	h1:2gKiV6YVmrJ1i2CKKa9obLvRieoRGviZFL26PcT/Co8=
+	dep	github.com/hashicorp/terraform-plugin-framework	v1.19.0	h1:q0bwyhxAOR3vfdgbk9iplv3MlTv/dhBHTXjQOtQDoBA=
+	dep	github.com/hashicorp/terraform-plugin-framework-timeouts	v0.7.0	h1:jblRy1PkLfPm5hb5XeMa3tezusnMRziUGqtT5epSYoI=
+	dep	github.com/hashicorp/terraform-plugin-framework-validators	v0.19.0	h1:Zz3iGgzxe/1XBkooZCewS0nJAaCFPFPHdNJd8FgE4Ow=
+	dep	github.com/hashicorp/terraform-plugin-go	v0.31.0	h1:0Fz2r9DQ+kNNl6bx8HRxFd1TfMKUvnrOtvJPmp3Z0q8=
+	dep	github.com/hashicorp/terraform-plugin-log	v0.10.0	h1:eu2kW6/QBVdN4P3Ju2WiB2W3ObjkAsyfBsL3Wh1fj3g=
+	dep	github.com/hashicorp/terraform-registry-address	v0.4.0	h1:S1yCGomj30Sao4l5BMPjTGZmCNzuv7/GDTDX99E9gTk=
+	dep	github.com/hashicorp/terraform-svchost	v0.1.1	h1:EZZimZ1GxdqFRinZ1tpJwVxxt49xc/S52uzrw4x0jKQ=
+	dep	github.com/hashicorp/yamux	v0.1.2	h1:XtB8kyFOyHXYVFnwT5C3+Bdo8gArse7j2AQ0DA0Uey8=
+	dep	github.com/mattn/go-colorable	v0.1.14	h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
+	dep	github.com/mattn/go-isatty	v0.0.20	h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+	dep	github.com/mitchellh/go-testing-interface	v1.14.1	h1:jrgshOhYAUVNMAJiKbEu7EqAwgJJ2JqpQmpLJOu07cU=
+	dep	github.com/oklog/run	v1.1.0	h1:GEenZ1cK0+q0+wsJew9qUg/DyD8k3JzYsZAi5gYi2mA=
+	dep	github.com/vmihailenco/msgpack/v5	v5.4.1	h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IUPn0Bjt8=
+	dep	github.com/vmihailenco/tagparser/v2	v2.0.0	h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=
+	dep	golang.org/x/net	v0.60.0	h1:79p50tfZlm0J9YfoDsSi639qSXNGVwEzOPLCxM2FsYU=
+	dep	golang.org/x/sys	v0.48.0	h1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=
+	dep	golang.org/x/text	v0.42.0	h1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=
+	dep	google.golang.org/genproto/googleapis/rpc	v0.0.0-20260526163538-3dc84a4a5aaa	h1:mZHHdPZl0dbGHCflZgAq/Q468DWVFcU2whhB2KAo8fk=
+	dep	google.golang.org/grpc	v1.83.2	h1:EManeRomTObA0BU7I8vXgg/78uE5MJ9M8B39EX2WscU=
+	dep	google.golang.org/protobuf	v1.36.11	h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	-trimpath=true
+	build	CGO_ENABLED=0
+	build	GOARCH=amd64
+	build	GOOS=linux
+	build	GOAMD64=v1

@@ -5,11 +5,26 @@ This candidate is for local development and simulation with fake cloud data.
 Live AWS, customer pilot, real identity-provider and stage/production acceptance
 remain open.
 
-Candidate date: 2026-10-10. Target: `linux_amd64`.
-**Qualified for local development simulation.**
-The source is the current uncommitted working tree on
-`feat/close-non-aws-work-plan`, based on `e0ac3ad`. An unsigned local package is
-built; no signed GitHub release or Terraform Registry version exists.
+Initial preview audit: 2026-10-10. Provider publication audit: 2026-10-12.
+Target: `linux_amd64`. **Qualified for local development simulation.**
+The published provider source is immutable monorepo commit
+`d1807f4fa6676d6323d7fdddf098b8a39b9fa873`, promoted to `main`.
+[Provider release `v0.1.0-rc.1`](https://github.com/mischapogr/terraform-provider-platformipam/releases/tag/v0.1.0-rc.1)
+is signed and available as `mischapogr/platformipam` in the public Registry.
+Maintainer `mischapogr` reviewed the eleven required simulation checks.
+The frozen-source qualification passed 42 provider tests, 82 release tooling
+regressions and both Terraform lifecycle cases with zero skips, including an
+applied replacement with persisted quarantine and old-key refusal. The
+provider repository's 15 candidate-selection tests also passed.
+
+Fresh public Registry installation, configuration validation and schema loading
+passed with Terraform 1.14.9. Terraform verified developer signing key
+`136F9D1E6B3B2BE8`; independent detached-signature verification matched full
+fingerprint `F1EAE2D8ED6BF46AEEE8889E136F9D1E6B3B2BE8`. The installed binary
+and downloaded archive match the exact simulation-qualified hashes.
+The [publication record](qualification/PROVIDER_PUBLICATION_2026_10_12.json)
+retains evidence digests and the consumer lock file. Provider publication closes
+REL-1's RC distribution acceptance; stable live-AWS acceptance remains open.
 
 ## Scope and audit fixes
 
@@ -45,6 +60,11 @@ made.
 
 ## Qualification evidence
 
+The broader platform results below retain their 2026-10-10 execution scope.
+The 2026-10-12 provider release adds immutable source, eleven-check
+qualification, successful remote CI and fresh public-origin acceptance; it
+does not reclassify historical platform checks as a fresh full-project run.
+
 | Check | Current result |
 | --- | --- |
 | Patched platform Go suite | PASS: 1,592 test/subtest passes; 14 opt-in skips. |
@@ -55,16 +75,16 @@ made.
 | Stubbed AWS/assessment/topology/pilot checks | PASS: `scripts/ai/check-aws`; no AWS calls. |
 | AWS SDK EC2/STS protocol simulation | PASS: the opt-in Moto test exercises role assumption, VPC/subnet observation and account-mismatch refusal. Emulator results do not prove AWS fidelity or IAM acceptance. |
 | Documentation/OpenAPI, Compose and Helm | PASS: repository validators. Helm rendering is static evidence. |
-| GitHub Actions and e2e shell lint | PASS locally using pinned Actionlint and ShellCheck. Remote GitHub CI is not claimed. |
+| GitHub Actions and e2e shell lint | Local pinned lint passed in the initial audit. Monorepo [CI on qualified source `d1807f4`](https://github.com/mischapogr/platform-ipam/actions/runs/38263723774) and provider CI/signing on release commit `a143c62` passed remotely on 2026-10-12. |
 | Go vulnerability scan | PASS: zero findings in both platform and provider. govulncheck 1.8.0, Go 1.26.9; vulnerability database last modified 2026-10-08T22:31:09Z. This does not scan Python or container packages. |
 | Local API/CLI/Terraform/NetBox suite | PASS across combined runs: 124 unchanged cases passed in each full run, followed by both Terraform cases passing after the import-test correction, for 126 unique cases. This is not a single final full-suite pass. Import, refresh, replacement planning, the saved-plan guard and quarantine acceptance are covered. |
 | Fresh NetBox workspace tests | PASS: 9 tests against the pinned NetBox 4.7.1 workspace image; ORM stand-ins exercise saved history without using the live inventory database. |
 | Workspace browser flow | PASS: 1 Playwright test against the running stack covers extracted-file and ZIP drop, validation, immutable save, reload and downloaded report digest. |
 | Operator browser flow | PASS: 1 Playwright test verifies the operator inventory displays the allocated prefix. |
 | Ordinary API/worker restart | PASS: allocation ID, key, CIDR and NetBox prefix ID survive restart with volumes retained; allocation counts remain stable. This does not qualify disaster recovery. |
-| Running image/source correspondence | PASS: 95 service/provider/workspace build inputs in the isolated snapshot match the current working tree. |
-| Linked Go licence inventory | Copied root licence/notice files for all 25 modules in the RC binary build metadata, plus the Go 1.26.9 licence, into the local candidate. This inventory requires maintainer attribution review before distribution. |
-| Ordinary Registry installation and registered-key signature | NOT CHECKED: no provider namespace/signing/Registry setup has been selected. Local filesystem-mirror tests remain simulation evidence. |
+| Running image/source correspondence | PASS: 95 service/provider/workspace build inputs matched the 2026-10-10 working tree in that isolated qualification snapshot. |
+| Linked Go licence inventory | [Published binary attribution packet](qualification/PROVIDER_ATTRIBUTION_2026_10_12/README.md) retains root licence/notice files for the exact 25 linked module versions and Go 1.26.9. Versions and copied-file hashes match the public binary; complete package-specific attribution/distribution review remains pending. The current monorepo NOTICE distinguishes linked libraries from deployed integrations. |
+| Ordinary Registry installation and registered-key signature | PASS on 2026-10-12: fresh public-origin init, validate and schema load; developer signature, lock-file checksums and exact installed binary verified. See the publication record. |
 
 ## Reproduce and publish
 
@@ -89,17 +109,21 @@ identity, and requires an empty normal plan. The recorded limitation matches
 at Terraform 1.15. The earlier failed test runs are retained with the final
 targeted pass; neither failure established an infrastructure change.
 
-The isolated preview stack remains available locally: API at
+The isolated preview qualification used a local API at
 `http://127.0.0.1:18080` and the workspace at
 `http://127.0.0.1:18010/plugins/platform-ipam/`. Its generated development
 credentials remain in the private snapshot's `deploy/compose/.env`.
 
-Before external publication, select the durable Registry namespace and public
-repository owner, commit/review the final source, name the evidence reviewer,
-configure the registered RSA/DSA signer and publish the RC through the gated
-workflow. Install that exact published origin with normal `terraform init`.
-The current working-tree package cannot substitute for that immutable-source
-release check.
+The 2026-10-10 unsigned working-tree package remains historical preview
+evidence. The published provider was rebuilt from the reviewed committed source;
+its binary SHA-256 is
+`21ae57f4303686f6b945d9f89f9c3e4d3f2e864df6b52bd086baf38cc6e0d255`,
+and its signed archive SHA-256 is
+`5dd713570714c027b764b6364acf84300d3720a1d6f3c9fe71d0cfbb132020fa`.
+The publication record and final maintainer attestation preserve the later
+source and evidence boundary. Configure `required_providers` with source
+`mischapogr/platformipam` and exact version `0.1.0-rc.1`, run normal
+`terraform init` with Terraform 1.14.9, and retain `.terraform.lock.hcl`.
 
 Stable release, AWS-IPAM allocation/handoff, customer discovery/approval,
 browser reservation identity, production access/retention/restore, Kubernetes

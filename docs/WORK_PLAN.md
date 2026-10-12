@@ -200,6 +200,13 @@ qualification in REL-1. The explicit automation queue currently contains no
 items; further product work requires the contracts and evidence named in those
 gates. **AWS API/AWS integration is not yet ready.**
 
+**2026-10-13 packaging follow-up.** Future signed packages require the exact
+binary/version attribution packet, project LICENSE/NOTICE and embedded notice
+file hashes. The packager and mirror rehearsal support these files while
+retaining verification of historical single-binary archives. Complete
+package-specific attribution review and stable live-AWS qualification remain
+open; a changed archive requires a new version and fresh release evidence.
+
 ### 3.7 Historical package ledger
 
 Completion applies to each package's stated contract, including design-only packages. The two historical `N4` entries retain their original IDs; the explicit runner queue uses unique IDs. Later qualification supersedes earlier limitations only where explicitly recorded.

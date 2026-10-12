@@ -86,6 +86,25 @@ does not reclassify historical platform checks as a fresh full-project run.
 | Linked Go licence inventory | [Published binary attribution packet](qualification/PROVIDER_ATTRIBUTION_2026_10_12/README.md) retains root licence/notice files for the exact 25 linked module versions and Go 1.26.9. Versions and copied-file hashes match the public binary; complete package-specific attribution/distribution review remains pending. The current monorepo NOTICE distinguishes linked libraries from deployed integrations. |
 | Ordinary Registry installation and registered-key signature | PASS on 2026-10-12: fresh public-origin init, validate and schema load; developer signature, lock-file checksums and exact installed binary verified. See the publication record. |
 
+## Notice packaging follow-up (2026-10-13)
+
+Future release packaging requires an attribution packet bound to the exact
+binary and version. The packager retains project LICENSE/NOTICE and all packet
+files, verifies dependency/version and file-digest completeness, and embeds
+`THIRD_PARTY_NOTICES/CONTENTS.json`. Archive validation rejects altered notices,
+unsafe paths, duplicate entries, symlinks and executable notice files.
+Historical binary-only packages remain verifiable. This tooling change prepares
+a future candidate; published RC assets retain their original checksums.
+Complete package-specific attribution review remains open.
+
+The [tooling rehearsal](qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13.json)
+passed 90 release regressions and workflow lint. Terraform 1.14.9 installed the
+notice-bearing archive, retained all 34 added files byte-for-byte, loaded its
+schema, reused the lock and refused a tampered package. Repackaging the published
+binary in the historical format reproduced its original archive checksum.
+This rehearsal uses the existing binary; a future changed release requires its
+own version, source freeze and qualification.
+
 ## Reproduce and publish
 
 Use the pinned container commands in [Contributing](../CONTRIBUTING.md),

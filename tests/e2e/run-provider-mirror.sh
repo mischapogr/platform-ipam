@@ -36,7 +36,7 @@ cleanup() {
   mirror_status=$?
   trap - EXIT HUP INT TERM
   if [ -n "$EVIDENCE" ]; then
-    for evidence_file in init.log reinit.log schema.json config/.terraform.lock.hcl tampered.log terraform-version.json package-metadata.json; do
+    for evidence_file in init.log reinit.log schema.json config/.terraform.lock.hcl tampered.log terraform-version.json package-metadata.json installed-notices.json; do
       if [ -f "$WORK/$evidence_file" ]; then
         cp "$WORK/$evidence_file" "$EVIDENCE/${evidence_file##*/}" || mirror_status=1
       fi
@@ -57,14 +57,12 @@ PACKAGE="$WORK/mirror/$SOURCE/terraform-provider-platformipam_${VERSION}_linux_a
 BINARY="terraform-provider-platformipam_v${VERSION}"
 if [ -n "${IPAM_PROVIDER_PACKAGE:-}" ]; then
   cp "$IPAM_PROVIDER_PACKAGE" "$PACKAGE"
-  python3 - "$PACKAGE" "$WORK/build/$BINARY" "$BINARY" <<'PY'
+  python3 - "$PACKAGE" "$WORK/build/$BINARY" "$VERSION" "$ROOT" <<'PY'
 from pathlib import Path
 import sys
-from zipfile import ZipFile
-with ZipFile(sys.argv[1]) as archive:
-    if archive.namelist() != [sys.argv[3]]:
-        raise SystemExit('provider archive must contain exactly the expected binary')
-    Path(sys.argv[2]).write_bytes(archive.read(sys.argv[3]))
+sys.path.insert(0, str(Path(sys.argv[4]) / 'scripts/release'))
+from provider_release import check_archive
+Path(sys.argv[2]).write_bytes(check_archive(sys.argv[1], sys.argv[3]))
 PY
 else
   docker run --rm \
@@ -126,6 +124,32 @@ if ! terraform init -input=false -no-color > "$WORK/init.log" 2>&1; then
   tail -n 40 "$WORK/init.log" >&2
   exit 1
 fi
+python3 - "$ROOT" "$PACKAGE" "$VERSION" "$SOURCE" "$WORK/config/.terraform/providers" "$WORK/installed-notices.json" <<'PYNOTICES'
+import hashlib
+import json
+from pathlib import Path
+import sys
+from zipfile import ZipFile
+sys.path.insert(0, str(Path(sys.argv[1]) / 'scripts/release'))
+from provider_release import check_archive, names
+package, version, source = Path(sys.argv[2]), sys.argv[3], sys.argv[4]
+check_archive(package, version)
+installed = Path(sys.argv[5]) / source / version / 'linux_amd64'
+with ZipFile(package) as archive:
+    notice_names = sorted(set(archive.namelist()) - {names(version)['binary']})
+    if notice_names:
+        hashes = {}
+        for name in notice_names:
+            path = installed / name
+            if path.is_symlink() or not path.is_file() or path.read_bytes() != archive.read(name):
+                raise SystemExit('installed notice missing or changed: ' + name)
+            hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+        record = {'provider_source': source, 'provider_version': version,
+                  'platform': 'linux_amd64', 'installed_notice_count': len(hashes),
+                  'files_sha256': hashes, 'status': 'PASSED'}
+        Path(sys.argv[6]).write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
+        print(f'installed provider notices: {len(hashes)} files retained byte-for-byte')
+PYNOTICES
 python3 - "$WORK/config/.terraform.lock.hcl" "$VERSION" "$SOURCE" <<'PY'
 from pathlib import Path
 import sys

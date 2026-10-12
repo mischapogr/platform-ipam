@@ -1,0 +1,6 @@
+Initializing the backend...
+Initializing provider plugins...
+- Reusing previous version of mischapogr/platformipam from the dependency lock file
+- Using previously-installed mischapogr/platformipam v0.1.0-rc.1
+
+Terraform has been successfully initialized!

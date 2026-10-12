@@ -117,6 +117,8 @@ jobs:
           )
           python3 platform-ipam-source/scripts/release/package-provider.py \
             --binary "build/$binary" --manifest "$PROVIDER_DIRECTORY/terraform-registry-manifest.json" \
+            --notices provider-mirror/release-evidence/provider-attribution \
+            --project-license platform-ipam-source/LICENSE --project-notice platform-ipam-source/NOTICE \
             --version "$VERSION" --out dist
           cp provider-mirror/RELEASE_QUALIFICATION.json dist/RELEASE_QUALIFICATION.json
       - name: Sign checksums for Terraform Registry verification

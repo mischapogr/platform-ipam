@@ -60,10 +60,10 @@ Two traps found while running the first wave:
 
 | Area | Current implementation and evidence | Completion boundary |
 | --- | --- | --- |
-| Allocation API, CLI, Terraform and reconciliation | Historical package ledger below is locally complete, including M4f/M4g, adoption, cancellation, import refresh/removal and operator reads. Core and provider unit suites passed again at this audit. | Live AWS, provider publication and target-environment qualification remain open. The global ledger lock/full-state load remains; differential persistence is an intermediate architecture. |
+| Allocation API, CLI, Terraform and reconciliation | Historical package ledger below is locally complete, including M4f/M4g, adoption, cancellation, import refresh/removal and operator reads. Core and provider unit suites passed again at this audit. | Provider RC publication is complete. Live AWS, stable provider acceptance and target-environment qualification remain open. The global ledger lock/full-state load remains; differential persistence is an intermediate architecture. |
 | NetBox 4.7 | Compose and optional AWS plugin pin 4.7.1. The [upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md) records the local restore/upgrade, plugin, identity-shaped and 126-test qualification. | Earlier 4.6.10 checkpoint language below is superseded. Stage/prod and real identity-provider qualification are still open. |
 | Inventory, assessment and topology | Read-only organization discovery, explicit coverage, resource-aware overlaps and separate AWS topology collection are implemented. AWS collector/assessment/topology checks passed with fixtures and stubs. | No live 100-account customer collection or topology/traffic readiness proof. Network readiness remains `NOT_ASSESSED`. |
-| Replacement planning and shared pilot evidence | `scripts/aws/address-plan.py` consumes reviewed move targets through the strict CLI migration decoder. `scripts/aws/pilot-evidence.py` derives conflicts, moves, proposals, blockers and allocation evidence for CLI/UI. | Input and discovery gates are currently hardcoded `UNKNOWN`; customer acceptance/provenance is not yet represented as a passing gate. |
+| Replacement planning and shared pilot evidence | `scripts/aws/address-plan.py` consumes reviewed move targets through the strict CLI migration decoder. `scripts/aws/pilot-evidence.py` derives conflicts, moves, proposals, blockers and allocation evidence for CLI/UI. An optional named review now binds to the exact report and input hashes; coverage, sample-reference and freshness checks derive the first two gates. | The uploaded review is an operator attestation, not authenticated customer or live AWS evidence. Customer approval, actual sample reconciliation and representative collection remain unqualified. |
 | Reservation verification | `scripts/aws/verify-reservations.py` validates Platform-IPAM-owned reservations against authenticated API evidence, proposal identity, occupancy and freshness. Unit checks passed. | AWS-IPAM authority has no live reservation/handoff integration. A preview or uploaded unsigned report cannot establish a current authoritative reservation. |
 | Migration workspace | Upload/ZIP handling, overview and drill-downs, saved pilots/immutable snapshots, export/history, coverage, move details, NetBox links and CLI reservation handoff are implemented. Customer-supplied Terraform execution references can be displayed. Fresh-image plugin tests and an opt-in authenticated browser flow cover both demo sizes, drag/drop, save/reload/export, prefix permission filtering and verification expiry. | Customer identity and production access/retention qualification remain open (OPS-1). |
 | 100/500-account demos | Synthetic inventory, intent, protected ranges, plans and execution-reference fixtures exist in `examples/migration-workspace/`; both bundles now pass the NetBox upload/report pipeline. | Fixture reports are synthetic evidence; opening them does not import Prefix/IPAddress objects. |
@@ -84,12 +84,43 @@ The remaining items are **open**, not completed by this continuation. Authority 
 | ID | Priority / state | Finding or missing capability | Done when |
 | --- | --- | --- | --- |
 | PILOT-1 | High · implementation + customer access | AWS-IPAM-owned pools produce an authority handoff recommendation, not a reserved CIDR. | Agree the authority contract; use exactly one allocator per pool; implement authenticated reservation-time validation/atomic allocation or supported authority handoff, stable retry identity, conflict/recovery behavior and returned authority evidence. Stub tests plus a customer-authorized test pool/role run are required. |
-| PILOT-2 | High · gate model + customer evidence | Input/discovery `UNKNOWN` values cannot become a fully accepted pilot merely by uploading complete files. Synthetic 100/500-account fixtures do not prove collection at customer scale. | Represent reviewed inputs, approved scope/owner and evidence provenance explicitly; derive acceptance without trusting editable success counters. Run read-only discovery against agreed accounts/regions, recording expected/observed/inaccessible scope, freshness, duration and deterministic repeat results. Unknown or missing evidence must remain visible. |
-| PILOT-3 | Medium · identity decision + implementation | Browser displays supplied review/approval evidence and a CLI handoff; it cannot authenticate a tenant reservation or edit/approve a move. | Define browser-to-allocation identity/authorization and review persistence; implement audited approval/reservation through the existing authenticated API, including stale proposal, conflict, retry and failed reservation states. No browser Terraform execution. |
-| OPS-1 | Deployment gate | Saved pilots are shared among workspace operators. Production access boundaries, retention, persistence/restore and real-user behavior are not qualified. | Confirm the supported operator visibility policy; qualify backup/restore and retention, constrained access, real Entra/AD admission and write denial with the intended deployment. Do not infer tenant isolation from snapshot ownership. |
-| REL-1 | Release gate | Provider filesystem-mirror installation is rehearsed in CI; a reusable GitHub Actions workflow now builds and signs the qualified `linux_amd64` Terraform Registry package. The required `terraform-provider-platformipam` repository, durable Registry namespace, signing-key custody and real acceptance remain unresolved. | Create and select the public provider repository/namespace, configure and register an RSA/DSA signing key, invoke the reusable workflow for a reviewed tag, publish through the Registry and verify an ordinary consumer install plus authorized sandbox acceptance. |
+| PILOT-2 | High · local gate model implemented; customer evidence open | A named review of the exact report and input hashes now derives input/discovery gates from coverage, referenced VPC samples and freshness. Synthetic 100/500-account fixtures do not prove collection at customer scale; an uploaded reviewer/source claim is not authenticated or reconciled against AWS by this code. | Obtain customer approval and run read-only discovery against agreed accounts/regions, recording expected/observed/inaccessible scope, freshness, duration and deterministic repeat results. Reconcile samples against AWS. Unknown or missing evidence must remain visible. |
+| PILOT-3 | Medium · identity decision + implementation | Browser displays supplied review/approval evidence and a CLI handoff; it cannot authenticate a tenant reservation or edit/approve a move. [ADR 0024](decisions/0024-BROWSER_RESERVATION_IDENTITY_AND_REVIEW_AUTHORITY.md) proposes a tenant SSO delegation path while preserving ADR 0015's reviewed-file authority; it is not accepted. | Decide browser-to-allocation identity and plan approval authority; implement audited approval/reservation through the existing authenticated API, including stale proposal, conflict, retry and failed reservation states. No browser Terraform execution. |
+| OPS-1 | Deployment gate | Saved pilots are shared among workspace operators. Saved reports now verify their stored SHA-256 before display or download. Production access boundaries, retention, persistence/restore and real-user behavior are not qualified. | Confirm the supported operator visibility policy; qualify backup/restore and retention, constrained access, real Entra/AD admission and write denial with the intended deployment. Do not infer tenant isolation from snapshot ownership or integrity from an unsigned digest alone. |
+| REL-1 | Stable release gate; RC distribution complete | Signed `mischapogr/platformipam` version `0.1.0-rc.1` is published from reviewed source `d1807f4` with eleven digest-bound simulation checks and reviewer `mischapogr`. Remote CI, registered-key signature and fresh ordinary public Registry installation passed. [Publication evidence](qualification/PROVIDER_PUBLICATION_2026_10_12.json). | Retain source/signing custody and qualify stable releases against an authorized API/AWS sandbox. RC publication does not establish live AWS, stage/prod readiness or complete third-party attribution review. |
 | ENV-1 | Deployment gate | Helm/static checks and kind test-image controller behavior do not establish a real stage/prod application rollout. | Qualify actual images, dependencies, workload identity, seed/migration ordering, upgrade/restore and failure recovery in the target environment. |
 | SCALE-1 | Customer qualification / deferred design | M4g's local 1,000-allocation measurement passed, but representative concurrent customer load and target capacity are unverified. Per-aggregate locking remains a future architectural step. | Agree a workload/latency target; measure discovery and allocation/reconciliation under that load, then scope further persistence changes only if the evidence requires them. |
+
+**2026-09-29 local continuation.** The PILOT-2 reviewer form and derivation are
+implemented for CLI and workspace upload. Fourteen focused pilot tests and the
+contract check pass. The broader AWS wrapper could not complete because this
+sandbox denies Docker socket access; its direct pilot Python check passed.
+The local result does not authenticate an uploaded reviewer, establish a live
+AWS run, qualify a customer pilot, or close PILOT-2's customer evidence gate.
+The REL-1 provider mirror exporter and pre-signing mirror check also pass two
+focused local tests. `check-provider` reports that check as passed; its
+Terraform format and Go unit steps still require the denied Docker socket
+because the host Terraform is 0.11.10 and Go runs from the pinned image.
+The OPS-1 saved-report SHA-256 check passed a host-runnable corruption test;
+the NetBox view refusal test was still unrun at that point.
+
+**2026-09-29 Docker follow-up.** The Docker daemon is reachable directly,
+but Docker commands launched as children of `scripts/ai/check-*` receive a
+socket permission error in this session. The pinned Terraform 1.14 image
+passed `fmt -check` for both example directories when invoked directly, and
+the pinned Go 1.26.8 image passed both provider module test packages with
+`TF_ACC=0`. All seven non-shellcheck `check-aws` steps passed using the
+existing local binary; the six shell scripts passed together in the pinned
+ShellCheck 0.10.0 image invoked directly. The `check-provider` and `check-aws`
+wrapper statuses remain `FAILED` because their child Docker calls were denied.
+An isolated NetBox 4.7.1 Compose project used the cached workspace image with
+the current plugin source and demo fixtures mounted read-only; all six plugin
+tests passed, including saved-snapshot integrity refusal. A fresh workspace
+image build could not resolve the pinned NetBox base image because Docker Hub
+token retrieval returned HTTP 403. No live AWS, provider acceptance, or
+stage/prod qualification was performed. The provider release workflow passed
+the pinned Actionlint 1.7.7 check; `check-contract` and `git diff --check`
+passed after this evidence update.
 
 ### 3.4 Audit and continuation verification (2026-09-24)
 
@@ -134,7 +165,49 @@ manual application release workflow now retains the Docker image tar and Helm
 chart as a 14-day downloadable Actions artifact; it does not publish either to
 a container or chart registry.
 
-### 3.6 Historical package ledger
+### 3.6 Development RC closeout (2026-10-10)
+
+The maintainer selected a simulation-qualified `0.1.0-rc.1` because no
+API/AWS sandbox is available. **AWS API/AWS integration is not yet ready.**
+The [preview candidate audit](PREVIEW_CANDIDATE.md) records current evidence,
+source/package hashes and remaining limits. The
+[provider release runbook](TERRAFORM_PROVIDER_RELEASE.md) distinguishes this
+RC from stable live-AWS qualification.
+
+Plan counts: all 88 historical package rows in section 3.7 are recorded as
+complete, including design-only packages. There are 87 distinct IDs because
+`N4` was reused for two different tasks. The four continuation audit fixes
+in section 3.2 are complete. Seven product/customer/release/deployment gates
+remain open in section 3.3. These counts describe the recorded package scope,
+not complete production readiness.
+
+Provider completion covers lifecycle/replacement/recovery, metadata state,
+bounded idempotency keys, durable release receipts, paginated pool lookup and
+four Registry documents. Independent review also corrected pilot timestamp
+chronology and saved-history integrity. The dependency audit required Go
+1.26.9 and patched Go module dependencies; qualification uses those patches.
+The signed workflow now requires reviewed lifecycle/install/security evidence
+bound to an immutable source commit and validates the registered signer.
+
+**2026-10-12 publication follow-up.** REL-1's RC distribution acceptance is
+complete: reviewed source on monorepo `main`, named maintainer attestation,
+signed GitHub prerelease, public Registry ingestion and fresh consumer
+installation all passed. The [preview audit](PREVIEW_CANDIDATE.md) and
+[publication evidence](qualification/PROVIDER_PUBLICATION_2026_10_12.json)
+record the exact commits, hashes and signing fingerprint. The seven gates in
+section 3.3 remain open for their broader scope, including stable live-AWS
+qualification in REL-1. The explicit automation queue currently contains no
+items; further product work requires the contracts and evidence named in those
+gates. **AWS API/AWS integration is not yet ready.**
+
+**2026-10-13 packaging follow-up.** Future signed packages require the exact
+binary/version attribution packet, project LICENSE/NOTICE and embedded notice
+file hashes. The packager and mirror rehearsal support these files while
+retaining verification of historical single-binary archives. Complete
+package-specific attribution review and stable live-AWS qualification remain
+open; a changed archive requires a new version and fresh release evidence.
+
+### 3.7 Historical package ledger
 
 Completion applies to each package's stated contract, including design-only packages. The two historical `N4` entries retain their original IDs; the explicit runner queue uses unique IDs. Later qualification supersedes earlier limitations only where explicitly recorded.
 
@@ -229,7 +302,7 @@ Completion applies to each package's stated contract, including design-only pack
 | H3 | Helm: an opt-in Job that runs `adopt` or `onboard` in the cluster | done | F6 |
 | D1 | Housekeeping: stale `platform-imap` in `docs/AI_TOOLING.md:13` | done | — |
 
-### 3.7 Historical checkpoints (superseded by the current audit)
+### 3.8 Historical checkpoints (superseded by the current audit)
 
 The following notes preserve what was known at each checkpoint. Their statements about pending tests, deferred M4g and the default NetBox version are historical, not the current status. Section 3.1 and the 4.7 upgrade runbook take precedence. The package details in section 4 also retain original contracts and review findings; later ledger entries may close those findings.
 
@@ -604,6 +677,6 @@ For M3b and M9b the **decision record is the specification**; these blocks only 
 
 ## 5. Scope and external gates
 
-Section 3.2 tracks missing pilot functionality and external qualification separately from completed local packages. Real Entra/Windows AD, live AWS Organization/AWS IPAM, provider distribution and actual stage/prod Kubernetes rollout remain unverified; local simulations do not close them.
+Section 3.3 tracks missing pilot functionality and external qualification separately from completed local packages. Real Entra/Windows AD, live AWS Organization/AWS IPAM and actual stage/prod Kubernetes rollout remain unverified. Provider RC distribution is qualified by the 2026-10-12 publication record; stable AWS qualification remains open.
 
 The current product boundary is inventory → connectivity intent → protected ranges → relevant overlaps → replacement planning → authoritative allocation evidence. Route/security/DNS/traffic readiness remains `NOT_ASSESSED`. Workload migration, cutover and rollback execution belong to the customer. FortiGate dependency discovery and broader integrations are later scope, not implicit requirements for closing the current local package ledger.

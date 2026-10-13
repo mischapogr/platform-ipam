@@ -7,10 +7,11 @@ import (
 )
 
 var version = "dev"
+var providerAddress = "registry.example.com/platform/platformipam"
 
 func main() {
 	providerserver.Serve(context.Background(), New, providerserver.ServeOpts{
-		Address: "registry.example.com/platform/platformipam",
+		Address: providerAddress,
 		Debug:   false,
 	})
 }

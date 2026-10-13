@@ -153,6 +153,34 @@ move. It does not receive a Platform-IPAM API token or perform the authority
 read itself. Input and discovery gates remain `UNKNOWN` without independent
 approval and live collection validation.
 
+For a named input and discovery review, first derive the base pilot report
+and a blank review form from the same command:
+
+```sh
+python3 scripts/aws/pilot-evidence.py \
+  --address address-report.json --progress progress-report.json \
+  --assessment full-assessment.json \
+  --run inventory/run.json --networks inventory/networks.csv \
+  --review-template review.json --out pilot-evidence.json
+```
+
+The template binds the review to the exact report, approved scope and all
+input hashes. The pilot owner checks the scope and hashes, changes `decision`
+to `approved`, fills `reviewed_by` and a timezone-aware `reviewed_at`, and
+records the discovery review. For a live collection,
+set `discovery.source` to `live_org_inventory`, `max_age_seconds` to the
+approved freshness limit (at most 86,400 seconds), and `reconciled_samples` to one or more objects
+with `account_id`, `region` and observed VPC `resource_id`. Then rerun the
+same command with `--review review.json`, or upload `review.json` alongside
+the source files in the workspace. The input gate passes only for an exact,
+named review. The discovery gate additionally requires complete requested
+coverage, a collector version, a sample present in the observed inventory,
+a review after collection, and observations within the freshness limit.
+Missing, incomplete or stale collection stays `UNKNOWN`; saved snapshots
+show expiry on read. The review is an uploaded attestation. It records who
+claimed a live run but does not authenticate that person or prove an AWS call;
+customer approval and live collection still need independent qualification.
+
 For CLI use, first write an address report with `address-plan.py`, a progress
 report with `platform-ipam onboard progress`, and a full `platform-ipam
 onboard assess --format json` report over the same inventory, matrix,
@@ -167,8 +195,9 @@ python3 scripts/aws/pilot-evidence.py \
   --out pilot-evidence.json
 ```
 
-After an authority check, add `--verification verification.json` to derive
-the same per-move result and allocation gate in the CLI overview.
+Generate authority verification against the reviewed overview JSON, then add
+`--verification verification.json` to derive the per-move result and allocation
+gate. The verifier binds to the exact reviewed report hash.
 
 The command refuses reports whose assessment input hashes differ. The scope
 must name explicit regions so requested account/region coverage has a known

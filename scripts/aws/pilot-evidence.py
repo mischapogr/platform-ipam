@@ -23,6 +23,122 @@ def canonical_digest(value):
     return hashlib.sha256((json.dumps(value, sort_keys=True, indent=2) + "\n").encode()).hexdigest()
 
 
+def optional_instant(value):
+    try:
+        parsed = instant(value) if value else None
+        return parsed.astimezone(timezone.utc) if parsed is not None and parsed.tzinfo is not None else None
+    except (ValueError, OverflowError):
+        return None
+
+
+def attach_review(pilot, review, now=None):
+    """Derive the first two gates from a named review of the exact input snapshot."""
+    if not isinstance(review, dict):
+        raise ValueError("input review must be a JSON object")
+    if review.get("version") != 1 or review.get("pilot_sha256") != canonical_digest(pilot):
+        raise ValueError("input review belongs to a different pilot report")
+    required = {"networks", "matrix", "protected", "approved_plan", "pilot_scope",
+                "run", "migration_plans"}
+    hashes = pilot["input_sha256"]
+    if not required <= hashes.keys() or review.get("input_sha256") != hashes:
+        raise ValueError("input review must cover every current input hash")
+    if (review.get("decision") != "approved" or
+            review.get("pilot_owner") != pilot["pilot_owner"] or
+            review.get("approved_scope") != pilot["scope"] or
+            not isinstance(review.get("reviewed_by"), str) or not review["reviewed_by"].strip()):
+        raise ValueError("input review needs explicit approval, the current scope and a named reviewer")
+    now = now or datetime.now(timezone.utc)
+    reviewed_at = optional_instant(review.get("reviewed_at"))
+    reasons = []
+    if reviewed_at is None:
+        reasons.append("REVIEW_TIME_INVALID")
+    elif reviewed_at > now:
+        reasons.append("REVIEW_TIME_IN_FUTURE")
+    pilot["pilot_gates"]["input"] = "UNKNOWN" if reasons else "PASS"
+    discovery = review.get("discovery")
+    discovery_status = "UNKNOWN"
+    valid_until = None
+    if not isinstance(discovery, dict) or discovery.get("source") != "live_org_inventory":
+        reasons.append("LIVE_COLLECTION_NOT_REVIEWED")
+    else:
+        if discovery.get("run_sha256") != hashes["run"]:
+            raise ValueError("discovery review names a different collection run")
+        samples = discovery.get("reconciled_samples")
+        if not isinstance(samples, list) or not samples:
+            reasons.append("SAMPLE_RECONCILIATION_MISSING")
+        else:
+            observed = {(item["account_id"], item["region"], item["vpc_id"])
+                        for item in pilot["discovery"]["inventory_vpcs"]}
+            seen = set()
+            for sample in samples:
+                if not isinstance(sample, dict):
+                    raise ValueError("discovery review has an invalid sample")
+                key = (sample.get("account_id"), sample.get("region"), sample.get("resource_id"))
+                if key not in observed or key in seen:
+                    raise ValueError("discovery review sample is absent or repeated")
+                seen.add(key)
+        if not pilot["discovery"]["complete"]:
+            reasons.append("DISCOVERY_INCOMPLETE")
+        if not pilot["discovery"].get("collector_version"):
+            reasons.append("COLLECTOR_VERSION_MISSING")
+        started = optional_instant(pilot["discovery"].get("started_at"))
+        if started is None:
+            reasons.append("COLLECTION_START_TIME_INVALID")
+        elif started > now:
+            reasons.append("COLLECTION_START_TIME_IN_FUTURE")
+        finished = optional_instant(pilot["discovery"].get("finished_at"))
+        if finished is None:
+            reasons.append("COLLECTION_TIME_INVALID")
+        elif finished > now:
+            reasons.append("COLLECTION_TIME_IN_FUTURE")
+        if started is not None and finished is not None and started > finished:
+            reasons.append("COLLECTION_START_AFTER_FINISH")
+        if finished is not None and reviewed_at is not None and reviewed_at < finished:
+            reasons.append("REVIEW_PRECEDES_COLLECTION")
+        observations = [optional_instant(cell.get("observed_at"))
+                        for cell in pilot["discovery"].get("cells", []) if cell.get("status") == "succeeded"]
+        if not observations or any(when is None for when in observations):
+            reasons.append("OBSERVATION_TIME_INVALID")
+            oldest = None
+        else:
+            oldest = min(observations)
+            if started is not None and any(when < started for when in observations):
+                reasons.append("OBSERVATION_BEFORE_COLLECTION")
+            if finished is not None and any(when > finished for when in observations):
+                reasons.append("OBSERVATION_AFTER_COLLECTION")
+            if any(when > now for when in observations):
+                reasons.append("OBSERVATION_TIME_IN_FUTURE")
+        reported_oldest = optional_instant(pilot["discovery"].get("oldest_observed_at"))
+        max_age = discovery.get("max_age_seconds")
+        valid_until = (oldest + timedelta(seconds=max_age) if oldest is not None and oldest <= now and
+                       type(max_age) is int and 0 < max_age <= 86400 else None)
+        if (oldest is None or reported_oldest != oldest or type(max_age) is not int or max_age <= 0 or
+                max_age > 86400 or valid_until is None or
+                now > valid_until):
+            reasons.append("DISCOVERY_STALE_OR_UNBOUNDED")
+        if not reasons:
+            discovery_status = "PASS"
+    pilot["pilot_gates"]["discovery"] = discovery_status
+    pilot["input_review"] = {"source": "uploaded_reviewer_attestation",
+                             "reviewed_by": review["reviewed_by"],
+                             "reviewed_at": review.get("reviewed_at"),
+                             "sha256": canonical_digest(review),
+                             "discovery_valid_until": valid_until.isoformat() if valid_until else None,
+                             "discovery_reasons": reasons}
+    return pilot
+
+
+def review_template(pilot):
+    """Produce an unapproved form tied to the report, never a passing review."""
+    return {"version": 1, "pilot_sha256": canonical_digest(pilot),
+            "pilot_owner": pilot["pilot_owner"], "approved_scope": pilot["scope"],
+            "decision": "unreviewed", "reviewed_by": "", "reviewed_at": "",
+            "input_sha256": pilot["input_sha256"],
+            "discovery": {"source": "not_reviewed",
+                          "run_sha256": pilot["input_sha256"]["run"],
+                          "max_age_seconds": None, "reconciled_samples": []}}
+
+
 def attach_verification(pilot, verification, now=None):
     if verification.get("version") != 1 or verification.get("authority") != "platform-ipam":
         raise ValueError("unsupported authority verification report")
@@ -112,6 +228,8 @@ def attach_execution(pilot, evidence):
 
 
 def instant(value):
+    if not isinstance(value, str):
+        raise ValueError("timestamp must be a string")
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
@@ -160,8 +278,9 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
         failure = failed.get((account, region))
         reason = (failure.get("error") if failure else
                   cell.get("reason") if cell else "missing-from-run")
-        if outcome == "succeeded" and when:
-            observed_at.append(when)
+        observed = optional_instant(when)
+        if outcome == "succeeded" and observed is not None:
+            observed_at.append((observed, when))
         coverage.append({"account_id": account, "region": region, "status": outcome,
                          "observed_at": when, "reason": reason,
                          "stage": failure.get("stage") if failure else cell.get("stage") if cell else None})
@@ -324,7 +443,10 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
 
     started = run.get("started_at")
     finished = run.get("finished_at")
-    duration = int((instant(finished) - instant(started)).total_seconds()) if started and finished else None
+    started_time = optional_instant(started)
+    finished_time = optional_instant(finished)
+    duration = (int((finished_time - started_time).total_seconds())
+                if started_time is not None and finished_time is not None and started_time <= finished_time else None)
     input_hashes = {**address["input_sha256"], "run": digest(run_path)}
     plan_hashes = [item["sha256"] for item in progress.get("inputs", []) if item.get("sha256")]
     if plan_hashes:
@@ -344,8 +466,8 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
                       "complete": full_coverage, "cells": coverage, "started_at": started,
                       "finished_at": finished, "duration_seconds": duration,
                       "collector_version": run.get("script_version"),
-                      "oldest_observed_at": min(observed_at) if observed_at else None,
-                      "newest_observed_at": max(observed_at) if observed_at else None,
+                      "oldest_observed_at": min(observed_at, key=lambda item: item[0])[1] if observed_at else None,
+                      "newest_observed_at": max(observed_at, key=lambda item: item[0])[1] if observed_at else None,
                       "vpcs": len(vpcs), "vpc_cidr_associations": associations,
                       "without_observed_overlap": sum(item["overlap_status"] == "NO_OBSERVED_OVERLAP" for item in inventory_vpcs),
                       "inventory_vpcs": inventory_vpcs},
@@ -376,6 +498,10 @@ def main():
     parser.add_argument("--out", type=Path)
     parser.add_argument("--verification", type=Path,
                         help="optional report from verify-reservations.py; no API credential is used here")
+    parser.add_argument("--review", type=Path,
+                        help="optional named input and live-discovery review of this exact pilot snapshot")
+    parser.add_argument("--review-template", type=Path,
+                        help="write an unapproved review form bound to the base pilot report")
     parser.add_argument("--execution", type=Path,
                         help="optional customer-supplied Terraform execution references")
     args = parser.parse_args()
@@ -387,6 +513,11 @@ def main():
             networks = list(csv.DictReader(handle))
         assessment = json.loads(args.assessment.read_text(encoding="utf-8")) if args.assessment else None
         report = derive(address, progress, run, networks, args.networks, args.run, assessment)
+        if args.review_template:
+            args.review_template.write_text(json.dumps(review_template(report), sort_keys=True, indent=2) + "\n",
+                                            encoding="utf-8")
+        if args.review:
+            report = attach_review(report, json.loads(args.review.read_text(encoding="utf-8")))
         if args.verification:
             report = attach_verification(report, json.loads(args.verification.read_text(encoding="utf-8")))
         if args.execution:

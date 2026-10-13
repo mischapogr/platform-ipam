@@ -220,6 +220,194 @@ class PilotEvidenceTest(unittest.TestCase):
             pilot.attach_verification(report, self.verification(report),
                                       datetime(2026, 9, 23, 12, 2, tzinfo=timezone.utc))
 
+    def reviewed_report(self):
+        self.run["script_version"] = "2"
+        self.run_path.write_text(json.dumps(self.run), encoding="utf-8")
+        self.progress["assessment"]["inputs"][-1]["sha256"] = pilot.digest(self.run_path)
+        return self.result()
+
+    def review(self, report):
+        return {"version": 1, "pilot_sha256": pilot.canonical_digest(report),
+                "pilot_owner": "network-team", "approved_scope": report["scope"],
+                "decision": "approved", "reviewed_by": "network-team-owner",
+                "reviewed_at": "2026-09-23T12:02:00Z",
+                "input_sha256": report["input_sha256"],
+                "discovery": {"source": "live_org_inventory",
+                              "run_sha256": report["input_sha256"]["run"],
+                              "max_age_seconds": 600,
+                              "reconciled_samples": [{"account_id": "111111111111",
+                                                      "region": "eu-central-1",
+                                                      "resource_id": "vpc-a"}]}}
+
+    def test_review_derives_gates_from_exact_inputs_and_discovery(self):
+        report = self.reviewed_report()
+        template = pilot.review_template(report)
+        self.assertEqual(template["pilot_sha256"], pilot.canonical_digest(report))
+        self.assertEqual(template["reviewed_by"], "")
+        self.assertEqual(template["decision"], "unreviewed")
+        self.assertEqual(template["discovery"]["source"], "not_reviewed")
+        review = self.review(report)
+        pilot.attach_review(report, review, datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["input"], "PASS")
+        self.assertEqual(report["pilot_gates"]["discovery"], "PASS")
+        self.assertEqual(report["input_review"]["source"], "uploaded_reviewer_attestation")
+        self.assertNotIn("discovery", review.get("pilot_gates", {}))
+
+    def test_review_never_turns_missing_or_stale_collection_green(self):
+        report = self.reviewed_report()
+        review = self.review(report)
+        review["discovery"]["reconciled_samples"] = []
+        pilot.attach_review(report, review, datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+        self.assertIn("SAMPLE_RECONCILIATION_MISSING", report["input_review"]["discovery_reasons"])
+        report = self.reviewed_report()
+        review = self.review(report)
+        pilot.attach_review(report, review, datetime(2026, 9, 23, 12, 12, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+        self.assertIn("DISCOVERY_STALE_OR_UNBOUNDED", report["input_review"]["discovery_reasons"])
+        report = self.reviewed_report()
+        report["discovery"]["complete"] = False
+        report["discovery"]["oldest_observed_at"] = None
+        report["discovery"]["finished_at"] = None
+        review = self.review(report)
+        pilot.attach_review(report, review, datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+        self.assertIn("DISCOVERY_INCOMPLETE", report["input_review"]["discovery_reasons"])
+
+    def test_review_rejects_mixed_snapshot_and_invented_sample(self):
+        report = self.reviewed_report()
+        review = self.review(report)
+        review["input_sha256"] = {**review["input_sha256"], "networks": "different"}
+        with self.assertRaisesRegex(ValueError, "current input hash"):
+            pilot.attach_review(report, review, datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+        review = self.review(report)
+        review["discovery"]["reconciled_samples"][0]["resource_id"] = "invented-vpc"
+        with self.assertRaisesRegex(ValueError, "absent or repeated"):
+            pilot.attach_review(report, review, datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+
+    def test_review_keeps_future_observations_unknown_even_with_a_current_oldest(self):
+        for future_cells in (1, 2):
+            with self.subTest(future_cells=future_cells):
+                for account in self.run["accounts"]:
+                    account["regions"][0]["observed_at"] = "2026-09-23T12:00:30Z"
+                for account in self.run["accounts"][:future_cells]:
+                    account["regions"][0]["observed_at"] = "2026-09-24T12:00:30Z"
+                report = self.reviewed_report()
+                if future_cells == 1:
+                    self.assertEqual(report["discovery"]["oldest_observed_at"], "2026-09-23T12:00:30Z")
+                pilot.attach_review(report, self.review(report),
+                                    datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+                self.assertEqual(report["pilot_gates"]["input"], "PASS")
+                self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+                self.assertIn("OBSERVATION_AFTER_COLLECTION", report["input_review"]["discovery_reasons"])
+                self.assertIn("OBSERVATION_TIME_IN_FUTURE", report["input_review"]["discovery_reasons"])
+
+    def test_review_requires_observation_then_collection_then_review(self):
+        self.run["accounts"][0]["regions"][0]["observed_at"] = "2026-09-23T12:01:30Z"
+        report = self.reviewed_report()
+        pilot.attach_review(report, self.review(report),
+                            datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+        self.assertIn("OBSERVATION_AFTER_COLLECTION", report["input_review"]["discovery_reasons"])
+        self.run["accounts"][0]["regions"][0]["observed_at"] = "2026-09-23T12:00:30Z"
+        report = self.reviewed_report()
+        review = self.review(report)
+        review["reviewed_at"] = "2026-09-23T12:00:45Z"
+        pilot.attach_review(report, review,
+                            datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+        self.assertIn("REVIEW_PRECEDES_COLLECTION", report["input_review"]["discovery_reasons"])
+
+    def test_review_requires_every_successful_observation_time(self):
+        for value in (None, "malformed", "2026-09-23T12:00:30", 123):
+            with self.subTest(observed_at=value):
+                self.run["accounts"][0]["regions"][0]["observed_at"] = value
+                report = self.reviewed_report()
+                pilot.attach_review(report, self.review(report),
+                                    datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+                self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+                self.assertIn("OBSERVATION_TIME_INVALID", report["input_review"]["discovery_reasons"])
+
+    def test_review_requires_a_valid_completed_collection(self):
+        for value, reason in ((None, "COLLECTION_TIME_INVALID"),
+                              ("malformed", "COLLECTION_TIME_INVALID"),
+                              ("2026-09-23T12:01:00", "COLLECTION_TIME_INVALID"),
+                              (123, "COLLECTION_TIME_INVALID"),
+                              ("2026-09-23T12:04:00Z", "COLLECTION_TIME_IN_FUTURE")):
+            with self.subTest(finished_at=value):
+                self.run["finished_at"] = value
+                report = self.reviewed_report()
+                pilot.attach_review(report, self.review(report),
+                                    datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+                self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+                self.assertIn(reason, report["input_review"]["discovery_reasons"])
+
+    def test_review_requires_a_valid_start_before_every_observation(self):
+        for value, reason in ((None, "COLLECTION_START_TIME_INVALID"),
+                              ("malformed", "COLLECTION_START_TIME_INVALID"),
+                              ("2026-09-23T12:00:00", "COLLECTION_START_TIME_INVALID"),
+                              (123, "COLLECTION_START_TIME_INVALID"),
+                              ("2026-09-23T12:00:45Z", "OBSERVATION_BEFORE_COLLECTION"),
+                              ("2026-09-23T12:02:00Z", "COLLECTION_START_AFTER_FINISH"),
+                              ("2026-09-24T12:00:00Z", "COLLECTION_START_TIME_IN_FUTURE")):
+            with self.subTest(started_at=value):
+                self.run["started_at"] = value
+                report = self.reviewed_report()
+                pilot.attach_review(report, self.review(report),
+                                    datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+                self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+                self.assertIn(reason, report["input_review"]["discovery_reasons"])
+
+    def test_review_accepts_start_with_a_timezone_offset(self):
+        self.run["started_at"] = "2026-09-23T14:00:00+02:00"
+        report = self.reviewed_report()
+        pilot.attach_review(report, self.review(report),
+                            datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+        self.assertEqual(report["discovery"]["duration_seconds"], 60)
+        self.assertEqual(report["pilot_gates"]["discovery"], "PASS")
+
+    def test_review_with_an_invalid_or_future_time_keeps_both_gates_unknown(self):
+        for value, reason in ((None, "REVIEW_TIME_INVALID"),
+                              ("malformed", "REVIEW_TIME_INVALID"),
+                              ("2026-09-23T12:02:00", "REVIEW_TIME_INVALID"),
+                              (123, "REVIEW_TIME_INVALID"),
+                              ("2026-09-23T12:04:00Z", "REVIEW_TIME_IN_FUTURE")):
+            with self.subTest(reviewed_at=value):
+                report = self.reviewed_report()
+                review = self.review(report)
+                review["reviewed_at"] = value
+                pilot.attach_review(report, review,
+                                    datetime(2026, 9, 23, 12, 3, tzinfo=timezone.utc))
+                self.assertEqual(report["pilot_gates"]["input"], "UNKNOWN")
+                self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+                self.assertIn(reason, report["input_review"]["discovery_reasons"])
+
+    def test_observation_bounds_and_freshness_compare_actual_utc_times(self):
+        self.run["accounts"][0]["regions"][0]["observed_at"] = "2026-09-23T14:00:15+02:00"
+        self.run["accounts"][1]["regions"][0]["observed_at"] = "2026-09-23T12:00:45Z"
+        report = self.reviewed_report()
+        self.assertEqual(report["discovery"]["oldest_observed_at"], "2026-09-23T14:00:15+02:00")
+        self.assertEqual(report["discovery"]["newest_observed_at"], "2026-09-23T12:00:45Z")
+        review = self.review(report)
+        review["reviewed_at"] = "2026-09-23T14:01:10+02:00"
+        review["discovery"]["max_age_seconds"] = 60
+        pilot.attach_review(report, review,
+                            datetime(2026, 9, 23, 12, 1, 20, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["discovery"], "UNKNOWN")
+        self.assertEqual(report["input_review"]["discovery_valid_until"], "2026-09-23T12:01:15+00:00")
+        self.assertIn("DISCOVERY_STALE_OR_UNBOUNDED", report["input_review"]["discovery_reasons"])
+
+    def test_review_allows_equal_chronological_boundaries(self):
+        self.run["started_at"] = self.run["finished_at"]
+        for account in self.run["accounts"]:
+            account["regions"][0]["observed_at"] = self.run["finished_at"]
+        report = self.reviewed_report()
+        review = self.review(report)
+        review["reviewed_at"] = self.run["finished_at"]
+        pilot.attach_review(report, review,
+                            datetime(2026, 9, 23, 12, 1, tzinfo=timezone.utc))
+        self.assertEqual(report["pilot_gates"]["discovery"], "PASS")
+
 
 if __name__ == "__main__":
     unittest.main()

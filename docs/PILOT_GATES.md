@@ -53,6 +53,14 @@ cells never scanned. A missing or interrupted run is `UNKNOWN`. Do not claim
 The collector has only been exercised with a stubbed AWS CLI so far; live
 read-only collection and a representative scale measurement remain open.
 
+`pilot-evidence.py --review-template review.json` creates an unapproved form
+bound to the exact pilot report and input hashes. A completed named review can
+derive the input and discovery gate results, including observation freshness
+and a check that named sample VPCs occur in the uploaded inventory. The form is an operator-supplied attestation;
+its `live_org_inventory` source claim is not independently authenticated by
+the offline command or browser. Customer approval, a live read-only run and
+sample reconciliation must be checked before accepting its reported `PASS`.
+
 ## 3. Planning gate
 
 **Pass evidence:** retain the reviewed inputs and the deterministic

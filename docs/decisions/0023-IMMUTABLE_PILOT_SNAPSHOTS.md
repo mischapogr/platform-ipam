@@ -30,3 +30,10 @@ customer-supplied and never change address, allocation or network readiness.
 The plugin does not execute Terraform or reserve addresses. Platform-IPAM
 authority verification remains the separate CLI report; AWS IPAM authority
 remains unverified until a dedicated handoff exists.
+
+**2026-09-29 local integrity check.** Opening or downloading a saved snapshot
+now recomputes the stored report's SHA-256 and refuses a mismatch with HTTP
+409. This catches accidental report mutation or restore damage before display.
+It is not a signature: anyone able to rewrite both the report and its digest
+can still forge the pair. Production backup/restore and access qualification
+remain open.

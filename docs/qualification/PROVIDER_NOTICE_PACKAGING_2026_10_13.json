@@ -1,0 +1,36 @@
+{
+  "attribution_review": "PENDING",
+  "aws_readiness_notice": "AWS API/AWS integration is not yet ready",
+  "evidence_files_sha256": {
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/INIT.txt": "d6fae153210dcf25b4dcc6a3d8885e8a230e16d0472528dccef7ae6f20058854",
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/INSTALLED_NOTICES.json": "01496e5f228574391742a3209ec1962baf3b92f2770e7dc564a60d68a510704e",
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/MIRROR.txt": "45311e52d71a645aa1b3f1dbbafce86fcc65e1790b3a6a31626cf427eb48e707",
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/PACKAGE_METADATA.json": "f9e0c6faae788400cc88cc86c6f6d20c0abb31faad0ef7da020790d7f5f43cd5",
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/REINIT.txt": "8bca5a2731f90ea7bc46a69a73cfc43a561165abb30466de0e06229940048592",
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/TAMPERED.txt": "0788490aa9f0e77d8e0b9fb6aa2d554a7ec4fd36f8f79d0e560708975aaa7018",
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/TERRAFORM_LOCK.hcl": "98a6f92a5e1abfb91034516b113fe5dbbadccd5ad8000c90746a57afdd3ba01c",
+    "docs/qualification/PROVIDER_NOTICE_PACKAGING_2026_10_13/TERRAFORM_VERSION.json": "09f4ba6b8f2a2a5b849864d5f96925af7e2eb3eb9dcefdf46dc67f5c0452c084"
+  },
+  "fixture_provider_version": "0.1.0-rc.1",
+  "historical_archive_reproduction": "PASSED",
+  "historical_archive_sha256": "5dd713570714c027b764b6364acf84300d3720a1d6f3c9fe71d0cfbb132020fa",
+  "init_schema_readonly_lock_checksum_refusal": "PASSED",
+  "installed_notice_file_count": 34,
+  "installed_notices_byte_match": "PASSED",
+  "notice_archive_sha256": "d4e8fc1f8ddba9c15694733b1e2ffc53f6af5035f88f31be88b978f8b1028513",
+  "platform": "linux_amd64",
+  "provider_binary_sha256": "21ae57f4303686f6b945d9f89f9c3e4d3f2e864df6b52bd086baf38cc6e0d255",
+  "recorded_at_utc": "2026-10-12T22:17:08.061179+00:00",
+  "release_regression_status": "PASSED",
+  "release_regression_tests": 90,
+  "schema_version": 1,
+  "scope": "Local notice-packaging tooling rehearsal using the exact published binary; no new release candidate or published archive",
+  "terraform_version": "1.14.9",
+  "tooling_files_sha256": {
+    ".github/workflows/terraform-provider-release.yml": "a396749c44b2807d474ccc7c9fab3923f5de558ab478378e1f29264a3a27fe58",
+    "scripts/release/package-provider.py": "2dd5696c0ba5ef80af4457308655efec1e62150bbed5eb249c1ea3a81337a726",
+    "scripts/release/provider_release.py": "b40ad00d58f866c7e90a83ebfdac75564efe4404fc5825d487ec56496d65cf48",
+    "tests/e2e/run-provider-mirror.sh": "613f0910149aa4a6a045b3565df108c9b7bb6bdfee2346fa873c71793af02a3f"
+  },
+  "workflow_lint": "PASSED"
+}

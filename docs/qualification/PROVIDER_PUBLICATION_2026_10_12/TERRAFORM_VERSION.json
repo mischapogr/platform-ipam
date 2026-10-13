@@ -1,0 +1,8 @@
+{
+  "terraform_version": "1.14.9",
+  "platform": "linux_amd64",
+  "provider_selections": {
+    "registry.terraform.io/mischapogr/platformipam": "0.1.0-rc.1"
+  },
+  "terraform_outdated": true
+}

@@ -34,7 +34,7 @@ end-to-end suite. See [`tests/e2e/README.md`](tests/e2e/README.md).
 ```sh
 # Unit tests, in the pinned image.
 docker run --rm -v "$PWD":/src:ro -v ipam-gomod:/go/pkg/mod -w /src \
-  golang:1.26.8-bookworm go test ./...
+  golang:1.26.9-bookworm go test ./...
 
 scripts/ai/check-contract    # documentation links, examples, OpenAPI
 scripts/ai/check-compose     # Compose combinations and NetBox secret lengths
@@ -81,6 +81,9 @@ period, header line at most 72 characters. Release automation reads this
 history, so a non-conforming message drops out of the changelog.
 
 ## Pull requests
+
+Base feature branches on `develop` and target `develop` with pull requests.
+Release promotion to `main` remains a separate review step.
 
 Keep them focused; a reviewer should be able to hold the whole change in mind.
 State what you verified and how, and be explicit about what you did **not**

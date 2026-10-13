@@ -17,12 +17,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 --------------------------------------------------------------------------
-This project integrates with, but does not redistribute, the following
-independently licensed components. Their licences govern their own use:
+This project integrates with the following separately deployed components.
+Their licences govern their own use:
 
   - NetBox (netboxcommunity/netbox) .................. Apache-2.0
   - PostgreSQL ...................................... PostgreSQL Licence
   - Valkey .......................................... BSD-3-Clause
+
+Built Go executables link independently licensed libraries, including:
+
   - HashiCorp Terraform Plugin Framework ............ MPL-2.0
   - AWS SDK for Go v2 ............................... Apache-2.0
   - jackc/pgx ....................................... MIT
+
+The exact published provider dependency inventory and retained root licence
+and notice texts are available in:
+  docs/qualification/PROVIDER_ATTRIBUTION_2026_10_12/
+Complete package-specific attribution and distribution review remains required.

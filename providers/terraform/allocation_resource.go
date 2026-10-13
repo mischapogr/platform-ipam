@@ -2,18 +2,23 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -25,6 +30,7 @@ var _ resource.Resource = (*allocationResource)(nil)
 var _ resource.ResourceWithConfigure = (*allocationResource)(nil)
 var _ resource.ResourceWithImportState = (*allocationResource)(nil)
 var _ resource.ResourceWithModifyPlan = (*allocationResource)(nil)
+var _ resource.ResourceWithValidateConfig = (*allocationResource)(nil)
 
 type allocationResource struct{ api *client.Client }
 
@@ -78,17 +84,14 @@ func allocationSchema(ctx context.Context) schema.Schema {
 				Validators:    []validator.String{stringvalidator.RegexMatches(allocationKeyPattern, "allocation key must use only ASCII letters, digits, '.', '_', '-' or '/ and start with a letter or digit"), stringvalidator.LengthBetween(1, 128)},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"scope":       immutableString("Allocation scope: vpc or subnet."),
+			"scope":       schema.StringAttribute{Required: true, Description: "Allocation scope: vpc or subnet.", Validators: []validator.String{stringvalidator.OneOf("vpc", "subnet")}, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
 			"environment": immutableString("Authorized environment identifier."),
 			"region":      immutableString("Authorized AWS region."),
-			"account_id":  immutableString("Authorized 12-digit AWS account ID."),
+			"account_id":  schema.StringAttribute{Required: true, Description: "Authorized 12-digit AWS account ID.", Validators: []validator.String{stringvalidator.RegexMatches(mustCompile(`^[0-9]{12}$`), "AWS account ID must contain exactly 12 digits")}, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
 			"address_family": schema.StringAttribute{
-				// Computed as well as Optional: the API applies a default when
-				// the caller omits this, and an Optional-only attribute would
-				// make Terraform reject that default as an inconsistent result
-				// after apply. UseStateForUnknown keeps the committed value
-				// from showing as a diff on the next plan.
 				Optional: true, Computed: true, Description: "Address family.",
+				Default:    stringdefault.StaticString("ipv4"),
+				Validators: []validator.String{stringvalidator.OneOf("ipv4")},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
@@ -96,6 +99,7 @@ func allocationSchema(ctx context.Context) schema.Schema {
 			},
 			"prefix_length": schema.Int64Attribute{
 				Required: true, Description: "Requested CIDR prefix length.",
+				Validators:    []validator.Int64{int64validator.Between(0, 32)},
 				PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
 			},
 			"parent_allocation_id": schema.StringAttribute{
@@ -106,9 +110,10 @@ func allocationSchema(ctx context.Context) schema.Schema {
 				Optional: true, Description: "Stable AWS availability zone ID for a subnet.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"description": schema.StringAttribute{Optional: true, Computed: true, Description: "Mutable operator description."},
+			"description": schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString(""), Description: "Mutable operator description."},
 			"labels": schema.MapAttribute{
 				Optional: true, Computed: true, ElementType: types.StringType, Description: "Mutable labels.",
+				Default: mapdefault.StaticValue(types.MapValueMust(types.StringType, map[string]attr.Value{})),
 			},
 			"timeouts":          timeouts.Attributes(ctx, timeouts.Opts{Create: true, Update: true, Delete: true}),
 			"id":                schema.StringAttribute{Computed: true, Description: "Committed platform allocation ID."},
@@ -125,6 +130,38 @@ func allocationSchema(ctx context.Context) schema.Schema {
 
 var allocationKeyPattern = mustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$`)
 
+func (r *allocationResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config allocationModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() || !stringKnown(config.Scope) {
+		return
+	}
+	if stringKnown(config.Description) && len(config.Description.ValueString()) > 512 {
+		resp.Diagnostics.AddAttributeError(path.Root("description"), "Description is too long", "The API accepts at most 512 bytes for description.")
+	}
+	if !config.Labels.IsNull() && !config.Labels.IsUnknown() {
+		if len(config.Labels.Elements()) > 20 {
+			resp.Diagnostics.AddAttributeError(path.Root("labels"), "Too many labels", "The API accepts at most 20 labels.")
+		}
+		for key, value := range config.Labels.Elements() {
+			label := value.(types.String)
+			if key == "" || len(key) > 64 || strings.HasPrefix(key, "platform-ipam/") || label.IsNull() || (!label.IsUnknown() && len(label.ValueString()) > 256) {
+				resp.Diagnostics.AddAttributeError(path.Root("labels").AtMapKey(key), "Invalid label", "Label keys must be 1–64 bytes and cannot use the reserved platform-ipam/ prefix; values must be non-null strings of at most 256 bytes.")
+			}
+		}
+	}
+	if config.Scope.ValueString() == "subnet" && config.ParentAllocationID.IsNull() {
+		resp.Diagnostics.AddAttributeError(path.Root("parent_allocation_id"), "Subnet requires a parent allocation", "Set parent_allocation_id to the owned VPC allocation ID.")
+	}
+	if config.Scope.ValueString() == "vpc" {
+		for name, value := range map[string]types.String{"parent_allocation_id": config.ParentAllocationID, "availability_zone_id": config.AvailabilityZoneID} {
+			if !value.IsNull() {
+				resp.Diagnostics.AddAttributeError(path.Root(name), "VPC cannot specify subnet placement", "Parent allocation and availability zone attributes apply only to subnet allocations.")
+			}
+		}
+	}
+}
+
 func (r *allocationResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
 		return
@@ -135,8 +172,23 @@ func (r *allocationResource) ModifyPlan(ctx context.Context, req resource.Modify
 	if resp.Diagnostics.HasError() || !stringKnown(prior.AllocationKey) || !stringKnown(planned.AllocationKey) {
 		return
 	}
-	if prior.AllocationKey.ValueString() == planned.AllocationKey.ValueString() && immutableChanged(prior, planned) {
+	sameKey := prior.AllocationKey.ValueString() == planned.AllocationKey.ValueString()
+	if sameKey && immutableChanged(prior, planned) {
 		resp.Diagnostics.AddAttributeError(path.Root("allocation_key"), "Replacement requires a new allocation key", "An immutable allocation change cannot reuse the retired logical identity. Choose a new allocation_key generation; manual -replace with the same key is unsupported.")
+		return
+	}
+	if sameKey && (prior.AllocationState.ValueString() == "QUARANTINED" || prior.AllocationState.ValueString() == "RELEASED") {
+		resp.Diagnostics.AddError("Allocation is retired", "This allocation has release intent and its CIDR cannot be provisioned. Destroy the old allocation resource or use a new allocation_key generation.")
+		return
+	}
+	if sameKey && immutableUnchanged(prior, planned) {
+		// These identity values remain stable for metadata changes. Lifecycle,
+		// binding, inventory and revision values can change asynchronously.
+		for name, values := range map[string][2]types.String{"id": {prior.ID, planned.ID}, "cidr": {prior.CIDR, planned.CIDR}, "pool_id": {prior.PoolID, planned.PoolID}} {
+			if values[1].IsUnknown() {
+				resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(name), values[0])...)
+			}
+		}
 	}
 }
 
@@ -144,8 +196,12 @@ func immutableChanged(a, b allocationModel) bool {
 	return stringChanged(a.Scope, b.Scope) || stringChanged(a.Environment, b.Environment) || stringChanged(a.Region, b.Region) || stringChanged(a.AccountID, b.AccountID) || stringChanged(a.AddressFamily, b.AddressFamily) || intChanged(a.PrefixLength, b.PrefixLength) || stringChanged(a.ParentAllocationID, b.ParentAllocationID) || stringChanged(a.AvailabilityZoneID, b.AvailabilityZoneID)
 }
 
+func immutableUnchanged(a, b allocationModel) bool {
+	return a.Scope.Equal(b.Scope) && a.Environment.Equal(b.Environment) && a.Region.Equal(b.Region) && a.AccountID.Equal(b.AccountID) && a.AddressFamily.Equal(b.AddressFamily) && a.PrefixLength.Equal(b.PrefixLength) && a.ParentAllocationID.Equal(b.ParentAllocationID) && a.AvailabilityZoneID.Equal(b.AvailabilityZoneID)
+}
+
 func stringChanged(a, b types.String) bool {
-	return stringKnown(a) && stringKnown(b) && a.ValueString() != b.ValueString()
+	return !a.IsUnknown() && !b.IsUnknown() && !a.Equal(b)
 }
 func intChanged(a, b types.Int64) bool {
 	return intKnown(a) && intKnown(b) && a.ValueInt64() != b.ValueInt64()
@@ -185,7 +241,7 @@ func (r *allocationResource) Create(ctx context.Context, req resource.CreateRequ
 	if err != nil {
 		// A lost response can leave a committed allocation. Recover by the
 		// permanent key before returning the diagnostic so operators can import it.
-		if recovered, lookupErr := r.api.FindAllocationByKey(operationCtx, request.AllocationKey); lookupErr == nil && recovered.ID != "" {
+		if recovered, lookupErr := r.api.FindAllocationByKey(operationCtx, request.AllocationKey); lookupErr == nil && recovered.ID != "" && allocationMatchesRequest(recovered, request) && (recovered.State == "RESERVED" || recovered.State == "ACTIVE") {
 			state := modelFromAllocation(plan, recovered)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 			resp.Diagnostics.AddError("Allocation committed but create response was not confirmed", diagnosticError("Recover allocation "+recovered.ID+" by import or inspect the existing key", err))
@@ -199,6 +255,10 @@ func (r *allocationResource) Create(ctx context.Context, req resource.CreateRequ
 		// safe to retry unmodified, and it reserves fresh under the same
 		// derived key rather than replaying the cancelled attempt.
 		resp.Diagnostics.AddError("Unable to reserve allocation", fmt.Sprintf("The request used stable allocation_key %q and can be retried safely after checking the operation or key -- including whether the reservation was itself cancelled (error code reservation_cancelled), in which case retrying reserves fresh under the same key. %s", request.AllocationKey, err))
+		return
+	}
+	if !allocationMatchesRequest(allocation, request) {
+		resp.Diagnostics.AddError("Allocation identity does not match the request", fmt.Sprintf("The API returned allocation %s with different immutable fields. Stop applies and inspect the existing allocation_key %q before importing or retrying.", allocation.ID, request.AllocationKey))
 		return
 	}
 	if allocation.State != "RESERVED" && allocation.State != "ACTIVE" {
@@ -377,6 +437,10 @@ func allocationRequest(m allocationModel) client.AllocationRequest {
 	return client.AllocationRequest{AllocationKey: m.AllocationKey.ValueString(), Scope: m.Scope.ValueString(), Environment: m.Environment.ValueString(), Region: m.Region.ValueString(), AccountID: m.AccountID.ValueString(), AddressFamily: valueOr(m.AddressFamily, "ipv4"), PrefixLength: m.PrefixLength.ValueInt64(), ParentAllocationID: m.ParentAllocationID.ValueString(), AvailabilityZoneID: m.AvailabilityZoneID.ValueString(), Description: m.Description.ValueString(), Labels: mapValue(m.Labels)}
 }
 
+func allocationMatchesRequest(a *client.Allocation, r client.AllocationRequest) bool {
+	return a.AllocationKey == r.AllocationKey && a.Scope == r.Scope && a.Environment == r.Environment && a.Region == r.Region && a.AccountID == r.AccountID && valueOrString(a.AddressFamily, "ipv4") == valueOrString(r.AddressFamily, "ipv4") && a.PrefixLength == r.PrefixLength && a.ParentAllocationID == r.ParentAllocationID && a.AvailabilityZoneID == r.AvailabilityZoneID
+}
+
 func modelFromAllocation(base allocationModel, a *client.Allocation) allocationModel {
 	base.AllocationKey = types.StringValue(a.AllocationKey)
 	base.Scope, base.Environment, base.Region, base.AccountID = types.StringValue(a.Scope), types.StringValue(a.Environment), types.StringValue(a.Region), types.StringValue(a.AccountID)
@@ -454,6 +518,11 @@ func valueOrString(v, fallback string) string {
 	}
 	return v
 }
-func reserveKey(key string) string { return "reserve-" + key }
+func reserveKey(key string) string {
+	if len(key) <= 120 {
+		return "reserve-" + key
+	}
+	return fmt.Sprintf("reserve-%x", sha256.Sum256([]byte(key)))
+}
 
 func mustCompile(pattern string) *regexp.Regexp { return regexp.MustCompile(pattern) }

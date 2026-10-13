@@ -1,0 +1,97 @@
+{
+  "aws_readiness_notice": "AWS API/AWS integration is not yet ready",
+  "bundle": {
+    "path": "dist/terraform-provider-platformipam/0.1.0-rc.1/platform-ipam-0.1.0-rc.1-review.tar.gz",
+    "sha256": "0f49efd8b0442ee1fca969407b2dc2d652ea11aea26a9ab78b287eb4255de310"
+  },
+  "bundle_checksum": {
+    "path": "dist/terraform-provider-platformipam/0.1.0-rc.1/platform-ipam-0.1.0-rc.1-review.tar.gz.sha256",
+    "sha256": "ede3228fa1f14b32b58cd012c3f6ce12b369ac86c94fd7cdac3a68e4fbe0f9c7"
+  },
+  "checks": {
+    "bundle_reproducibility_and_relocation": {
+      "archive_sha256": "0f49efd8b0442ee1fca969407b2dc2d652ea11aea26a9ab78b287eb4255de310",
+      "bundle_manifest_files": 583,
+      "deterministic_rebuild": true,
+      "existing_bundle_preserved": true,
+      "relocated_integrity": {
+        "aws_readiness_notice": "AWS API/AWS integration is not yet ready",
+        "candidate": "0.1.0-rc.1",
+        "evidence_boundary": "simulation",
+        "live_aws": "NOT_READY",
+        "maintainer_release_attestation": false,
+        "publication_acceptance": false,
+        "registry_publication": "NOT_PUBLISHED",
+        "scope": "digest_bound_local_preview_integrity_only",
+        "signing": "UNSIGNED",
+        "source_status": "uncommitted_working_tree",
+        "status": "PASSED",
+        "verified": {
+          "assets": 3,
+          "candidate_source_files": 21,
+          "evidence_files": 37,
+          "linked_license_files": 28,
+          "manifest_source_files": 489
+        }
+      },
+      "safe_regular_archive_members": 584,
+      "status": "PASSED",
+      "tampered_source_refused": true
+    },
+    "contract": {
+      "status": "PASSED"
+    },
+    "release_policy_preview_regressions": {
+      "new_preview_checker_tests": 20,
+      "status": "PASSED",
+      "tests": 57
+    }
+  },
+  "date": "2026-10-12",
+  "evidence": {
+    "bundle-verification.json": {
+      "path": ".work-plan-runs/preview-handoff-20261012/bundle-verification.json",
+      "sha256": "b6239ce13f2abf217db831c2aa22e85218f951960d49a6ac360f298ef9a5cbb8"
+    },
+    "contract.log": {
+      "path": ".work-plan-runs/preview-handoff-20261012/contract.log",
+      "sha256": "540bbf0b99cbc66eaeeefef6afa6b8edb849e3a78f83bec60a7feda35da3da95"
+    },
+    "release-tests.log": {
+      "path": ".work-plan-runs/preview-handoff-20261012/release-tests.log",
+      "sha256": "7ee28a9e5c4c6430a671e374f3627d66e256ecf1c89737f1996246f600a40710"
+    },
+    "reproduction-build.json": {
+      "path": ".work-plan-runs/preview-handoff-20261012/reproduction-build.json",
+      "sha256": "61c34877ddcc7d19a5de62909d0a5c7cbd9d5193082b86aac5ca69b2bf9e41a8"
+    }
+  },
+  "maintainer_publication_approval": false,
+  "ownership": {
+    "backup_administrator_github_account": null,
+    "github_organization": "platform-ipam",
+    "organization_owner_github_account": null,
+    "proposed_secret_store_reference": "platform-ipam/terraform-provider/signing-key",
+    "provider_repository": "platform-ipam/terraform-provider-platformipam",
+    "registry_namespace": "platform-ipam",
+    "signing_key_owner_github_account": null,
+    "state": "PROPOSED_NOT_APPROVED_OR_CONTROL_VERIFIED"
+  },
+  "public_namespace_lookup": {
+    "path": "docs/qualification/PUBLIC_NAMESPACE_2026_10_12.json",
+    "sha256": "2fbde827343a0666f76dd49a34129e95af6cc7049708358593ccbcb788f8e02c"
+  },
+  "publication": "NOT_PUBLISHED",
+  "qualification_boundary": "The original October 10 execution record is unchanged. New tools and the handoff are checksum-verified additions; neither bundle nor checker is a signed release or authenticated execution attestation.",
+  "qualified_execution_record": {
+    "path": "docs/qualification/PREVIEW_2026_10_10.json",
+    "sha256": "155123bb52efcd3931cacbc2b011d88c2d8c4ee1e21a43a503b5606075908626"
+  },
+  "schema_version": 1,
+  "scope": "unsigned_local_simulation_review_handoff",
+  "tool_sha256": {
+    "scripts/release/build-preview-review-bundle.py": "5d10dcd910770d942b359d93fecfc49057f6e2086f30c44761fc985a1f283f2f",
+    "scripts/release/check-preview-candidate.py": "1484a4ef1b6c84040672409f49ebbfbb408f8374a73fc8155eb4f695e9eeb373",
+    "tests/release/test_preview_candidate.py": "d3823fd97f3415a62680e54831307fc0b63ea7f008c9f13ccd9caa6f9262dc57"
+  }
+}

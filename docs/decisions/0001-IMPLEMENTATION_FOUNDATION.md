@@ -15,7 +15,7 @@ gates.
 
 ## Decision
 
-Implement the API and reconciliation worker in Go 1.26.8. Use
+Implement the API and reconciliation worker in Go 1.26.9. Use
 `internal/domain` for shared plain-string IDs/enums and allocation value types,
 `internal/service` for use cases and ports, `internal/storage` for the pgx
 ledger, `internal/netbox` and `internal/cloud` for adapters,

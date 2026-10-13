@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -97,6 +98,85 @@ func TestCreatePollsAsyncOperationThenReadsCommittedAllocation(t *testing.T) {
 	}
 	if got.State != "ACTIVE" || polls.Load() != 2 {
 		t.Fatalf("allocation=%+v polls=%d", got, polls.Load())
+	}
+}
+
+func TestCreateTimeoutLeavesPendingReservationAndRetryRecoversSameIdentity(t *testing.T) {
+	const allocationKey = "orders-timeout-v1"
+	const idempotencyKey = "reserve-orders-timeout-v1"
+	const allocationID = "alloc_timeout_01"
+	const cidr = "10.0.0.0/20"
+	pending := make(chan struct{})
+	completed := make(chan struct{})
+	var keys []string
+	var reservations = map[string]bool{}
+	var posts, deletes int
+	api, err := New(Config{
+		Endpoint: "https://ipam.example.test",
+		// The first pending response is followed by the context deadline;
+		// channels control completion without wall-clock sleeps or extra polls.
+		PollInterval: time.Hour,
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			status := http.StatusOK
+			body := ""
+			switch {
+			case r.Method == http.MethodDelete:
+				deletes++
+				t.Errorf("create timeout unexpectedly issued DELETE %s", r.URL.Path)
+				status = http.StatusBadRequest
+			case r.Method == http.MethodPost && r.URL.Path == "/v1/allocations":
+				posts++
+				keys = append(keys, r.Header.Get("Idempotency-Key"))
+				var request AllocationRequest
+				if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+					t.Fatal(err)
+				}
+				reservations[request.AllocationKey] = true
+				select {
+				case <-completed:
+					body = `{"id":"` + allocationID + `","allocation_key":"` + request.AllocationKey + `","state":"RESERVED","cidr":"` + cidr + `"}`
+				default:
+					status = http.StatusAccepted
+					body = `{"id":"op_timeout_01","status":"PENDING","allocation_id":"` + allocationID + `"}`
+				}
+			case r.Method == http.MethodGet && r.URL.Path == "/v1/operations/op_timeout_01":
+				close(pending)
+				body = `{"id":"op_timeout_01","status":"PENDING","allocation_id":"` + allocationID + `"}`
+			default:
+				t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+				status = http.StatusBadRequest
+			}
+			return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+		})},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := AllocationRequest{AllocationKey: allocationKey}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	allocation, err := api.CreateAllocation(ctx, request, idempotencyKey)
+	if !errors.Is(err, context.DeadlineExceeded) || allocation != nil {
+		t.Fatalf("allocation=%+v error=%v, want pending create deadline", allocation, err)
+	}
+	select {
+	case <-pending:
+	default:
+		t.Fatal("deadline elapsed before the pending reservation was observed")
+	}
+	if posts != 1 || len(reservations) != 1 || deletes != 0 {
+		t.Fatalf("timeout changed reservation identity: posts=%d reservations=%v deletes=%d", posts, reservations, deletes)
+	}
+	close(completed)
+	recovered, err := api.CreateAllocation(context.Background(), request, idempotencyKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered.ID != allocationID || recovered.CIDR != cidr || recovered.AllocationKey != allocationKey {
+		t.Fatalf("retry did not recover the pending reservation: %+v", recovered)
+	}
+	if posts != 2 || len(reservations) != 1 || deletes != 0 || len(keys) != 2 || keys[0] != idempotencyKey || keys[1] != keys[0] {
+		t.Fatalf("retry changed logical or request identity: posts=%d reservations=%v deletes=%d keys=%v", posts, reservations, deletes, keys)
 	}
 }
 
@@ -234,6 +314,102 @@ func TestHTTPRequiresExplicitLoopbackOptIn(t *testing.T) {
 	t.Setenv("PLATFORM_IPAM_ALLOW_LOCAL_HTTP", "0")
 	if _, err := New(Config{Endpoint: "http://127.0.0.1:8080"}); err == nil {
 		t.Fatal("expected HTTP endpoint rejection")
+	}
+}
+
+func TestReadRejectsIncompleteOrMismatchedSuccess(t *testing.T) {
+	for _, body := range []string{`{}`, `{"id":"alloc_other","allocation_key":"orders-v1","state":"RESERVED","cidr":"10.0.0.0/20"}`, `{"id":"alloc_01","allocation_key":"orders-v1","state":"RESERVED"}`} {
+		api, err := New(Config{Endpoint: "https://ipam.example.test", HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+		})}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := api.GetAllocation(context.Background(), "alloc_01"); err == nil {
+			t.Fatalf("malformed allocation accepted: %s", body)
+		}
+	}
+}
+
+func TestDeleteRequiresMatchingQuarantineReceipt(t *testing.T) {
+	for _, body := range []string{`{}`, `{"id":"alloc_other","state":"QUARANTINED"}`, `{"id":"alloc_01","state":"RESERVED"}`} {
+		api, err := New(Config{Endpoint: "https://ipam.example.test", HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusAccepted, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+		})}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, durable, err := api.DeleteAllocation(context.Background(), "alloc_01"); err == nil || durable {
+			t.Fatalf("malformed release acknowledged: %s", body)
+		}
+	}
+}
+
+func TestDeleteRetriesChildConflictWithinDeadline(t *testing.T) {
+	var calls atomic.Int32
+	api, err := New(Config{Endpoint: "https://ipam.example.test", PollInterval: time.Millisecond, HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodDelete {
+			t.Fatalf("release used %s", r.Method)
+		}
+		if calls.Add(1) == 1 {
+			return &http.Response{StatusCode: http.StatusConflict, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":{"code":"children_present","message":"children remain"}}`)), Request: r}, nil
+		}
+		return &http.Response{StatusCode: http.StatusAccepted, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"id":"alloc_01","state":"QUARANTINED"}`)), Request: r}, nil
+	})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if _, durable, err := api.DeleteAllocation(ctx, "alloc_01"); err != nil || !durable || calls.Load() != 2 {
+		t.Fatalf("durable=%v calls=%d error=%v", durable, calls.Load(), err)
+	}
+}
+
+func TestDeleteChildConflictPreservesFailureAtDeadline(t *testing.T) {
+	api, err := New(Config{Endpoint: "https://ipam.example.test", PollInterval: time.Hour, HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusConflict, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":{"code":"children_present","message":"children remain"}}`)), Request: r}, nil
+	})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+	if _, durable, err := api.DeleteAllocation(ctx, "alloc_01"); err == nil || durable || !strings.Contains(err.Error(), "child allocations") {
+		t.Fatalf("durable=%v error=%v", durable, err)
+	}
+}
+
+func TestGetPoolFollowsOpaquePagination(t *testing.T) {
+	var calls atomic.Int32
+	api, err := New(Config{Endpoint: "https://ipam.example.test", HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		body := `{"items":[{"id":"pool_other"}],"next_cursor":"opaque+/="}`
+		if calls.Add(1) == 2 {
+			if r.URL.Query().Get("cursor") != "opaque+/=" {
+				t.Fatalf("cursor corrupted: %s", r.URL)
+			}
+			body = `{"items":[{"id":"pool_01","environment":"prod"}],"next_cursor":null}`
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := api.GetPool(context.Background(), "pool_01")
+	if err != nil || got.ID != "pool_01" || calls.Load() != 2 {
+		t.Fatalf("pool=%+v calls=%d error=%v", got, calls.Load(), err)
+	}
+}
+
+func TestGetPoolRejectsRepeatedPaginationCursor(t *testing.T) {
+	api, err := New(Config{Endpoint: "https://ipam.example.test", HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"items":[],"next_cursor":"same"}`)), Request: r}, nil
+	})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := api.GetPool(context.Background(), "pool_01"); err == nil || !strings.Contains(err.Error(), "repeated") {
+		t.Fatalf("error=%v", err)
 	}
 }
 

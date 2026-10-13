@@ -130,22 +130,26 @@ A `plan` never allocates. The CIDR is unknown until `apply` commits it.
 
 ## Project status
 
-**Pre-release.** The local stack works end to end and is covered by 16
-end-to-end tests across REST, CLI, Terraform, and the NetBox operator surface,
-plus an opt-in browser check.
+**Development preview.** The local stack has simulation evidence across
+REST, CLI, Terraform and the NetBox operator surface. The signed Terraform
+provider `mischapogr/platformipam` version `0.1.0-rc.1` is available in the
+public Registry; fresh installation and validation passed on 2026-10-12.
+The [preview audit](docs/PREVIEW_CANDIDATE.md) records exact source, test scope,
+publication evidence and remaining product/deployment gates.
 
 Verified in this repository:
 
 - Address-space behaviour: alignment, pool containment, disjointness across
   mixed prefix lengths, idempotent replay, refused prefix lengths, capacity
   arithmetic
-- Reservation through all four consumer surfaces, agreeing on one allocation
+- Reservation through REST, CLI and Terraform, reflected in the NetBox operator view
 - Terraform plan/apply/re-plan/destroy lifecycle
 
-**Not verified, and not claimed:** live AWS onboarding, a Kubernetes rollout,
-provider distribution and installation (development uses a Terraform CLI
-development override, which never exercises registry resolution, checksums, or
-the lock file), and NetBox compatibility beyond the single pinned version.
+Live AWS onboarding, stage/production Kubernetes rollout and NetBox
+compatibility beyond the pinned version remain unqualified. The provider RC
+uses simulation evidence and ordinary Registry installation with verified
+checksums and its developer signature. **AWS API/AWS integration is not yet
+ready.**
 
 The API contract may change before `1.0.0`. See [CHANGELOG.md](CHANGELOG.md).
 

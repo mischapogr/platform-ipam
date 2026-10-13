@@ -1,6 +1,6 @@
 # ADR 0018: Public Terraform provider release route
 
-Status: accepted as a release route, 2026-09-23. The maintainer explicitly selected the existing `mischapogr` account on 2026-10-12; publication remains gated.
+Status: accepted as a release route, 2026-09-23. The maintainer selected the existing `mischapogr` account on 2026-10-12. The signed simulation RC is published; stable AWS qualification remains gated.
 
 ## Context
 
@@ -20,16 +20,28 @@ The [public Terraform Registry](https://developer.hashicorp.com/terraform/regist
 
 ## Unresolved release inputs
 
-The namespace and provider repository are selected as `mischapogr` and
-`mischapogr/terraform-provider-platformipam`. Repository creation, authenticated
-Registry enrollment, signing-key custody/registration and source promotion to
-reviewed `main` remain open. No signed release or real AWS acceptance has
-occurred. Local development keeps ADR 0004's override.
+The namespace and provider repository are `mischapogr` and
+`mischapogr/terraform-provider-platformipam`. On 2026-10-12 the maintainer
+confirmed evidence review and repository signing-secret setup. The provider
+repository published signed RC `0.1.0-rc.1` from reviewed monorepo source
+`d1807f4fa6676d6323d7fdddf098b8a39b9fa873`; the Registry ingested it and a
+fresh consumer install verified its signature, checksums and schema. The
+[publication record](../qualification/PROVIDER_PUBLICATION_2026_10_12.json)
+retains that evidence. Authorized live AWS acceptance for stable releases,
+backup signer custody and complete linked-package attribution review remain
+open.
 
-The supplied public RSA-4096 key has primary fingerprint
-`F1EAE2D8ED6BF46AEEE8889E136F9D1E6B3B2BE8`. Parsing this public key establishes
-format compatibility only; it does not establish registration, possession of
-the private key, backup custody or release authorization.
+The public RSA-4096 key has primary fingerprint
+`F1EAE2D8ED6BF46AEEE8889E136F9D1E6B3B2BE8`. Its detached release signature
+and Registry installation verification passed. Ordinary consumers use the
+public address; ADR 0004's override remains useful for local development.
+
+The provider repository's own `.github/workflows/release.yml` selects an
+unpublished candidate after successful CI on the exact `main` commit, skips
+publication while the final attestation is absent, and validates its exact
+`SOURCE_COMMIT` before signing. The current [release runbook](../TERRAFORM_PROVIDER_RELEASE.md)
+describes this automation. The implementation notes below retain their dated
+historical scope.
 
 ## GitHub Actions implementation (2026-09-25)
 

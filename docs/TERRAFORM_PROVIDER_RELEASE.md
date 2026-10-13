@@ -40,8 +40,9 @@ the validator cannot authenticate execution or independently prove AWS access.
 
 ## Prepare reviewed source
 
-Commit and review the source, Registry docs and reusable workflow first. Use
-that immutable SHA for the workflow reference, `source-ref` and source export:
+Commit and review the provider source and Registry docs first. Use that
+immutable SHA for the source export and the provider repository's
+`SOURCE_COMMIT` file:
 
 ```sh
 python3 scripts/release/export-provider-repository.py \
@@ -88,6 +89,17 @@ the file's lowercase SHA-256 `sha256`. Required checks are `plan`, `apply`,
 `durable_quarantine_acceptance`, `normal_install_and_checksum_refusal` and
 `vulnerability_scan`.
 Absent, failed, altered or unreviewed evidence does not qualify a release.
+
+For future releases, place the exact-binary attribution packet at
+`release-evidence/provider-attribution/` in that provider checkout. Use the
+[retained RC packet](qualification/PROVIDER_ATTRIBUTION_2026_10_12/README.md)
+as its structure: `PUBLISHED_BINARY.json` binds the provider version, binary
+SHA-256 and every retained file; `INVENTORY.json`, `BUILD_INFO.txt` and the
+licence/notice texts retain the linked dependency evidence. Regenerate the
+binary binding and verify the dependency/version set for each new candidate.
+The signed workflows require this packet and include it with the immutable
+source's project LICENSE/NOTICE. Complete package-specific attribution review
+remains distinct from the mechanical file-integrity checks.
 
 For a local RC, retain the exact unsigned release binary/package hashes and
 Terraform patch version. Run the committed Terraform lifecycle assertions
@@ -157,32 +169,42 @@ namespace is selected, preserve the unreachable development source address. Then
 python3 scripts/release/package-provider.py \
   --binary /tmp/terraform-provider-platformipam_v0.1.0-rc.1 \
   --manifest providers/terraform/terraform-registry-manifest.json \
+  --notices /tmp/provider-attribution-reviewed \
+  --project-license LICENSE --project-notice NOTICE \
   --version 0.1.0-rc.1 --out /tmp/platformipam-rc-assets
 python3 scripts/release/check-provider-assets.py \
   --directory /tmp/platformipam-rc-assets --version 0.1.0-rc.1
 ```
 
-The deterministic ZIP contains one executable `linux_amd64` binary. The
-manifest declares protocol 6.0, and checksums cover the ZIP and manifest. These
+The deterministic ZIP contains one executable `linux_amd64` binary, project
+LICENSE/NOTICE and regular files under `THIRD_PARTY_NOTICES/`. Its embedded
+`CONTENTS.json` binds every added file and the exact binary. Old binary-only
+archives remain verifiable for historical releases. The manifest declares
+protocol 6.0, and checksums cover the ZIP and manifest. These
 assets are unsigned; they cannot be ingested as a signed Registry release.
 Registry doc filenames follow
 [HashiCorp's required structure](https://developer.hashicorp.com/terraform/registry/providers/docs).
 
 ## Publish from the selected provider repository
 
-Pin its caller workflow to the reviewed reusable-workflow SHA. Supply
-`source-ref` and `signing-key-fingerprint`; configure `GPG_PRIVATE_KEY` and
-`GPG_PASSPHRASE` secrets. The fingerprint must identify the RSA or DSA public
-key registered under that namespace in Terraform Registry.
+Set `SOURCE_COMMIT` in the provider repository to the reviewed monorepo main
+commit and retain its `.github/workflows/release.yml` automation. Finalize the
+named maintainer's `RELEASE_QUALIFICATION.json` after reviewing the evidence.
+Configure `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` repository secrets. The
+workflow's signing fingerprint must identify the RSA or DSA public key
+registered under that namespace in Terraform Registry.
 
-The reusable workflow verifies immutable source/mirror integrity, qualification,
-formatting and unit tests before signing. It embeds the selected repository
-owner's provider address, validates the package, signs checksums in a temporary
-keyring, verifies the detached binary signature and creates the GitHub Release.
-It never replaces assets of an existing release. The first Registry enrollment
-requires the maintainer's GitHub/Registry authorization and public-key setup.
-After publication, run `terraform init` from the published origin without a
-development override and retain the generated consumer lock file.
+Push the completed provider preparation to `main`. A successful Provider CI
+run on that exact commit triggers the release workflow. It verifies main
+ancestry, immutable source/mirror integrity, qualification, formatting and unit
+tests before signing. It embeds the selected repository owner's provider
+address, validates the package, signs checksums in a temporary keyring,
+verifies the detached signature and creates the immutable tag and GitHub
+prerelease. It never replaces assets of an existing release. The first Registry
+enrollment requires the maintainer's GitHub/Registry authorization and
+public-key setup. After publication, run `terraform init` from the published
+origin without a development override and retain the generated consumer lock
+file.
 
 Namespace ownership, signer custody, authenticated release-repository access,
 Registry registration, live AWS acceptance for stable releases and published
@@ -193,3 +215,8 @@ and notice files for its 25 linked Go modules and the Go 1.26.9 licence. Review
 the complete linked-package attribution requirements before distribution and
 retain the notices with the released binary/source. The copied root files
 and project `LICENSE`/`NOTICE` are an inventory, not a legal compliance finding.
+
+Package changes require a new provider version and fresh qualification of that
+exact archive. Preserve the published `0.1.0-rc.1` assets and existing consumer
+lock checksums, as required by
+[HashiCorp's publication guidance](https://developer.hashicorp.com/terraform/registry/providers/publishing).

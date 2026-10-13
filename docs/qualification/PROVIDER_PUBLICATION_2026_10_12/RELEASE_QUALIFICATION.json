@@ -1,0 +1,74 @@
+{
+  "authorization_reference": "User authorization in Codex session on 2026-10-12: local simulation qualification is sufficient for this RC; live AWS testing is not required.",
+  "aws_readiness_notice": "AWS API/AWS integration is not yet ready",
+  "checks": {
+    "ambiguous_read_retains_identity": {
+      "evidence_file": "release-evidence/provider-tests.jsonl",
+      "sha256": "c0daeab09626c14320ccb4d1a70758d9e3c90e840040f74e5e0220eaa28bdf94",
+      "status": "passed"
+    },
+    "apply": {
+      "evidence_file": "release-evidence/terraform-e2e-result.json",
+      "sha256": "b55352a72fa49722ed2d1f13c92a05dfa10eb05394a806dd13576239add630a8",
+      "status": "passed"
+    },
+    "create_timeout_recovery": {
+      "evidence_file": "release-evidence/provider-tests.jsonl",
+      "sha256": "c0daeab09626c14320ccb4d1a70758d9e3c90e840040f74e5e0220eaa28bdf94",
+      "status": "passed"
+    },
+    "destroy": {
+      "evidence_file": "release-evidence/terraform-e2e-result.json",
+      "sha256": "b55352a72fa49722ed2d1f13c92a05dfa10eb05394a806dd13576239add630a8",
+      "status": "passed"
+    },
+    "durable_quarantine_acceptance": {
+      "evidence_file": "release-evidence/provider-tests.jsonl",
+      "sha256": "c0daeab09626c14320ccb4d1a70758d9e3c90e840040f74e5e0220eaa28bdf94",
+      "status": "passed"
+    },
+    "import": {
+      "evidence_file": "release-evidence/terraform-e2e-result.json",
+      "sha256": "b55352a72fa49722ed2d1f13c92a05dfa10eb05394a806dd13576239add630a8",
+      "status": "passed"
+    },
+    "normal_install_and_checksum_refusal": {
+      "evidence_file": "release-evidence/mirror.log",
+      "sha256": "5f9a972234d0c8e37b2eb52d092c664d22e54f0e06b299ebe500b426bce848d0",
+      "status": "passed"
+    },
+    "plan": {
+      "evidence_file": "release-evidence/terraform-e2e-result.json",
+      "sha256": "b55352a72fa49722ed2d1f13c92a05dfa10eb05394a806dd13576239add630a8",
+      "status": "passed"
+    },
+    "read": {
+      "evidence_file": "release-evidence/terraform-e2e-result.json",
+      "sha256": "b55352a72fa49722ed2d1f13c92a05dfa10eb05394a806dd13576239add630a8",
+      "status": "passed"
+    },
+    "replacement_uses_new_key": {
+      "evidence_file": "release-evidence/replacement.json",
+      "sha256": "d3456cbc510d7755587413c34968ae0c640f7ea2a860073f1cf2ed8f1a9e00c7",
+      "status": "passed"
+    },
+    "vulnerability_scan": {
+      "evidence_file": "release-evidence/provider-vulnerability.jsonl",
+      "sha256": "3efc69413d95392057552d74b3e5d4d4ab34794775f024afad12fc5c0b696ca6",
+      "status": "passed"
+    }
+  },
+  "evidence_boundary": "simulation",
+  "live_aws": "NOT_READY",
+  "platform": "linux_amd64",
+  "provider_version": "0.1.0-rc.1",
+  "release_channel": "rc",
+  "review_reference": "Explicit maintainer confirmation in Codex conversation on 2026-10-12: yes, add mischapogr as reviewer",
+  "reviewer": "mischapogr",
+  "schema_version": 1,
+  "source_commit": "d1807f4fa6676d6323d7fdddf098b8a39b9fa873",
+  "tested_platform_versions": [],
+  "tested_terraform_versions": [
+    "1.14.9"
+  ]
+}

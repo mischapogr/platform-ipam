@@ -26,6 +26,12 @@ The [publication record](qualification/PROVIDER_PUBLICATION_2026_10_12.json)
 retains evidence digests and the consumer lock file. Provider publication closes
 REL-1's RC distribution acceptance; stable live-AWS acceptance remains open.
 
+On 2026-10-13 the maintainer confirmed that AWS qualification is the only
+remaining stable-release qualification blocker. Customer pilot and deployment
+gates have their own scope. Attribution review and signing backup custody
+remain separately recorded follow-ups; this scope decision supplies no new
+execution or review evidence for those records.
+
 ## Scope and audit fixes
 
 The historical plan records 88 completed package rows, including design tasks,

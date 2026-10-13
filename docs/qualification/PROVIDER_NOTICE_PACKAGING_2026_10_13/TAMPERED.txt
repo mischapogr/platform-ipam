@@ -1,0 +1,12 @@
+Initializing the backend...
+Initializing provider plugins...
+- Reusing previous version of mischapogr/platformipam from the dependency lock file
+- Installing mischapogr/platformipam v0.1.0-rc.1...
+
+Error: Failed to install provider
+
+Error while installing mischapogr/platformipam v0.1.0-rc.1: the current
+package for registry.terraform.io/mischapogr/platformipam 0.1.0-rc.1 doesn't
+match any of the checksums previously recorded in the dependency lock file;
+for more information:
+https://developer.hashicorp.com/terraform/language/files/dependency-lock#checksum-verification

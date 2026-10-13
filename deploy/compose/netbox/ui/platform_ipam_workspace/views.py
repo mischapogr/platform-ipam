@@ -21,6 +21,7 @@ from django.views import View
 from django.views.decorators.cache import never_cache
 
 from .models import MigrationPilot, PilotSnapshot
+from .integrity import snapshot_digest_matches
 
 
 MAX_FILE_BYTES = 16 * 1024 * 1024
@@ -37,6 +38,7 @@ INPUT_FILES = {
     "plan": "migration.yaml",
     "allocations": "allocations.json",
     "verification": "verification.json",
+    "review": "review.json",
     "execution": "execution.json",
     "topology": "topology.json",
     "approved": "approved-plan.json",
@@ -128,6 +130,17 @@ def prepare_pilot_view(report):
             report["authority_verification_current_status"] = "INVALID_EXPIRY"
     else:
         verification_expired = False
+    review = report.get("input_review") or {}
+    discovery_expiry = review.get("discovery_valid_until")
+    if report.get("pilot_gates", {}).get("discovery") == "PASS":
+        try:
+            expires_at = datetime.fromisoformat(discovery_expiry.replace("Z", "+00:00"))
+            report["discovery_review_current_status"] = (
+                "EXPIRED" if timezone.now() > expires_at else "CURRENT")
+        except (AttributeError, TypeError, ValueError):
+            report["discovery_review_current_status"] = "INVALID_EXPIRY"
+    else:
+        report["discovery_review_current_status"] = "UNKNOWN"
     cells = {(cell["account_id"], cell["region"]): cell
              for cell in report["discovery"].get("cells", [])}
     report["coverage_matrix"] = [
@@ -180,18 +193,44 @@ class WorkspaceView(View):
     template_name = "platform_ipam_workspace/workspace.html"
 
     @staticmethod
+    def snapshot_summary(report):
+        """Read counts only from a checked report with usable summary fields."""
+        if not isinstance(report, dict):
+            return None
+        fields = {
+            "coverage": ("discovery", "scanned_cells"),
+            "requested": ("discovery", "requested_cells"),
+            "conflicts": ("conflicts", "confirmed"),
+            "verified": ("replacements", "reservations_verified"),
+            "planned": ("replacements", "planned"),
+        }
+        summary = {}
+        for name, (section, field) in fields.items():
+            values = report.get(section)
+            if not isinstance(values, dict):
+                return None
+            value = values.get(field)
+            if type(value) is not int or value < 0:
+                return None
+            summary[name] = value
+        return summary
+
+    @staticmethod
     def pilot_list():
         pilots = list(MigrationPilot.objects.select_related("created_by").all()[:20])
         for pilot in pilots:
             pilot.recent_snapshots = list(pilot.snapshots.select_related("created_by").all()[:10])
             pilot.latest_snapshot = pilot.recent_snapshots[0] if pilot.recent_snapshots else None
+            for snapshot in pilot.recent_snapshots:
+                snapshot.digest_valid = snapshot_digest_matches(snapshot)
+                snapshot.history_summary = (
+                    WorkspaceView.snapshot_summary(snapshot.report) if snapshot.digest_valid else None)
+            pilot.change = None
             if len(pilot.recent_snapshots) > 1:
-                current, previous = (item.report for item in pilot.recent_snapshots[:2])
-                pilot.change = {
-                    "coverage": current.get("discovery", {}).get("scanned_cells", 0) - previous.get("discovery", {}).get("scanned_cells", 0),
-                    "conflicts": current.get("conflicts", {}).get("confirmed", 0) - previous.get("conflicts", {}).get("confirmed", 0),
-                    "verified": current.get("replacements", {}).get("reservations_verified", 0) - previous.get("replacements", {}).get("reservations_verified", 0),
-                }
+                current, previous = (item.history_summary for item in pilot.recent_snapshots[:2])
+                if current is not None and previous is not None:
+                    pilot.change = {field: current[field] - previous[field]
+                                    for field in ("coverage", "conflicts", "verified")}
         return pilots
 
     def upload_error(self, request, mode, message):
@@ -242,6 +281,8 @@ class WorkspaceView(View):
                         snapshot = PilotSnapshot.objects.select_related("pilot").get(pk=uuid.UUID(saved_id))
             except (ValueError, PilotSnapshot.DoesNotExist):
                 raise Http404("Pilot report not found")
+            if not snapshot_digest_matches(snapshot):
+                return HttpResponse("Saved pilot report failed its stored SHA-256 check.", status=409)
             if request.GET.get("download") == "1":
                 response = HttpResponse(json.dumps(snapshot.report, sort_keys=True, indent=2) + "\n",
                                         content_type="application/json")
@@ -392,6 +433,8 @@ class WorkspaceView(View):
                                             "--networks", str(root / "networks.csv")]
                         if "verification.json" in uploaded_names:
                             overview_command += ["--verification", str(root / "verification.json")]
+                        if "review.json" in uploaded_names:
+                            overview_command += ["--review", str(root / "review.json")]
                         if "execution.json" in uploaded_names:
                             overview_command += ["--execution", str(root / "execution.json")]
                         overview = subprocess.run(

@@ -2,11 +2,15 @@ name: CodeQL
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, feat/close-non-aws-work-plan]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   schedule:
     - cron: '19 4 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feat/') }}
 
 permissions:
   contents: read
@@ -28,12 +32,15 @@ jobs:
           - language: actions
             build-mode: none
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         if: matrix.language == 'go'
         with:
-          go-version: '1.26.8'
+          go-version: '1.26.9'
           cache: true
+          cache-dependency-path: |
+            go.sum
+            providers/terraform/go.sum
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}

@@ -20,9 +20,13 @@
             <span class="small text-muted">owner {{ saved.owner }} · {{ saved.snapshots.count }} snapshot{{ saved.snapshots.count|pluralize }}</span></summary>
           {% for history in saved.recent_snapshots %}
             <div class="ms-3 small"><a href="?pilot={{ saved.id }}&amp;snapshot={{ history.id }}">{{ history.created_at }}</a>
-              · {{ history.created_by }} · {{ history.report.discovery.scanned_cells }}/{{ history.report.discovery.requested_cells }} cells
-              · {{ history.report.conflicts.confirmed }} blockers
-              · {{ history.report.replacements.reservations_verified }}/{{ history.report.replacements.planned }} verified</div>
+              · {{ history.created_by }}
+              {% if not history.digest_valid %} · <strong class="text-danger">Integrity check failed</strong>; saved report summaries unavailable.
+              {% elif history.history_summary %} · {{ history.history_summary.coverage }}/{{ history.history_summary.requested }} cells
+              · {{ history.history_summary.conflicts }} blockers
+              · {{ history.history_summary.verified }}/{{ history.history_summary.planned }} verified
+              {% else %} · Saved report summary unavailable.
+              {% endif %}</div>
           {% endfor %}
           {% if saved.change %}<div class="ms-3 small text-muted">Latest versus previous: scanned cells {{ saved.change.coverage|stringformat:'+d' }}, blockers {{ saved.change.conflicts|stringformat:'+d' }}, verified moves {{ saved.change.verified|stringformat:'+d' }}. Review both snapshots before interpreting the change.</div>{% endif %}
         </details>
@@ -134,6 +138,10 @@
             <input class="form-control" id="verification" name="verification" type="file">
           </div>
           <div class="col-md-4">
+            <label class="form-label" for="review">Named input and discovery review JSON (pilot overview only)</label>
+            <input class="form-control" id="review" name="review" type="file">
+          </div>
+          <div class="col-md-4">
             <label class="form-label" for="execution">Customer Terraform execution JSON (pilot overview only)</label>
             <input class="form-control" id="execution" name="execution" type="file">
           </div>
@@ -176,7 +184,7 @@
         ['run.json', 'run'], ['matrix.yaml', 'matrix'], ['ownership.yaml', 'ownership'],
         ['fixed.yaml', 'fixed'], ['approved-plan.json', 'approved'], ['pilot-scope.json', 'pilot'],
         ['decisions.yaml', 'decisions'], ['migration.yaml', 'plan'], ['allocations.json', 'allocations'],
-        ['verification.json', 'verification'], ['execution.json', 'execution'], ['topology.json', 'topology']
+        ['verification.json', 'verification'], ['review.json', 'review'], ['execution.json', 'execution'], ['topology.json', 'topology']
       ]);
       const fileNameByField = new Map([...names].map(([name, field]) => [field, name]));
       const required = {
@@ -284,7 +292,7 @@
           </nav>
           <p class="mb-1">Gates:
             <a href="#pilot-scope">input <strong>{{ report.pilot_gates.input }}</strong></a> ·
-            <a href="#pilot-discovery">discovery <strong>{{ report.pilot_gates.discovery }}</strong></a> ·
+            <a href="#pilot-discovery">discovery <strong>{% if report.discovery_review_current_status == 'EXPIRED' or report.discovery_review_current_status == 'INVALID_EXPIRY' %}UNKNOWN (review expired){% else %}{{ report.pilot_gates.discovery }}{% endif %}</strong></a> ·
             <a href="#pilot-conflicts">planning <strong>{{ report.pilot_gates.planning }}</strong></a> ·
             <a href="#pilot-allocations">allocation <strong>{{ report.pilot_gates.allocation }}</strong></a>.
           </p>
@@ -335,7 +343,12 @@
         <div class="card-body">
           <p>Owner: <strong>{{ report.pilot_owner }}</strong> · {{ report.scope.accounts|length }} accounts · {{ report.scope.regions|join:', ' }}</p>
           <p class="small">Scope input version {{ report.scope_inputs.versions.pilot_scope|default:'unknown' }} · approved plan version {{ report.scope_inputs.versions.approved_plan|default:'unknown' }}.</p>
-          <p class="small text-muted">Input and discovery gates remain {{ report.pilot_gates.input }} / {{ report.pilot_gates.discovery }} until independent owner approval and live collection validation are supplied.</p>
+          {% if report.input_review %}
+            <p class="small">Input review: {{ report.input_review.reviewed_by }} at {{ report.input_review.reviewed_at }}. Source: uploaded reviewer attestation. Discovery valid through {{ report.input_review.discovery_valid_until|default:'unknown' }}; current status {{ report.discovery_review_current_status }}. Discovery limits: {{ report.input_review.discovery_reasons|join:', '|default:'none reported' }}.</p>
+          {% else %}
+            <p class="small text-muted">Input and discovery gates remain UNKNOWN until a named review of the exact snapshot is supplied.</p>
+          {% endif %}
+          <p class="small text-muted">An uploaded review records the reviewer's claim; customer identity and live AWS provenance require separate qualification.</p>
           <div class="row g-3">
             <div class="col-lg-6"><strong>Protected ranges</strong>
               <ul class="mb-0">{% for item in report.scope_inputs.protected_ranges %}<li><code>{{ item.cidr }}</code> · {{ item.description|default:'protected' }} · {{ item.owner|default:'owner unknown' }}</li>

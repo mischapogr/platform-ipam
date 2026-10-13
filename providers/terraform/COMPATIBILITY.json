@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "provider_version": "0.1.0-rc.1",
+  "platform_api_major": 1,
+  "platform_release_versions": [],
+  "qualification": {
+    "status": "qualified",
+    "scope": "simulation",
+    "terraform_cli_versions": ["1.14.9"],
+    "platforms": ["linux_amd64"]
+  },
+  "aws_integration": "not_ready"
+}

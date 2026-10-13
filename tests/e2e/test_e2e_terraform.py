@@ -24,7 +24,7 @@ import unittest
 
 from harness import COMPOSE_DIR, ROOT, StackUnavailable, compose_argv, run_key, stack
 
-GO_IMAGE = "golang:1.26.8-bookworm"
+GO_IMAGE = "golang:1.26.9-bookworm"
 TERRAFORM_IMAGE = "hashicorp/terraform:1.14"
 PROVIDER_SOURCE = "registry.example.com/platform/platformipam"
 WORKSPACE = ROOT / "tests/e2e/.workspace"
@@ -203,6 +203,90 @@ class TerraformE2ETest(unittest.TestCase):
                                 key=key, config=config, expect_success=False)
         self.assertEqual(repeat.returncode, 0,
                          f"a second plan was not empty:\n{repeat.stdout[-1500:]}")
+
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "provider_plan_policy", ROOT / "scripts/ai/checks.py")
+        policy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(policy)
+
+        # Import restores the held platform identity without claiming another
+        # range. Read and refresh must preserve the same committed allocation.
+        held_prefixes = set(self.stack.netbox_prefixes())
+        self.terraform("state", "rm", "platformipam_allocation.vpc", config=config)
+        self.terraform("import", "-input=false", "-var", f"allocation_key={key}",
+                       "platformipam_allocation.vpc", allocation_id, config=config)
+        imported = json.loads(self.terraform("show", "-json", config=config).stdout)
+        resource = imported["values"]["root_module"]["resources"][0]["values"]
+        self.assertEqual(resource["id"], allocation_id)
+        self.assertEqual(resource["cidr"], cidr)
+        self.assertEqual(set(self.stack.netbox_prefixes()), held_prefixes)
+        refreshed = self.terraform("plan", "-refresh-only", "-input=false",
+                                   "-detailed-exitcode", "-out=/work/refresh.tfplan",
+                                   key=key, config=config,
+                                   expect_success=False)
+        self.assertIn(refreshed.returncode, (0, 2), refreshed.stdout[-1500:])
+        refresh_plan = json.loads(self.terraform("show", "-json", "refresh.tfplan",
+                                                  config=config).stdout)
+        # Import can leave root outputs to reconcile even when the held
+        # resource is unchanged. Inspect the saved refresh plan before applying
+        # it, then verify no drift and a stable normal plan. Terraform 1.14's
+        # refresh-only state comparison can falsely report exit2 (upstream
+        # hashicorp/terraform#37886), so its JSON invariants carry that check.
+        changes = refresh_plan.get("resource_changes", [])
+        self.assertTrue(all(row["change"]["actions"] == ["no-op"] for row in changes),
+                        f"refresh changed an imported resource: {changes}")
+        self.assertFalse(refresh_plan.get("resource_drift"), refresh_plan)
+        self.assertEqual(policy.replacement_errors(refresh_plan), [])
+        self.terraform("apply", "-input=false", "refresh.tfplan", config=config)
+        refreshed_state = json.loads(self.terraform("show", "-json", config=config).stdout)
+        refreshed_resource = refreshed_state["values"]["root_module"]["resources"][0]["values"]
+        self.assertEqual(refreshed_resource["id"], allocation_id)
+        self.assertEqual(refreshed_resource["cidr"], cidr)
+        stable_refresh = self.terraform("plan", "-refresh-only", "-input=false",
+                                        "-detailed-exitcode", "-out=/work/stable-refresh.tfplan",
+                                        key=key, config=config,
+                                        expect_success=False)
+        stable_refresh_json = json.loads(self.terraform("show", "-json", "stable-refresh.tfplan",
+                                                        config=config).stdout)
+        self.assertIn(stable_refresh.returncode, (0, 2), stable_refresh.stdout[-1500:])
+        self.assertFalse(stable_refresh_json.get("errored"), stable_refresh_json)
+        self.assertFalse(stable_refresh_json.get("resource_drift"), stable_refresh_json)
+        self.assertTrue(all(row["change"]["actions"] == ["no-op"]
+                            for row in stable_refresh_json.get("resource_changes", [])),
+                        stable_refresh_json)
+        self.assertTrue(all(row["actions"] == ["no-op"]
+                            for row in stable_refresh_json.get("output_changes", {}).values()),
+                        stable_refresh_json)
+        self.assertEqual(policy.replacement_errors(stable_refresh_json), [])
+        stable_normal = self.terraform("plan", "-input=false", "-detailed-exitcode",
+                                       key=key, config=config, expect_success=False)
+        self.assertEqual(stable_normal.returncode, 0, stable_normal.stdout[-1500:])
+        self.assertEqual(set(self.stack.netbox_prefixes()), held_prefixes)
+
+        # Terraform-core replacement causes need the required consumer plan
+        # policy. Reject a forced same-key replacement, accept a distinct key,
+        # and verify that neither plan changes inventory.
+        unsafe = self.terraform("plan", "-input=false",
+                                "-out=/work/same-key.tfplan",
+                                "-replace=platformipam_allocation.vpc",
+                                key=key, config=config)
+        unsafe_plan = json.loads(self.terraform("show", "-json", "same-key.tfplan",
+                                                config=config).stdout)
+        self.assertEqual(policy.replacement_errors(unsafe_plan),
+                         ["platformipam_allocation.vpc"])
+        self.terraform("plan", "-input=false", "-out=/work/replacement.tfplan",
+                       key=key + "-replacement", config=config)
+        replacement = json.loads(self.terraform("show", "-json", "replacement.tfplan",
+                                                config=config).stdout)
+        change = next(row for row in replacement["resource_changes"]
+                      if row["address"] == "platformipam_allocation.vpc")["change"]
+        self.assertEqual(set(change["actions"]), {"create", "delete"})
+        self.assertNotEqual(change["before"]["allocation_key"],
+                            change["after"]["allocation_key"])
+        self.assertEqual(policy.replacement_errors(replacement), [])
+        self.assertEqual(set(self.stack.netbox_prefixes()), held_prefixes)
 
     def test_destroy_releases_the_allocation_without_freeing_it_immediately(self):
         key = run_key("terraform-destroy")

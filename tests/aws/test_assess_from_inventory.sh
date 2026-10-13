@@ -56,7 +56,7 @@ if [ -z "$PLATFORM_IPAM_BIN" ]; then
   docker run --rm -u "$(id -u):$(id -g)" \
     -v "$ROOT":/src:ro -v "$BUILD_DIR":/out -v ipam-gomod:/go/pkg/mod \
     -w /src -e CGO_ENABLED=0 -e GOFLAGS=-buildvcs=false -e GOCACHE=/tmp/gocache -e HOME=/tmp \
-    golang:1.26.8-bookworm go build -o /out/platform-ipam ./cmd/platform-ipam \
+    golang:1.26.9-bookworm go build -o /out/platform-ipam ./cmd/platform-ipam \
     || fail "could not build platform-ipam through the pinned Go image"
   PLATFORM_IPAM_BIN="$BUILD_DIR/platform-ipam"
 fi

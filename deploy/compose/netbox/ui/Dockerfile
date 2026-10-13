@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.26.8-bookworm AS platform
+FROM docker.io/golang:1.26.9-bookworm AS platform
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

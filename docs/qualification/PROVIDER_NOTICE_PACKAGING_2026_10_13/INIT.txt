@@ -1,0 +1,25 @@
+Initializing the backend...
+Initializing provider plugins...
+- Finding mischapogr/platformipam versions matching "0.1.0-rc.1"...
+- Installing mischapogr/platformipam v0.1.0-rc.1...
+- Installed mischapogr/platformipam v0.1.0-rc.1 (unauthenticated)
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+
+Warning: Incomplete lock file information for providers
+
+Due to your customized provider installation methods, Terraform was forced to
+calculate lock file checksums locally for the following providers:
+  - mischapogr/platformipam
+
+The current .terraform.lock.hcl file only includes checksums for linux_amd64,
+so Terraform running on another platform will fail to install these
+providers.
+
+To calculate additional checksums for another platform, run:
+  terraform providers lock -platform=linux_amd64
+(where linux_amd64 is the platform to generate)
+Terraform has been successfully initialized!

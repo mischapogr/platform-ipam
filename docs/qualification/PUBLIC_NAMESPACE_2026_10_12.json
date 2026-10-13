@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-12T04:45:55.203169+00:00",
+  "proposed_namespace": "platform-ipam",
+  "results": [
+    {
+      "url": "https://api.github.com/users/platform-ipam",
+      "http_status": 404
+    },
+    {
+      "url": "https://api.github.com/orgs/platform-ipam",
+      "http_status": 404
+    },
+    {
+      "url": "https://api.github.com/repos/platform-ipam/terraform-provider-platformipam",
+      "http_status": 404
+    },
+    {
+      "url": "https://registry.terraform.io/v1/providers/platform-ipam/platformipam",
+      "http_status": 404
+    }
+  ],
+  "boundary": "Unauthenticated public lookup; a missing public identity does not establish registrability, ownership or authorization."
+}

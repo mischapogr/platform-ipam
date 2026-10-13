@@ -1,0 +1,260 @@
+{
+  "missing_root_license_modules": [],
+  "modules": [
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__fatih__color@v1.18.0/LICENSE.md",
+          "sha256": "de95ed802d2f90e3c72cb3c9a927cca5f2aec234a3ef1250232db0f8178b2d93"
+        }
+      ],
+      "module": "github.com/fatih/color",
+      "version": "v1.18.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__golang__protobuf@v1.5.4/LICENSE",
+          "sha256": "8778a9fc1eaffb03ab873caae251df2d224f6b5502be8777d3cd573a4dd43903"
+        }
+      ],
+      "module": "github.com/golang/protobuf",
+      "version": "v1.5.4"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__go-hclog@v1.6.3/LICENSE",
+          "sha256": "2a820e13f7f30e2312a2a83ba91c90afce637b090efd823e65f0c8d4cb71fc45"
+        }
+      ],
+      "module": "github.com/hashicorp/go-hclog",
+      "version": "v1.6.3"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__go-plugin@v1.7.0/LICENSE",
+          "sha256": "62fdaf753e19c00ac69ee00dfd9b5002124ac2b4179360e47168429ad37fa5f8"
+        }
+      ],
+      "module": "github.com/hashicorp/go-plugin",
+      "version": "v1.7.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__go-uuid@v1.0.3/LICENSE",
+          "sha256": "87b250b11ffadc5f872cb676caa219e2871e454ddd562d9e532d52d5c9b7520d"
+        }
+      ],
+      "module": "github.com/hashicorp/go-uuid",
+      "version": "v1.0.3"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__terraform-plugin-framework@v1.19.0/LICENSE",
+          "sha256": "43f41556ae4b79ced673902ee15021fbb413d88d4a0fa2c5786f309eeac1ee92"
+        }
+      ],
+      "module": "github.com/hashicorp/terraform-plugin-framework",
+      "version": "v1.19.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__terraform-plugin-framework-timeouts@v0.7.0/LICENSE",
+          "sha256": "1d6b69184f4ae65c8437de1cd4d67927f33cc3fc0d4dedd5a655111103bf8550"
+        }
+      ],
+      "module": "github.com/hashicorp/terraform-plugin-framework-timeouts",
+      "version": "v0.7.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__terraform-plugin-framework-validators@v0.19.0/LICENSE",
+          "sha256": "8b11e3440b3f2cf2e35170fd88efaec96c22126c44bea53823ff9df6045be4b2"
+        }
+      ],
+      "module": "github.com/hashicorp/terraform-plugin-framework-validators",
+      "version": "v0.19.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__terraform-plugin-go@v0.31.0/LICENSE",
+          "sha256": "aff4e69bd67075d771127826ddf1ffa929c064f48bdd7ed6f8c946598399f523"
+        }
+      ],
+      "module": "github.com/hashicorp/terraform-plugin-go",
+      "version": "v0.31.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__terraform-plugin-log@v0.10.0/LICENSE",
+          "sha256": "4735c52c8235ee7e8b5210f00ad2aaf703e68d6916a713462abaf1b98be7dc2d"
+        }
+      ],
+      "module": "github.com/hashicorp/terraform-plugin-log",
+      "version": "v0.10.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__terraform-registry-address@v0.4.0/LICENSE",
+          "sha256": "4735c52c8235ee7e8b5210f00ad2aaf703e68d6916a713462abaf1b98be7dc2d"
+        }
+      ],
+      "module": "github.com/hashicorp/terraform-registry-address",
+      "version": "v0.4.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__terraform-svchost@v0.1.1/LICENSE",
+          "sha256": "3a1e6ea6e38ec6ca0e1b12f3d07443635fe26142e62f76b27aacd3e69fb596fa"
+        }
+      ],
+      "module": "github.com/hashicorp/terraform-svchost",
+      "version": "v0.1.1"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__hashicorp__yamux@v0.1.2/LICENSE",
+          "sha256": "ba36895caa0717b51eacc64ad50ef0b399482e1b82b93cfcdd065307409b3d9d"
+        }
+      ],
+      "module": "github.com/hashicorp/yamux",
+      "version": "v0.1.2"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__mattn__go-colorable@v0.1.14/LICENSE",
+          "sha256": "88a2379b3ca34bf5c57127aff9dcb802bbb60ece0805cdbda65b3bd115f971d9"
+        }
+      ],
+      "module": "github.com/mattn/go-colorable",
+      "version": "v0.1.14"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__mattn__go-isatty@v0.0.20/LICENSE",
+          "sha256": "08eab1118c80885fa1fa6a6dd7303f65a379fcb3733e063d20d1bbc2c76e6fa1"
+        }
+      ],
+      "module": "github.com/mattn/go-isatty",
+      "version": "v0.0.20"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__mitchellh__go-testing-interface@v1.14.1/LICENSE",
+          "sha256": "f48b778b7fccb6650f915cf4527c941a9578f8876a2911d035c4e44641a916be"
+        }
+      ],
+      "module": "github.com/mitchellh/go-testing-interface",
+      "version": "v1.14.1"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__oklog__run@v1.1.0/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ],
+      "module": "github.com/oklog/run",
+      "version": "v1.1.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__vmihailenco__msgpack__v5@v5.4.1/LICENSE",
+          "sha256": "1530185dd39cdde7cb2f786a7a5fcf8bc34368b6ae73c15e72bafe88fd80b9a2"
+        }
+      ],
+      "module": "github.com/vmihailenco/msgpack/v5",
+      "version": "v5.4.1"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "github.com__vmihailenco__tagparser__v2@v2.0.0/LICENSE",
+          "sha256": "0f02aac22084ef463aa5f42f566feeec6aa4c99653519744a8c25cb079da5b5d"
+        }
+      ],
+      "module": "github.com/vmihailenco/tagparser/v2",
+      "version": "v2.0.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "golang.org__x__net@v0.60.0/LICENSE",
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        }
+      ],
+      "module": "golang.org/x/net",
+      "version": "v0.60.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "golang.org__x__sys@v0.48.0/LICENSE",
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        }
+      ],
+      "module": "golang.org/x/sys",
+      "version": "v0.48.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "golang.org__x__text@v0.42.0/LICENSE",
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        }
+      ],
+      "module": "golang.org/x/text",
+      "version": "v0.42.0"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "google.golang.org__genproto__googleapis__rpc@v0.0.0-20260526163538-3dc84a4a5aaa/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "module": "google.golang.org/genproto/googleapis/rpc",
+      "version": "v0.0.0-20260526163538-3dc84a4a5aaa"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "google.golang.org__grpc@v1.83.2/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "file": "google.golang.org__grpc@v1.83.2/NOTICE.txt",
+          "sha256": "693ff28ec216d5112ac1bbfe64ef539005867d1c7bd427b57d579683293b947f"
+        }
+      ],
+      "module": "google.golang.org/grpc",
+      "version": "v1.83.2"
+    },
+    {
+      "copied_root_license_notice_files": [
+        {
+          "file": "google.golang.org__protobuf@v1.36.11/LICENSE",
+          "sha256": "4835612df0098ca95f8e7d9e3bffcb02358d435dbb38057c844c99d7f725eb20"
+        }
+      ],
+      "module": "google.golang.org/protobuf",
+      "version": "v1.36.11"
+    }
+  ],
+  "scope": "root licence/notice files from the exact 25 modules linked in the RC binary; attribution review remains required"
+}

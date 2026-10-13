@@ -24,7 +24,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             providers/terraform/go.sum
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
           cache: pip
@@ -50,7 +50,7 @@ jobs:
           docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" -w /repo
           rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9
           .github/workflows/*.yml
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.14.0
           terraform_wrapper: false

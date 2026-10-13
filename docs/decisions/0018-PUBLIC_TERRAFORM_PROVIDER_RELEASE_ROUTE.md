@@ -1,6 +1,6 @@
 # ADR 0018: Public Terraform provider release route
 
-Status: accepted as a release route, 2026-09-23. Publication remains gated; the durable Registry namespace is not selected.
+Status: accepted as a release route, 2026-09-23. The maintainer selected the existing `mischapogr` account on 2026-10-12. The signed simulation RC is published; stable AWS qualification remains gated.
 
 ## Context
 
@@ -10,16 +10,38 @@ The [public Terraform Registry](https://developer.hashicorp.com/terraform/regist
 
 ## Decision
 
-- Publish the first consumer provider through `registry.terraform.io/<durable-organization>/platformipam`. The organization must be selected and controlled by the maintainer before a consumer creates Terraform state. Do not replace the placeholder with a personal or temporary address by inference.
+- Publish the first consumer provider through `registry.terraform.io/mischapogr/platformipam`. The maintainer explicitly selected this existing account as the durable namespace on 2026-10-12, superseding the earlier organization-only proposal. Namespace control and Registry enrollment must be confirmed before consumer state is created; the account choice is not inferred from the monorepo owner.
 - Keep one authoritative provider source. Produce the required public `terraform-provider-platformipam` repository and release assets from the same reviewed source revision; do not maintain two hand-edited implementations. Version the provider independently of the platform API, starting at `0.1.0` with the API v1 contract.
 - Start with the tested `linux_amd64` package. Add another OS/architecture only after a build, normal installation and acceptance check for that target. The package matrix is an explicit release artifact, not a claim inferred from Go cross-compilation.
 - Sign the checksums as the Registry requires, publish the manifest and provider documentation, then install the published package without `dev_overrides`. Commit consumer lock files generated from the published origin. The local mirror rehearsal is a preparatory check, not release acceptance.
-- Gate the first release on plan/apply/read/import/destroy and recovery tests against an authorized sandbox API and AWS account. In particular, a replacement must use a new allocation key, an ambiguous Read must retain identity, and Delete must reach durable quarantine acceptance. Keep `TF_ACC` opt-in and scoped to that sandbox.
+- Gate the first stable release on plan/apply/read/import/destroy and recovery tests against an authorized sandbox API and AWS account. An explicitly selected `-rc.N` prerelease may use simulation with the AWS readiness notice and evidence boundary described below. In both channels, a replacement must use a new allocation key, an ambiguous Read must retain identity, and Delete must reach durable quarantine acceptance. Keep `TF_ACC` opt-in and scoped to that sandbox.
 - Use semantic versions for provider schema and behavior changes. State the minimum Terraform CLI version only after testing it; the example's current `>= 1.6.0, < 2.0.0` is not a tested support matrix merely because it parses.
+- Keep `providers/terraform/VERSION` and `COMPATIBILITY.json` in the authoritative source and export them with the provider. The release tag must match both. Record API-major requirements separately from exact qualified Platform-IPAM product releases; an API version alone does not prove product compatibility. See [the compatibility policy](../../providers/terraform/COMPATIBILITY.md). The first RC has no qualified product release pairing; stable publication requires explicit product versions and live qualification.
 
 ## Unresolved release inputs
 
-The organization namespace, signing-key custodian, release-repository ownership and sandbox access need named owners. No Registry publication, signed release, or real AWS acceptance has occurred. Until those inputs exist, examples retain the clearly unreachable placeholder and local development keeps ADR 0004's override.
+The namespace and provider repository are `mischapogr` and
+`mischapogr/terraform-provider-platformipam`. On 2026-10-12 the maintainer
+confirmed evidence review and repository signing-secret setup. The provider
+repository published signed RC `0.1.0-rc.1` from reviewed monorepo source
+`d1807f4fa6676d6323d7fdddf098b8a39b9fa873`; the Registry ingested it and a
+fresh consumer install verified its signature, checksums and schema. The
+[publication record](../qualification/PROVIDER_PUBLICATION_2026_10_12.json)
+retains that evidence. Authorized live AWS acceptance for stable releases,
+backup signer custody and complete linked-package attribution review remain
+open.
+
+The public RSA-4096 key has primary fingerprint
+`F1EAE2D8ED6BF46AEEE8889E136F9D1E6B3B2BE8`. Its detached release signature
+and Registry installation verification passed. Ordinary consumers use the
+public address; ADR 0004's override remains useful for local development.
+
+The provider repository's own `.github/workflows/release.yml` selects an
+unpublished candidate after successful CI on the exact `main` commit, skips
+publication while the final attestation is absent, and validates its exact
+`SOURCE_COMMIT` before signing. The current [release runbook](../TERRAFORM_PROVIDER_RELEASE.md)
+describes this automation. The implementation notes below retain their dated
+historical scope.
 
 ## GitHub Actions implementation (2026-09-25)
 
@@ -31,7 +53,7 @@ credentials on a CI runner.
 
 `.github/workflows/terraform-provider-release.yml` is a reusable workflow for
 the eventual public repository named `terraform-provider-platformipam`. It
-accepts a stable `vMAJOR.MINOR.PATCH` tag and a reviewed full commit SHA from
+accepts a stable `vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-rc.N` tag and a reviewed full commit SHA from
 this repository's `main`, verifies that ancestry, builds the qualified
 `linux_amd64` binary from that immutable source commit, creates the Registry
 manifest and ZIP, checksums all published inputs, signs the checksum file with the caller's
@@ -58,6 +80,7 @@ jobs:
     uses: mischapogr/platform-ipam/.github/workflows/terraform-provider-release.yml@<reviewed-commit-sha>
     with:
       source-ref: <reviewed-platform-ipam-commit-sha>
+      signing-key-fingerprint: <registered-rsa-or-dsa-primary-fingerprint>
     secrets:
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -72,3 +95,56 @@ does not contain the cross-repository credential or make the namespace choice.
 The called workflow builds only trusted source from this repository; it does
 not execute code from the tagged provider mirror while the signing secret is
 available.
+
+## Deterministic source mirror preparation (2026-09-29)
+
+`scripts/release/export-provider-repository.py` exports the provider module
+and root licence from one reviewed full commit SHA on local `main` into an
+absent or empty directory. It adds a `SOURCE_COMMIT` marker and generated
+README, refuses a nonempty destination, and reads committed Git objects rather
+than the current working tree. A focused local test compares exported bytes
+with `git show` for that exact commit. To prepare a repository candidate:
+
+```sh
+SOURCE_REF=$(git rev-parse main)
+python3 scripts/release/export-provider-repository.py \
+  --source-ref "$SOURCE_REF" --out /tmp/terraform-provider-platformipam-source
+```
+
+Review the exported tree and use the caller workflow above in the separate
+provider repository. This command does not create that GitHub repository,
+choose its namespace, sign a release or publish anything. The release workflow
+checks that the caller's tagged mirror has the same `SOURCE_COMMIT`, licence
+and provider source bytes before signing or publication, then builds from the
+reviewed monorepo SHA. The mirror must be refreshed from that same SHA before
+its tag is pushed. Provider `docs/` are immutable mirrored source and must
+match the committed bytes. The comparison permits separate release metadata
+in `.github/`, `README.md`, `.gitignore`, `RELEASE_QUALIFICATION.json` and
+`release-evidence/`.
+
+## Simulation RC qualification (2026-10-10)
+
+The maintainer selected a simulation RC because no API/AWS sandbox is
+currently available. RC attestations and release notes must state:
+**AWS API/AWS integration is not yet ready.** This permits development preview
+qualification; the stable release gate still requires authorized live AWS
+acceptance.
+
+The [release runbook](../TERRAFORM_PROVIDER_RELEASE.md) specifies the exact
+digest-bound qualification record and evidence files. The reusable workflow
+checks the committed source/mirror, required lifecycle/install/security
+evidence, formatting and unit tests before packaging. It embeds the selected
+provider-repository namespace, uses Go 1.26.9, validates Registry assets, and
+verifies the registered RSA/DSA primary fingerprint in an isolated temporary
+keyring. An RC is published as a GitHub prerelease; consumers must explicitly
+select its version. A local unsigned package remains separate from that
+signed, immutable-source release.
+
+## Repository bootstrap (2026-10-12)
+
+An explicit `--preview` source export may bootstrap the public repository from
+an immutable development commit before promotion to `main`. It labels the
+source as a preview in generated metadata and README. The default exporter
+still requires `main` ancestry, and the signing workflow always checks that
+ancestry and reviewed release qualification. Repository bootstrap creates no
+version tag or Registry release and does not approve source promotion.

@@ -124,6 +124,50 @@ class VerificationFreshnessTest(SimpleTestCase):
         self.assertEqual(report["replacements"]["moves"][0]["lifecycle_stage"], "VERIFIED")
 
 
+class ReservationHandoffTest(SimpleTestCase):
+    def test_workspace_refuses_unauthenticated_and_non_operator_reads(self):
+        anonymous = SimpleNamespace(is_authenticated=False)
+        non_operator = SimpleNamespace(
+            is_authenticated=True, is_superuser=False,
+            groups=SimpleNamespace(filter=lambda **_kwargs: SimpleNamespace(exists=lambda: False)))
+        for user in (anonymous, non_operator):
+            for method in ("get", "post"):
+                with self.subTest(user=user, method=method):
+                    request = getattr(RequestFactory(), method)("/plugins/platform-ipam/")
+                    request.user = user
+                    self.assertEqual(WorkspaceView.as_view()(request).status_code, 403)
+
+    def test_only_reviewed_platform_moves_get_credential_free_handoff(self):
+        target = {"tenant_id": "tenant-a", "allocation_key": "prod/orders", "scope": "vpc",
+                  "environment": "prod", "region": "eu-central-1", "account_id": "123456789012",
+                  "prefix_length": 20}
+        moves = [{"approved": approved, "authority": authority, "target": target.copy()}
+                 for approved, authority in ((True, "platform-ipam"),
+                                             (False, "platform-ipam"), (True, "aws-ipam"))]
+        report = {"version": 1, "scope": {"accounts": [], "regions": []},
+                  "discovery": {"cells": []}, "replacements": {"moves": moves}}
+
+        prepare_pilot_view(report)
+
+        self.assertIn("platform-ipam client reserve", moves[0]["reserve_command"])
+        self.assertEqual(json.loads(moves[0]["reserve_api_body"]),
+                         {key: value for key, value in target.items() if key != "tenant_id"})
+        self.assertNotIn("token", moves[0]["reserve_api_body"].lower())
+        for move in moves[1:]:
+            self.assertNotIn("reserve_command", move)
+            self.assertNotIn("reserve_api_body", move)
+
+        template = (Path(__file__).with_name("templates") / WorkspaceView.template_name).read_text()
+        handoff = template.split('<div class="card-body border-top"><strong>Reservation handoff</strong>', 1)[1]
+        handoff = handoff.split('<div class="card-body small text-muted">', 1)[0]
+        rendered = Engine().from_string(handoff).render(Context({"report": report}))
+        self.assertIn("prod/orders", rendered)
+        self.assertIn("123456789012", rendered)
+        self.assertIn("POST /v1/allocations", rendered)
+        self.assertNotIn("Bearer ", rendered)
+        self.assertNotIn("Authorization:", rendered)
+
+
 class SnapshotDigestTest(SimpleTestCase):
     @patch.object(WorkspaceView, "pilot_list", return_value=[])
     @patch("platform_ipam_workspace.views.PilotSnapshot.objects.select_related")

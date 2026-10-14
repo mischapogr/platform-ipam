@@ -525,9 +525,14 @@
           </tr>{% empty %}<tr><td colspan="6">No reviewed replacement moves.</td></tr>{% endfor %}</tbody>
         </table></div>
         <div class="card-body border-top"><strong>Reservation handoff</strong>
-          <p class="small text-muted">Run as the owning tenant with <code>PLATFORM_IPAM_URL</code> and <code>PLATFORM_IPAM_TOKEN</code> set. The API selects the CIDR; a different returned CIDR needs owner review. Upload a fresh CLI verification report afterward.</p>
+          <p class="small text-muted">Use the owning tenant's authenticated CLI/API access outside this browser. Keep credentials out of the workspace and uploaded reports. The API selects the CIDR; a different returned CIDR needs owner review. Upload a fresh reservation verification report to refresh the allocation ID, returned CIDR and state shown here. Saved snapshots do not update automatically.</p>
           {% for move in report.replacements.moves %}
-            {% if move.reserve_command %}<details class="mb-2"><summary>{{ move.subject }} · CLI reserve command</summary><pre class="mt-2 mb-0">{{ move.reserve_command }}</pre></details>
+            {% if move.reserve_command %}<details class="mb-2"><summary>{{ move.subject }} · authenticated CLI/API handoff</summary>
+              <p class="small mb-1">Tenant: <code>{{ move.target.tenant_id }}</code> · stable allocation key: <code>{{ move.target.allocation_key }}</code> · advisory candidate: <code>{{ move.proposed_cidr|default:'none' }}</code> · current allocation ID: <code>{{ move.allocation_id|default:'not supplied' }}</code> · verification: {{ move.reservation_current_status }}</p>
+              <p class="small mb-1">CLI reservation:</p><pre class="mt-0 mb-2">{{ move.reserve_command }}</pre>
+              <p class="small mb-1">API reservation: <code>POST /v1/allocations</code> with the owning tenant's bearer authorization, <code>Content-Type: application/json</code>, and one stable <code>Idempotency-Key</code> reused for retries of this exact request:</p><pre class="mt-0 mb-2">{{ move.reserve_api_body }}</pre>
+              <p class="small mb-1">A 200/201 response contains the allocation; a 202 response contains an operation to poll as the same tenant. Resolve failures before retrying under the same request identity. For later reads or permitted changes, use the returned allocation ID with the authenticated <code>client get</code> or API <code>GET /v1/allocations/{id}</code>; review the API lifecycle contract before any change. Preserve the CLI/API response and audit evidence outside this workspace.</p>
+            </details>
             {% elif move.authority == 'aws-ipam' %}<p class="small mb-2">{{ move.subject }}: AWS IPAM is the sole authority; live handoff is not configured.</p>
             {% endif %}
           {% endfor %}

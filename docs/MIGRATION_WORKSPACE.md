@@ -129,9 +129,14 @@ account/region coverage matrix with per-cell evidence, conflict review factors,
 move lifecycle and allocation assertions. The review order uses only known
 environment labels and observed subnet counts; it never chooses the VPC to
 renumber or estimates workload migration cost. A move with Platform-IPAM
-authority shows a command using its reviewed stable key and target fields;
-the owning tenant still runs it with their own credential, then supplies a
-fresh authority verification report.
+authority shows a CLI command and API request body using its reviewed stable
+key and target fields; the owning tenant runs either outside the browser with
+their own credential, retains the API response and audit evidence, then
+supplies a fresh authority verification report. The browser shows the
+allocation ID, returned CIDR and verification state from that report. Saved
+snapshots are immutable and do not refresh automatically. Workspace access is
+limited server-side to admitted NetBox operators, who can see all uploaded
+pilot reports; it is not a tenant-specific view. See [ADR 0024](decisions/0024-BROWSER_RESERVATION_IDENTITY_AND_REVIEW_AUTHORITY.md).
 Only `replace` moves count as planned migrations. The current address state
 remains `CIDR_BLOCKED` while old conflicts are observed, even if a pilot
 planning gate passes. `network_readiness` remains `NOT_ASSESSED`.

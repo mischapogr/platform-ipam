@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Project MCP isolation; user/managed permissions and authentication still apply.
+set -euo pipefail
+platform_repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd -- "$platform_repo_root"
+# Keep the variadic --mcp-config option last so it cannot consume a user prompt.
+exec claude --strict-mcp-config "$@" --mcp-config "$platform_repo_root/.mcp.json"

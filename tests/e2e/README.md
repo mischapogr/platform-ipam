@@ -1,5 +1,11 @@
 # End-to-end suite
 
+For isolated saved-pilot PostgreSQL backup/restore and access checks, run
+`python3 tests/e2e/run-workspace-restore.py --out /tmp/workspace-restore.json`.
+This opt-in rehearsal creates and removes its own Compose project; see the
+[restore runbook](../../deploy/runbooks/RESTORE.md). It is separate from the
+allocation suite and never restores the platform ledger.
+
 Drives a running Compose stack through every surface a consumer uses and
 checks that they agree about the same allocation. The design and its
 trade-offs are recorded in [ADR 0002](../../docs/decisions/0002-LOCAL_DEVELOPMENT_AND_E2E_ENVIRONMENT.md),

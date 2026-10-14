@@ -13,6 +13,7 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [AWS integration](AWS_INTEGRATION.md) | VPC/subnet inventory, cross-account IAM, EKS identity, coverage, onboarding, and optional AWS native IPAM |
 | [NetBox integration](NETBOX_INTEGRATION.md) | Inventory mapping, adapter, native IPAM UI, access control, and optional visualization extensions |
 | [NetBox 4.7 upgrade runbook](../deploy/runbooks/NETBOX_4_7_UPGRADE.md) | Exact local image, restore rehearsal, promotion gates, and rollback by backup restore |
+| [Restore runbook](../deploy/runbooks/RESTORE.md) | Coordinated ledger/inventory restore and isolated saved-pilot snapshot recovery/access rehearsal |
 | [Deployment environments](DEPLOYMENT.md) | Docker Compose for development; Helm/Kubernetes for stage and prod; migration and promotion flow |
 | [Local simulation](LOCAL_SIMULATION.md) | Compose-first validation and the next AWS, identity, and Kubernetes simulation gates |
 | [Adoption runbook](../deploy/runbooks/ADOPTION.md) | Giving an imported network an owner with `platform-ipam adopt plan\|apply`: prerequisites, the input table, verdicts, `adoption_stuck`, no undo |

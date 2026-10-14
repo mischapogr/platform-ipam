@@ -1,5 +1,18 @@
 # End-to-end suite
 
+For an exploratory reservation-latency measurement through the real local
+API and NetBox, run
+`python3 tests/e2e/run-reservation-scale.py --out /tmp/reservation-scale.json`.
+The runner uses one isolated development stack with fake AWS, one warm-up
+reservation, then four serial requests per client at 1/4/8 clients. It uses a
+private quota-64 development fixture and leaves repository policies untouched.
+Latency includes pending-operation polling until commit and server-directed
+503 backoff. The client honors numeric `Retry-After`, records retry error codes,
+and uses a two-second fallback/poll interval. Exact retries and
+ledger/inventory/authorization checks run outside the timed phases. It removes
+only its disposable project and reports sample sizes and growing resident
+counts. These observations do not establish a customer capacity or p95 SLO.
+
 For a coordinated, quiesced NetBox/ledger restore with actual local API
 reservations, run
 `python3 tests/e2e/run-coordinated-restore.py --out /tmp/coordinated-restore.json`.

@@ -82,6 +82,14 @@ by the switched Compose mounts. See the [restore runbook](../deploy/runbooks/RES
 
 ## Which simulator to use
 
+The [2026-10-14 API reservation baseline](qualification/RESERVATION_SCALE_2026_10_14.md)
+uses an isolated real API/NetBox stack with fake AWS. Four serial reservations
+per caller at 1/4/8 clients recorded median/p95, throughput and categorized
+server-directed retries. All 53 reservations, holds, permanent keys and NetBox
+markers were verified; exact replays retained 106 audit events and 53 retry
+records. This is exploratory evidence with small samples and increasing
+resident counts; customer workload/latency acceptance remains open (SCALE-1).
+
 | External dependency | Closest useful local exercise | What remains external |
 | --- | --- | --- |
 | AWS VPC/subnet observation and allocation recovery | Keep the deterministic `cloud-fake` Compose service for incomplete observations, lifecycle transitions, and safe-reuse refusals. The opt-in Moto service exercises real Go SDK EC2/STS requests with test credentials and a local endpoint. | Actual Organizations enumeration, cross-account IAM/SCP enforcement, account access, AWS resource state, and observed traffic. |

@@ -4,12 +4,14 @@
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
 import secrets
 import socket
 import subprocess
+import tarfile
 import tempfile
 import time
 import urllib.error
@@ -25,9 +27,13 @@ TABLES = ("allocations", "allocation_keys", "holds", "audit_events", "idempotenc
 def run():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, help="Write compact evidence JSON; never retains database dumps")
+    parser.add_argument("--upgrade-from", help="Build a reviewed Git commit and test same-schema upgrade/rollback")
     args = parser.parse_args()
     project = "platform-ipam-recovery-test-" + secrets.token_hex(5)
     image = "platform-ipam-recovery:" + project.rsplit("-", 1)[-1]
+    previous_image = image + "-previous" if args.upgrade_from else None
+    active_image = image
+    version_evidence = {}
     env = os.environ.copy()
     env.update(COMPOSE_PROJECT_NAME=project, PLATFORM_DB_USER="recovery", PLATFORM_DB_NAME="recovery",
                PLATFORM_DB_PASSWORD=secrets.token_urlsafe(24), IPAM_ENVIRONMENT="development",
@@ -50,8 +56,8 @@ def run():
         def write_overlay(bad_config=False):
             dsn = (f"postgresql://recovery:{env['PLATFORM_DB_PASSWORD']}@platform-db:5432/"
                    f"{database}?sslmode=disable&connect_timeout=2")
-            workloads = {"api": {"image": image, "environment": {"IPAM_DATABASE_URL": dsn}},
-                         "migrate": {"image": image, "environment": {"IPAM_DATABASE_URL": dsn}}}
+            workloads = {"api": {"image": active_image, "environment": {"IPAM_DATABASE_URL": dsn}},
+                         "migrate": {"image": active_image, "environment": {"IPAM_DATABASE_URL": dsn}}}
             if bad_config:
                 workloads["api"]["environment"]["IPAM_CONFIG_FILE"] = "/missing-reviewed-policy.yaml"
             overlay.write_text(json.dumps({"services": workloads}))
@@ -124,6 +130,29 @@ def run():
         try:
             print("Building real application image for " + project, flush=True)
             execute("build", "api", timeout=600)
+            if previous_image:
+                commit = subprocess.check_output(
+                    ["git", "rev-parse", "--verify", args.upgrade_from + "^{commit}"], cwd=ROOT, text=True).strip()
+                archive = subprocess.check_output(["git", "archive", "--format=tar", commit], cwd=ROOT)
+                previous_source = private / "previous-source"
+                previous_source.mkdir()
+                with tarfile.open(fileobj=io.BytesIO(archive)) as contents:
+                    contents.extractall(previous_source, filter="data")
+                print("Building reviewed baseline " + commit[:12], flush=True)
+                built = subprocess.run(["docker", "build", "--target", "release", "-t", previous_image,
+                                        str(previous_source)], capture_output=True, timeout=600)
+                if built.returncode != 0:
+                    raise RuntimeError("Reviewed baseline image build failed")
+                image_ids = {name: subprocess.check_output(
+                    ["docker", "image", "inspect", "--format", "{{.Id}}", tag], text=True).strip()
+                    for name, tag in (("previous", previous_image), ("candidate", image))}
+                if image_ids["previous"] == image_ids["candidate"]:
+                    raise AssertionError("Upgrade rehearsal requires two distinct image identities")
+                version_evidence = {"previous_commit": commit, "previous_source_archive_sha256": hashlib.sha256(archive).hexdigest(),
+                                    "candidate_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+                                    "image_ids": image_ids}
+                active_image = previous_image
+                write_overlay()
             execute("up", "-d", "--wait", "platform-db")
             output, error = execute("run", "--rm", "--no-deps", "api", expected="failure")
             if b"ledger schema is not ready" not in output + error:
@@ -161,6 +190,15 @@ def run():
                 raise AssertionError("Reservation metadata audit provenance differs")
             assert_runtime()
             checks.append("authenticated_patch_and_single_event_retry")
+            if previous_image:
+                execute("stop", "api")
+                active_image = image
+                write_overlay()
+                execute("run", "--rm", "--no-deps", "migrate")
+                execute("up", "-d", "--no-deps", "--wait", "api")
+                assert_runtime()
+                checks.append("reviewed_binary_upgrade_preserves_schema_ledger_retry_and_authorization")
+                print("Reviewed baseline to candidate upgrade passed with unchanged schema and ledger", flush=True)
             execute("kill", "-s", "SIGKILL", "api")
             execute("up", "-d", "--no-deps", "--wait", "api")
             assert_runtime()
@@ -211,6 +249,35 @@ def run():
             execute("up", "-d", "--no-deps", "--wait", "api")
             assert_runtime()
             checks.append("restored_database_holds_keys_audit_retry_and_authorization")
+            if previous_image:
+                execute("stop", "api")
+                if [row["version"] for row in baseline["platform_ledger_schema"]] != [1]:
+                    raise AssertionError("This rehearsal only supports the reviewed version-1 schema")
+                sql("UPDATE platform_ledger_schema SET version=999 WHERE version=1;")
+                unsupported = snapshot()
+                for active_image in (previous_image, image):
+                    write_overlay()
+                    output, error = execute("run", "--rm", "--no-deps", "api", expected="failure")
+                    if b"ledger schema is not ready" not in output + error or snapshot() != unsupported:
+                        raise AssertionError("Unsupported schema was admitted or altered by a binary")
+                sql("UPDATE platform_ledger_schema SET version=1 WHERE version=999;")
+                if snapshot() != baseline:
+                    raise AssertionError("Schema refusal check did not preserve the recovered ledger")
+                checks.append("both_binaries_refuse_missing_supported_schema_without_mutation")
+                active_image = previous_image
+                write_overlay()
+                execute("run", "--rm", "--no-deps", "migrate")
+                execute("up", "-d", "--no-deps", "--wait", "api")
+                assert_runtime()
+                checks.append("previous_binary_rollback_on_candidate_restored_database")
+                execute("stop", "api")
+                active_image = image
+                write_overlay()
+                execute("run", "--rm", "--no-deps", "migrate")
+                execute("up", "-d", "--no-deps", "--wait", "api")
+                assert_runtime()
+                checks.append("candidate_reupgrade_after_previous_binary_rollback")
+                print("Both binary schema refusals, restored-ledger rollback and re-upgrade passed", flush=True)
             result = {"status": "PASSED", "completed_at": datetime.now(timezone.utc).isoformat(), "project": project,
                       "source_database": "recovery", "restored_database": database, "checks": checks,
                       "image_id": subprocess.check_output(["docker", "image", "inspect", "--format", "{{.Id}}", image], text=True).strip(),
@@ -223,9 +290,21 @@ def run():
                        ROOT / "internal/storage/postgres.go", ROOT / "internal/config/config.go",
                        ROOT / "internal/transport/http.go", ROOT / "deploy/compose/compose.yaml"]
             result["source_sha256"] = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
+            if previous_image:
+                result["version_rehearsal"] = version_evidence
+                result["limits"].remove("same_binary_configuration_rollback")
+                result["limits"].extend(["same_schema_binary_upgrade_only", "not_a_forward_schema_migration",
+                                         "current_development_configuration_with_both_images"])
+                runtime_sources = [ROOT / "go.mod", ROOT / "go.sum", ROOT / "Dockerfile"]
+                runtime_sources += [path for base in (ROOT / "cmd", ROOT / "internal")
+                                    for path in base.rglob("*.go") if not path.name.endswith("_test.go")]
+                result["candidate_runtime_source_sha256"] = {
+                    str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(runtime_sources)}
         finally:
             execute("down", "--volumes", "--remove-orphans")
-            subprocess.run(["docker", "image", "rm", image], capture_output=True, check=False)
+            for tag in (image, previous_image):
+                if tag:
+                    subprocess.run(["docker", "image", "rm", tag], capture_output=True, check=False)
         result["cleanup"] = "isolated_project_removed"
         if args.out:
             args.out.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n")

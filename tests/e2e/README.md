@@ -14,6 +14,14 @@ and platform-ledger restore checks, run
 This opt-in rehearsal builds the actual application and creates/removes only
 its own disposable Compose project; see the [restore runbook](../../deploy/runbooks/RESTORE.md).
 
+To exercise two reviewed binary versions on the same ledger schema, add
+`--upgrade-from d1807f4`. The runner builds that Git commit independently,
+upgrades to the current checkout, restores the candidate ledger, rolls back
+to the older image, and upgrades again. Both binaries must refuse startup
+when the supported schema marker is absent. See the
+[release and rollback runbook](../../deploy/runbooks/RELEASE_AND_ROLLBACK.md)
+for the exact scope and admission gate.
+
 For isolated saved-pilot PostgreSQL backup/restore and access checks, run
 `python3 tests/e2e/run-workspace-restore.py --out /tmp/workspace-restore.json`.
 This opt-in rehearsal creates and removes its own Compose project; see the

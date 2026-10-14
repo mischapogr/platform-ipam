@@ -28,6 +28,24 @@ compatibility, real identity admission or a stage/prod chart rollout. The
 production settings continue to require OIDC discovery and live AWS mode.
 See the [restore runbook](../deploy/runbooks/RESTORE.md).
 
+## Same-schema binary upgrade and rollback (2026-10-14)
+
+`python3 tests/e2e/run-ledger-recovery.py --upgrade-from d1807f4 --out /tmp/version-recovery.json`
+builds the reviewed release baseline independently and upgrades to the current
+checkout using the same development configuration. The
+[recorded version recovery](qualification/VERSION_RECOVERY_2026_10_14.json)
+passed eleven checks using two distinct image identities. It retained all
+eleven ledger tables, three allocation/hold/key fixtures, one authenticated
+PATCH event and its retry record through upgrade, candidate database restore,
+older-image rollback and re-upgrade. Both binaries refused startup without
+the supported schema marker and left the refused database unchanged.
+
+The schema stayed at version 1 throughout the admitted transitions. This
+does not qualify forward schema changes, NetBox inventory compatibility,
+real identity/cloud access or a stage/prod deployment. The isolated project,
+both test image tags and private archive/dump were removed. See the
+[release and rollback runbook](../deploy/runbooks/RELEASE_AND_ROLLBACK.md).
+
 ## Coordinated recovery (2026-10-14)
 
 The [2026-10-14 coordinated restore](qualification/COORDINATED_RESTORE_2026_10_14.json)

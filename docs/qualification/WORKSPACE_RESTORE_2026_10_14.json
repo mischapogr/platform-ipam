@@ -1,0 +1,89 @@
+{
+  "backup_bytes": 1256545,
+  "backup_sha256": "76e07a6556d9b8b6d5d12e93dd7283dd2ee18bb5317df963758786d51d26525f",
+  "cleanup": "isolated_project_removed",
+  "completed_at": "2026-10-14T11:51:06.608167+00:00",
+  "evidence": {
+    "checks": [
+      "operator_render_and_export",
+      "outsider_and_anonymous_read_write_denied",
+      "corruption_refused",
+      "expired_verification_visible",
+      "creator_and_pilot_protected"
+    ],
+    "operator": {
+      "active": true,
+      "groups": [
+        "platform-operators"
+      ],
+      "id": 1
+    },
+    "pilot": {
+      "created_at": "2026-10-14T11:49:42.244803+00:00",
+      "created_by": "restore-operator",
+      "created_by_id": 1,
+      "id": "00000000-0000-4000-8000-000000000041",
+      "name": "Synthetic restore rehearsal",
+      "owner": "synthetic-owner"
+    },
+    "snapshots": [
+      {
+        "created_at": "2026-10-14T11:49:42.249804+00:00",
+        "created_by": "restore-operator",
+        "digest": "f5ee5b6f2c23a755c08d39b6fa3bc9e88fe24193a0b3ae0961da1fc14fb01e8b",
+        "id": "00000000-0000-0000-0000-00000000002a",
+        "name": "Synthetic restore rehearsal",
+        "stored_body_sha256": "f5ee5b6f2c23a755c08d39b6fa3bc9e88fe24193a0b3ae0961da1fc14fb01e8b",
+        "valid": true
+      },
+      {
+        "created_at": "2026-10-14T11:49:42.256322+00:00",
+        "created_by": "restore-operator",
+        "digest": "3bf7903499a119e0a818b6f4e41a505b9dd50ddda64dd11a936ce0547e0658cf",
+        "id": "00000000-0000-0000-0000-00000000002b",
+        "name": "Synthetic restore rehearsal",
+        "stored_body_sha256": "3bf7903499a119e0a818b6f4e41a505b9dd50ddda64dd11a936ce0547e0658cf",
+        "valid": true
+      },
+      {
+        "created_at": "2026-10-14T11:49:42.260485+00:00",
+        "created_by": "restore-operator",
+        "digest": "3bf7903499a119e0a818b6f4e41a505b9dd50ddda64dd11a936ce0547e0658cf",
+        "id": "00000000-0000-0000-0000-00000000002c",
+        "name": "Synthetic restore rehearsal",
+        "stored_body_sha256": "836898ef3d1d3f0f56192e7511f15274b81681bd87c97ef8384d9de50070fc54",
+        "valid": false
+      }
+    ]
+  },
+  "image": "platform-ipam-workspace-restore:ce84f1d26a",
+  "image_id": "sha256:089f82aeda0e8bd2e3094e6c76197c496f31c0ff0700071391cc32be6077950e",
+  "limits": [
+    "synthetic_snapshot_evidence",
+    "no_platform_ledger_restore",
+    "no_real_identity_provider",
+    "no_production_retention_policy"
+  ],
+  "project": "platform-ipam-restore-test-ce84f1d26a",
+  "proxy_checks": [
+    "authenticated_render",
+    "forged_header_denied"
+  ],
+  "source_sha256": {
+    "deploy/compose/netbox/ui/Dockerfile": "128e3364082db902d381f442e499e5c22ab6956b3f190d71735e8137eb33ba60",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/__init__.py": "4026027faca8355902673e87d5857defe866309605b68e63d3e1c8f7bc1c35a6",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/integrity.py": "39ee3bcb50b29f13cfd9c769bfd2e38686150655bc382d05cf1c592fbf22550f",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/migrations/0001_pilot_snapshot.py": "e3a5cfafaed0b8c1e8272d0f1353d306f4a31443c709246b7b36afe69bbc1f7c",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/migrations/0002_migration_pilot.py": "6f98f4db05d14f64f50f3049e7c9d6f4d62e999c66af249b53a1227a55ad288a",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/migrations/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/models.py": "a5f1639710cd23596d35aa8df5b4e7b61b05cea6fbdb2a459203f99a7a7ef870",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/navigation.py": "68ccdcfc7b0ab7e33785da19817746bba7d008ab0a9c405b5026ef6a5b6fe314",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/templates/platform_ipam_workspace/workspace.html": "d3db8aaa8db9ae1b815d7ade7c88a06651e1dea21b4ddd858d698f41979530b2",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/tests.py": "45475678473dff84dfdd38beffe5bbfe9ffa9a5571fbfd71ab6806e509d70c8e",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/urls.py": "1a6559b9677cd0239058ee5974257cbd3fff8156316ad9a5f031d90ecdf55fc0",
+    "deploy/compose/netbox/ui/platform_ipam_workspace/views.py": "ac15cf20babbd600e0c0b415f9b5dc97c9375ea149acf103e47b316f6b9a852a",
+    "tests/e2e/run-workspace-restore.py": "b2e7d6f9a5bc329bdce22cedcb8c561c7796050e338fce8f74dcc630229f0007",
+    "tests/e2e/workspace_restore_probe.py": "634257a578e11718339eed04ab5045d2eb21725e2e6c3ffe8df0fb74749632ea"
+  },
+  "status": "PASSED"
+}

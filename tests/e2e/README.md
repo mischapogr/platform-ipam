@@ -35,6 +35,14 @@ files/wrong parents, and repeats real API scoped-reader and denied-write
 probes. Credentials remain private; raw media download isolation, production
 identity and customer attachment acceptance remain unqualified.
 
+For scheduled and interrupted synthetic RQ jobs, run
+`python3 tests/e2e/run-queue-recovery.py --out /tmp/queue-recovery.json`.
+This opt-in dependency-only rehearsal cold-restores queue/receipt volumes,
+executes a due job through the real scheduler, waits for actual abandoned-job
+expiry, and exercises an explicitly reviewed same-ID retry with one durable
+effect. It uses the pinned NetBox image's RQ directly; Django/NetBox system
+jobs, customer job effects and production retry policy remain unqualified.
+
 For real-binary migration, API crash, database outage, configuration rollback
 and platform-ledger restore checks, run
 `python3 tests/e2e/run-ledger-recovery.py --out /tmp/ledger-recovery.json`.

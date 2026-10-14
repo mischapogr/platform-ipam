@@ -92,6 +92,22 @@ This supplements the earlier synthetic-file result. Customer attachments,
 tenant-private raw media downloads, interrupted/scheduled jobs and production
 identity/custody/retention remain unqualified.
 
+## Scheduled and interrupted queue jobs (2026-10-14)
+
+`python3 tests/e2e/run-queue-recovery.py --out /tmp/queue-recovery.json` runs
+only the named Compose queue dependencies and the pinned NetBox image's RQ
+library. The [recorded recovery](qualification/QUEUE_JOB_RECOVERY_2026_10_14.json)
+passed eight checks: a restored due job completed through the real scheduler;
+a worker killed after writing a durable receipt retained its started state
+across cold restore, then failed as abandoned after actual expiry without
+replaying the effect. The fixture refused a corrupt receipt before an explicit
+same-ID retry reused the valid receipt and completed. All project resources
+and private archives were removed.
+
+This dependency-only result does not run Django/NetBox management or system
+jobs, establish safe retry for external/customer effects, or define production
+admission/custody/retention policy.
+
 ## Which simulator to use
 
 The [2026-10-14 API reservation baseline](qualification/RESERVATION_SCALE_2026_10_14.md)

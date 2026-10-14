@@ -182,6 +182,57 @@ recovered pending job returned 42, all five original reservation audit events
 remained unchanged, and a third disjoint reservation committed. The runner
 removed its project, private backups and three unreferenced source volumes.
 
+## Local scheduled and interrupted queue jobs
+
+```sh
+python3 tests/e2e/run-queue-recovery.py --out /tmp/queue-recovery.json
+```
+
+This smaller opt-in rehearsal starts only the queue dependencies from the
+named development Compose files. Python/RQ comes from the pinned NetBox
+image; the fixture invokes its RQ worker and scheduler directly. It does not
+initialize Django/NetBox databases or run NetBox's management-command/system
+job integration. Keep this evidence separate from the coordinated database,
+attachment and reservation restore above.
+
+Seed one scheduled synthetic sum and one synthetic job that writes and fsyncs
+a local receipt before blocking. Kill the worker container with SIGKILL
+after the receipt exists but before the job result commits. Stop Valkey
+gracefully; privately archive its complete append-only data and the receipt
+volume, then extract both into fresh empty volumes. With workers paused,
+job identities, arguments, statuses, registry entries, receipt bytes and file
+permissions/ownership must match the source.
+
+The restored queue must refuse anonymous access. Its real RQ scheduler must
+complete the due sum with result 42 and remove it from scheduled/queued
+membership. Wait for the interrupted execution's actual expiry, without a
+clock override, then invoke RQ's abandoned-job cleanup. With no retry policy
+configured on this fixture, it must record `AbandonedJobError`, mark the job
+failed and preserve the receipt and single execution event. Failure evidence
+does not prove that a job had no effects; inspect the durable receipt first.
+
+For this fixture only, an explicit review command refuses an invalid receipt
+without requeueing. After restoring the exact witness, explicitly requeue
+the same failed job identity. Its synthetic handler must reuse the receipt,
+return 42 and record a second execution without a second effect. Finished
+jobs must leave started, scheduled and failed registries. Remove only the
+disposable project and its private archives.
+
+This demonstrates pinned RQ dependency behavior for two synthetic jobs.
+Customer provisioning jobs, external side effects, Django/NetBox system jobs,
+production retry/admission policy and coordinated cutover remain unqualified.
+Production retries require the job owner's effect evidence and idempotency
+contract; this fixture review command is not a production admission feature.
+
+The [2026-10-14 queue job evidence](../../docs/qualification/QUEUE_JOB_RECOVERY_2026_10_14.json)
+records eight passed checks with RQ 2.12.0 and redis-py 8.1.0. The scheduled
+job finished with result 42. The interrupted job retained its identity and
+receipt across restore, entered failure with `AbandonedJobError`, and completed
+only after the explicit same-ID retry. Its execution journal contains one
+`receipt_created` and one `receipt_reused`; the receipt bytes, permissions and
+ownership stayed unchanged. Runtime images and source hashes are bound in the
+report. Private archives and all disposable project resources were removed.
+
 ## Saved migration pilot evidence
 
 `MigrationPilot` and `PilotSnapshot` are in the NetBox database. Back up the

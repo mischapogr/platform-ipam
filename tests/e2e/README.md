@@ -28,6 +28,13 @@ recovered synthetic pending RQ job before creating the new reservation.
 The cache is recreated; interrupted/scheduled jobs, model-backed media and
 production secret custody remain outside this local rehearsal.
 
+Use `--restore-model-media` instead to include auxiliary recovery plus two
+actual NetBox site image attachments. The runner compares model rows, parent
+identities, bytes and reader permissions after restoration, rejects missing
+files/wrong parents, and repeats real API scoped-reader and denied-write
+probes. Credentials remain private; raw media download isolation, production
+identity and customer attachment acceptance remain unqualified.
+
 For real-binary migration, API crash, database outage, configuration rollback
 and platform-ledger restore checks, run
 `python3 tests/e2e/run-ledger-recovery.py --out /tmp/ledger-recovery.json`.

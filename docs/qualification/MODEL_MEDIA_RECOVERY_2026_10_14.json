@@ -1,0 +1,375 @@
+{
+  "auxiliary_recovery": {
+    "archives": {
+      "media": {
+        "bytes": 7168,
+        "sha256": "530b50de2824696f87da1cc113c064a1a66bb93df8fd7c1855e7d38796f48376"
+      },
+      "queue": {
+        "bytes": 79360,
+        "sha256": "03b64fb28e53867e8afd2e8248ca354918d30ecbaa1330cdc33893ca3b0d64b1"
+      }
+    },
+    "completed_job": {
+      "args": [
+        [
+          20,
+          22
+        ]
+      ],
+      "function": "builtins.sum",
+      "id": "platform-ipam-joint-restore-test-6278d81ebe-sum",
+      "queued_occurrences": 0,
+      "result": 42,
+      "status": "finished"
+    },
+    "media_manifest": {
+      ".gitkeep": {
+        "bytes": 0,
+        "gid": 0,
+        "mode": 436,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "uid": 999
+      },
+      "image-attachments/site_1_recovery-image-a.png": {
+        "bytes": 79,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "be21aef17f0baf04b1bf148f8a23bda4e879b346a64637fdd711bea012e646a8",
+        "uid": 0
+      },
+      "image-attachments/site_2_recovery-image-b.png": {
+        "bytes": 79,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "548c752266def8c110bdce0cb60c3095427d099a2d8b33100e11fc484cc1a4c3",
+        "uid": 0
+      },
+      "recovery/binary.bin": {
+        "bytes": 256,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880",
+        "uid": 0
+      },
+      "recovery/evidence.txt": {
+        "bytes": 39,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "511b541224d482da5428b7ea3a4d3391d37a0d5b19ce7fcebbe1da9aa3e59e71",
+        "uid": 0
+      }
+    },
+    "model_media": {
+      "negative_checks": [
+        "missing_media_refused_by_runner",
+        "wrong_attachment_parent_refused_by_runner"
+      ],
+      "restored_api": {
+        "a": {
+          "anonymous_get": 403,
+          "foreign_get": 404,
+          "list_count": 1,
+          "own_get": 200,
+          "patch": 403
+        },
+        "b": {
+          "anonymous_get": 403,
+          "foreign_get": 404,
+          "list_count": 1,
+          "own_get": 200,
+          "patch": 403
+        }
+      },
+      "snapshot": [
+        {
+          "attachment": {
+            "created": "2026-10-14T19:20:14.170Z",
+            "description": "Synthetic recovery witness",
+            "id": 1,
+            "image": "image-attachments/site_1_recovery-image-a.png",
+            "image_height": 2,
+            "image_size": 79,
+            "image_width": 2,
+            "last_updated": "2026-10-14T19:20:14.170Z",
+            "name": "recovery-image-a",
+            "object_id": 1,
+            "object_type_id": 1
+          },
+          "bytes": 79,
+          "permissions": [
+            {
+              "actions": [
+                "view"
+              ],
+              "constraints": {
+                "id": 1
+              },
+              "enabled": true,
+              "id": 3,
+              "name": "recovery-a-site"
+            },
+            {
+              "actions": [
+                "view"
+              ],
+              "constraints": {
+                "id": 1
+              },
+              "enabled": true,
+              "id": 4,
+              "name": "recovery-a-imageattachment"
+            }
+          ],
+          "reader_id": 4,
+          "sha256": "be21aef17f0baf04b1bf148f8a23bda4e879b346a64637fdd711bea012e646a8",
+          "site": {
+            "comments": "",
+            "created": "2026-10-14T19:20:13.973Z",
+            "custom_field_data": {},
+            "description": "",
+            "facility": "",
+            "group_id": null,
+            "id": 1,
+            "last_updated": "2026-10-14T19:20:13.974Z",
+            "latitude": null,
+            "longitude": null,
+            "name": "Recovery site a",
+            "owner_id": null,
+            "physical_address": "",
+            "region_id": null,
+            "shipping_address": "",
+            "slug": "recovery-site-a",
+            "status": "active",
+            "tenant_id": null,
+            "time_zone": null
+          }
+        },
+        {
+          "attachment": {
+            "created": "2026-10-14T19:20:14.340Z",
+            "description": "Synthetic recovery witness",
+            "id": 2,
+            "image": "image-attachments/site_2_recovery-image-b.png",
+            "image_height": 2,
+            "image_size": 79,
+            "image_width": 2,
+            "last_updated": "2026-10-14T19:20:14.340Z",
+            "name": "recovery-image-b",
+            "object_id": 2,
+            "object_type_id": 1
+          },
+          "bytes": 79,
+          "permissions": [
+            {
+              "actions": [
+                "view"
+              ],
+              "constraints": {
+                "id": 2
+              },
+              "enabled": true,
+              "id": 5,
+              "name": "recovery-b-site"
+            },
+            {
+              "actions": [
+                "view"
+              ],
+              "constraints": {
+                "id": 2
+              },
+              "enabled": true,
+              "id": 6,
+              "name": "recovery-b-imageattachment"
+            }
+          ],
+          "reader_id": 5,
+          "sha256": "548c752266def8c110bdce0cb60c3095427d099a2d8b33100e11fc484cc1a4c3",
+          "site": {
+            "comments": "",
+            "created": "2026-10-14T19:20:14.298Z",
+            "custom_field_data": {},
+            "description": "",
+            "facility": "",
+            "group_id": null,
+            "id": 2,
+            "last_updated": "2026-10-14T19:20:14.298Z",
+            "latitude": null,
+            "longitude": null,
+            "name": "Recovery site b",
+            "owner_id": null,
+            "physical_address": "",
+            "region_id": null,
+            "shipping_address": "",
+            "slug": "recovery-site-b",
+            "status": "active",
+            "tenant_id": null,
+            "time_zone": null
+          }
+        }
+      ],
+      "source_api": {
+        "a": {
+          "anonymous_get": 403,
+          "foreign_get": 404,
+          "list_count": 1,
+          "own_get": 200,
+          "patch": 403
+        },
+        "b": {
+          "anonymous_get": 403,
+          "foreign_get": 404,
+          "list_count": 1,
+          "own_get": 200,
+          "patch": 403
+        }
+      }
+    },
+    "python_packages": {
+      "django-rq": "4.2.0",
+      "redis": "8.1.0",
+      "rq": "2.12.0"
+    },
+    "queued_job": {
+      "args": [
+        [
+          20,
+          22
+        ]
+      ],
+      "function": "builtins.sum",
+      "id": "platform-ipam-joint-restore-test-6278d81ebe-sum",
+      "queued_occurrences": 1,
+      "result": null,
+      "status": "queued"
+    },
+    "secret_custody": {
+      "key_names": [
+        "PLATFORM_DB_PASSWORD",
+        "NETBOX_DB_PASSWORD",
+        "NETBOX_REDIS_PASSWORD",
+        "NETBOX_CACHE_PASSWORD",
+        "NETBOX_SECRET_KEY",
+        "NETBOX_API_TOKEN_PEPPER",
+        "NETBOX_SUPERUSER_PASSWORD",
+        "NETBOX_UI_PASSWORD",
+        "IPAM_LOCAL_TOKEN",
+        "IPAM_OPS_TOKEN",
+        "IPAM_OPERATOR_TOKEN",
+        "IPAM_NETBOX_TOKEN",
+        "NETBOX_E2E_VIEWER_TOKEN",
+        "NETBOX_E2E_MAINTAINER_TOKEN"
+      ],
+      "mode": "0600",
+      "roundtrip": true,
+      "values_retained_in_report": false
+    }
+  },
+  "backups": {
+    "ledger": {
+      "bytes": 15334,
+      "restored": "joint_restored",
+      "sha256": "b66caef64d74a24a72aac7680540b93ab05084c87d7c9c067dfa79279b2b3248",
+      "source": "joint"
+    },
+    "netbox": {
+      "bytes": 1257502,
+      "restored": "netbox_joint_restored",
+      "sha256": "8893f82cbeaf95ed23f33eb33bcf726e8d3e4e0305d5e8a72d5b88ebe5af6b07",
+      "source": "netbox"
+    }
+  },
+  "checks": [
+    "real_api_reservations_netbox_commit_and_audit",
+    "corrupted_auxiliary_archive_refused_by_runner",
+    "quiesced_queue_media_and_private_secret_custody",
+    "all_writers_quiesced_and_pair_verified",
+    "both_restored_databases_match_quiesced_pair",
+    "inventory_marker_mismatch_refused_before_admission",
+    "model_attachment_rows_parents_bytes_permissions_and_preflight_preserved",
+    "fresh_queue_media_volumes_match_and_queue_authentication_preserved",
+    "restored_attachment_api_readers_scoped_and_writes_refused",
+    "restored_reservation_metadata_retry_and_authorization",
+    "restored_pending_job_completed_without_changing_reservations_or_media",
+    "resumed_writers_and_disjoint_new_reservation"
+  ],
+  "cleanup": "isolated_project_removed",
+  "completed_at": "2026-10-14T19:23:28.952175+00:00",
+  "cutoff": "2026-10-14T19:20:53.108289+00:00",
+  "image_id": "sha256:82b4c375124015ba9dd40f69262ff53564d796a6a2daa60f51d9db055c436e53",
+  "limits": [
+    "development_compose_only",
+    "fake_aws_observations",
+    "no_real_oidc",
+    "no_production_cutover",
+    "synthetic_pending_rq_job_only",
+    "no_inflight_job_or_scheduled_job_recovery_qualification",
+    "cache_recreated_not_restored",
+    "local_private_secret_file_not_production_custody",
+    "synthetic_site_image_attachments_only",
+    "api_metadata_authorization_not_tenant_private_media_download_qualification"
+  ],
+  "project": "platform-ipam-joint-restore-test-6278d81ebe",
+  "resumed_allocations": [
+    {
+      "cidr": "10.64.0.0/22",
+      "id": "alloc_dc470a64dbf941255431ea5ec0114468",
+      "key": "joint/first"
+    },
+    {
+      "cidr": "10.64.4.0/22",
+      "id": "alloc_816a87ccd416c8d66022c1ca8664d740",
+      "key": "joint/second"
+    },
+    {
+      "cidr": "10.64.8.0/22",
+      "id": "alloc_de936c1bab6cc3cc8e3513fb3494aa80",
+      "key": "joint/after-restore"
+    }
+  ],
+  "resumed_audit_events": 7,
+  "retained_audit_events": 5,
+  "runtime_image_ids": {
+    "netbox": "sha256:698ebc1d1ced7d87acb677f468b264ae63a50e585c71579b5ec45a192c72d77d",
+    "netbox-redis": "sha256:3441308844bf0ce1382eadcde891fbb3f97db691b30d2e0402af3c99acc603ea",
+    "netbox-redis-cache": "sha256:3441308844bf0ce1382eadcde891fbb3f97db691b30d2e0402af3c99acc603ea"
+  },
+  "source_ledger_rows": {
+    "allocation_keys": 2,
+    "allocations": 2,
+    "audit_events": 5,
+    "coverage": 1,
+    "findings": 0,
+    "holds": 2,
+    "idempotency_requests": 3,
+    "observations": 1,
+    "operation_barriers": 0,
+    "operations": 2,
+    "platform_ledger_schema": 1
+  },
+  "source_pair_sha256": "be478e49a0ca40aacaf23d7032593d53ec422ada7d64f8aa302cc641b098dfb8",
+  "source_prefix_rows": 3,
+  "source_sha256": {
+    "Dockerfile": "97f03a7882c4b7b890437fd934c3879e867f1c31c52ed61e241fac555fb9ca21",
+    "cmd/platform-ipam/main.go": "ee73a970c23e9db1485b5c7379be76f92575496bfb1d998215369e321f4d09e9",
+    "deploy/compose/compose.netbox.yaml": "8e04633c464cc6356955b17896da314b08925750b594414ee983f1b9b408e3d4",
+    "deploy/compose/compose.yaml": "e5d203df8b119e49bd46f4fe756554a789c1de56c56e6ed05deb9d6617ad3d2e",
+    "deploy/compose/fixtures/cloud.json": "ca4b798c7dd42f0e373a0e5807748eccb80328e7c031099fee464bb58c3649e4",
+    "deploy/compose/seed-netbox.py": "836eed8b6aaf5bb8cf683d8146ae41530475fe299647e65e064b5f4091366b1f",
+    "go.mod": "e577f4ff291769e1e1d1fd7a2373c4b5774198ae7fe3fc3f92edd734f9eb4bbc",
+    "go.sum": "44dec3c57dfe27ec8656966cdd60bca2fa1341d99f4f7a233cb1f0522359112c",
+    "internal/service/service.go": "cdec9f6ba889c56238ce7ed951fdc8d2e13436166eeca337ef53904ef59650c6",
+    "internal/storage/postgres.go": "d0e9a3b2d6ab8cb3dc0bf9448576e790d8f0d160a533f6180697fd5c3dac7834",
+    "tests/e2e/netbox-model-media.py": "923201c5eb7bb6da9c11aae58f602699b08b132e86499b1d30484ed8f4714214",
+    "tests/e2e/run-coordinated-restore.py": "70db90aa1b7ba8ad713d5a9cf19e4278cd2aea80d7ea523784428d53acc806e1"
+  },
+  "status": "PASSED",
+  "stopped_writers": [
+    "api",
+    "worker",
+    "netbox-worker",
+    "netbox"
+  ],
+  "unreferenced_source_volumes_removed": 3
+}

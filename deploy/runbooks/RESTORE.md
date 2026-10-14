@@ -10,6 +10,43 @@ connectivity with the migration Job and run a read-only reconciliation. Check
 that allocation keys, durable holds, NetBox identity markers, and AWS scan
 coverage agree before resuming admission.
 
+## Local platform ledger recovery rehearsal
+
+```sh
+python3 tests/e2e/run-ledger-recovery.py --out /tmp/ledger-recovery.json
+```
+
+This opt-in runner builds the real application image and uses the maintained
+Compose file in a uniquely named disposable development project. It seeds
+three synthetic ledger fixtures: `RESERVED`, `QUARANTINED` and `RELEASED`.
+They are not reservations verified against NetBox or AWS. An authenticated
+metadata PATCH creates a real application audit event and retry record.
+
+The runner checks unmigrated startup refusal, migration completion before API
+readiness, API process crash, PostgreSQL outage/readiness recovery, migration
+failure and repeat, and rollback of an invalid policy configuration using the
+same binary. It then quiesces the API, dumps the complete ledger and restores
+into a second database. The database identity is checked explicitly.
+
+Every recovery compares all ledger table rows against the original snapshot,
+including allocation IDs/CIDRs, durable holds, permanent retired keys, audit
+events and idempotency records. Replaying the PATCH must return the existing
+revision without adding a second event. Foreign-tenant and unauthenticated
+reads remain denied, and the read-only operator cannot PATCH an allocation.
+The runner removes only its own project volumes/image and private temporary
+dump; the optional output retains hashes, counts and synthetic audit evidence.
+
+This does not prove coordinated NetBox recovery, a different binary's schema
+compatibility, stage/prod Kubernetes rollout, real OIDC admission or live AWS.
+
+The [2026-10-14 real-binary evidence](../../docs/qualification/LEDGER_RECOVERY_2026_10_14.json)
+records seven passed recovery checks, three allocation/hold/key rows, one
+API-generated audit event and one retry record. A 14,254-byte custom-format
+dump restored into `recovery_restored`; every ledger table matched its source
+snapshot, and retries retained the existing revision and audit count. This
+was a separate rehearsal from the workspace backup; it does not qualify
+coordinated cutover of both databases.
+
 ## Saved migration pilot evidence
 
 `MigrationPilot` and `PilotSnapshot` are in the NetBox database. Back up the

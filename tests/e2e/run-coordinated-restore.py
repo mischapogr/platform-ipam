@@ -69,7 +69,10 @@ def run():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, help="Write compact evidence JSON; never retains database dumps")
     parser.add_argument("--restore-auxiliary", action="store_true", help="Restore queue/media into fresh volumes with private local secret custody")
+    parser.add_argument("--restore-model-media", action="store_true", help="Also restore actual NetBox site image attachments and constrained API readers")
     args = parser.parse_args()
+    if args.restore_model_media:
+        args.restore_auxiliary = True
     project = "platform-ipam-joint-restore-test-" + secrets.token_hex(5)
     image = "platform-ipam-joint-restore:" + project.rsplit("-", 1)[-1]
     env = os.environ.copy()
@@ -151,6 +154,13 @@ def run():
                 "'bytes':p.stat().st_size,'mode':p.stat().st_mode & 0o777,'uid':p.stat().st_uid,'gid':p.stat().st_gid} "
                 "for p in sorted(root.rglob('*')) if p.is_file()}; print(json.dumps(files,sort_keys=True))")
 
+        def model_media(action):
+            source = (ROOT / "tests/e2e/netbox-model-media.py").read_text()
+            result = netbox_python("ACTION=" + repr(action) + "\n" + source, django=True)
+            if isinstance(result, dict) and "fixture_error" in result:
+                raise AssertionError("Model media " + action + " failed: " + result["fixture_error"])
+            return result
+
         def queue_job():
             return netbox_python("import json; from django_rq import get_queue; from rq.job import Job; "
                 f"q=get_queue('default'); job=Job.fetch('{project}-sum',connection=q.connection); "
@@ -169,6 +179,8 @@ def run():
                 f"q=get_queue('default'); job=q.enqueue('builtins.sum',[20,22],job_id='{project}-sum',result_ttl=3600); "
                 "print(json.dumps({'id':job.id}))", django=True)
             auxiliary = {"media_manifest": media_manifest(), "queued_job": queue_job(), "archives": {}}
+            if args.restore_model_media:
+                auxiliary["model_media"] = {"snapshot": model_media("snapshot"), "source_api": source_media_api}
             auxiliary["python_packages"] = netbox_python(
                 "import json; from importlib.metadata import version; "
                 "print(json.dumps({name:version(name) for name in ('rq','django-rq','redis')}))")
@@ -217,6 +229,11 @@ def run():
             execute("up", "-d", "--no-deps", "--force-recreate", "--wait", "netbox-redis", "netbox-redis-cache")
             if media_manifest() != auxiliary["media_manifest"] or queue_job() != auxiliary["queued_job"]:
                 raise AssertionError("Fresh-volume queue/media restore differs from the quiesced source")
+            if args.restore_model_media:
+                if model_media("snapshot") != auxiliary["model_media"]["snapshot"]:
+                    raise AssertionError("Restored attachment rows, parents, bytes or permissions differ")
+                auxiliary["model_media"]["negative_checks"] = model_media("negative")
+                checks.append("model_attachment_rows_parents_bytes_permissions_and_preflight_preserved")
             denied = execute("exec", "-T", "netbox-redis", "valkey-cli", "PING")
             if b"NOAUTH" not in denied or b"PONG" in denied:
                 raise AssertionError("Restored queue admitted unauthenticated access")
@@ -300,6 +317,9 @@ def run():
             if status != 200:
                 raise AssertionError("Metadata audit mutation failed")
             checks.append("real_api_reservations_netbox_commit_and_audit")
+            if args.restore_model_media:
+                model_media("seed")
+                source_media_api = model_media("probe")
             execute("stop", *WRITERS)
             auxiliary_archives = backup_auxiliary() if args.restore_auxiliary else None
             cutoff = datetime.now(timezone.utc).isoformat()
@@ -347,6 +367,14 @@ def run():
                 restore_auxiliary(auxiliary_archives)
             write_overlay()
             execute("up", "-d", "--no-deps", "--wait", "--wait-timeout", "240", "netbox")
+            if args.restore_model_media:
+                restored_media_api = model_media("probe")
+                if restored_media_api != auxiliary["model_media"]["source_api"]:
+                    raise AssertionError("Restored attachment API authorization differs")
+                if model_media("snapshot") != auxiliary["model_media"]["snapshot"]:
+                    raise AssertionError("API probes changed restored attachment evidence")
+                auxiliary["model_media"]["restored_api"] = restored_media_api
+                checks.append("restored_attachment_api_readers_scoped_and_writes_refused")
             execute("run", "--rm", "--no-deps", "migrate")
             execute("up", "-d", "--no-deps", "--wait", "api")
             for original in (first, second):
@@ -416,6 +444,8 @@ def run():
                        ROOT / "internal/storage/postgres.go", ROOT / "internal/service/service.go",
                        ROOT / "deploy/compose/compose.yaml", ROOT / "deploy/compose/compose.netbox.yaml",
                        ROOT / "deploy/compose/seed-netbox.py", ROOT / "deploy/compose/fixtures/cloud.json"]
+            if args.restore_model_media:
+                sources.append(ROOT / "tests/e2e/netbox-model-media.py")
             result["source_sha256"] = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
             if auxiliary_archives:
                 result["auxiliary_recovery"] = auxiliary
@@ -423,6 +453,10 @@ def run():
                 result["limits"].extend(["synthetic_media_files_not_model_attachments", "synthetic_pending_rq_job_only",
                                         "no_inflight_job_or_scheduled_job_recovery_qualification",
                                         "cache_recreated_not_restored", "local_private_secret_file_not_production_custody"])
+                if args.restore_model_media:
+                    result["limits"].remove("synthetic_media_files_not_model_attachments")
+                    result["limits"].extend(["synthetic_site_image_attachments_only",
+                                            "api_metadata_authorization_not_tenant_private_media_download_qualification"])
         finally:
             execute("down", "--volumes", "--remove-orphans")
             # Swapped-out source volumes are no longer referenced by active

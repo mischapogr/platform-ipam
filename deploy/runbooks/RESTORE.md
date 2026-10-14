@@ -144,6 +144,44 @@ audit events remained unchanged. Runtime image/package identities are bound
 in the report; private archives, credential files and project resources were
 removed.
 
+### Model-backed media extension
+
+```sh
+python3 tests/e2e/run-coordinated-restore.py --restore-model-media --out /tmp/model-media-recovery.json
+```
+
+This option includes auxiliary recovery and adds two synthetic NetBox site
+image attachments. Sites support image attachments in the pinned NetBox image;
+allocation prefixes are still checked separately by the paired restore.
+The fixture uses the actual model's validation and storage, then captures full
+attachment/site rows, parent identities, PNG bytes/dimensions and two readers'
+object permissions. Readers have unusable passwords and no superuser
+privileges. Generated API credentials stay inside the private test database.
+
+Before backup and after restoration, real HTTP API requests must show each
+reader only their own attachment: own GET succeeds, foreign GET returns 404,
+the list contains one record, anonymous GET fails and PATCH returns 403. The
+tokens allow writes so the PATCH refusal exercises server-side object
+permissions. These probes authenticate the existing API, without browser SSO
+or reservation writes. Restored metadata probes must leave the model snapshot
+unchanged. With writers paused, deliberately withhold one media file and
+misassign one attachment parent; the runner must reject each and restore the
+original witness before admission.
+
+This qualifies synthetic site attachments and API metadata authorization
+locally. It does not qualify tenant-private raw media downloads, customer
+attachments, production ingress/storage access, retention or real OIDC.
+Interrupted and scheduled jobs still require separate qualification.
+
+The [2026-10-14 model-backed media evidence](../../docs/qualification/MODEL_MEDIA_RECOVERY_2026_10_14.json)
+records twelve passed checks, two 79-byte PNG attachments and a five-entry
+media manifest. Both readers retained own GET 200, foreign GET 404, anonymous
+GET 403, PATCH 403 and one visible attachment in their list. Missing files
+and incorrect parent identities were refused by runner preflight. The
+recovered pending job returned 42, all five original reservation audit events
+remained unchanged, and a third disjoint reservation committed. The runner
+removed its project, private backups and three unreferenced source volumes.
+
 ## Saved migration pilot evidence
 
 `MigrationPilot` and `PilotSnapshot` are in the NetBox database. Back up the

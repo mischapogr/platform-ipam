@@ -1,5 +1,13 @@
 # End-to-end suite
 
+For a coordinated, quiesced NetBox/ledger restore with actual local API
+reservations, run
+`python3 tests/e2e/run-coordinated-restore.py --out /tmp/coordinated-restore.json`.
+The runner checks inventory markers before admission, preserves retries and
+audit history, then verifies a new reservation after workers resume. It uses
+fake AWS observations and removes only its own disposable Compose project;
+see the [restore runbook](../../deploy/runbooks/RESTORE.md).
+
 For real-binary migration, API crash, database outage, configuration rollback
 and platform-ledger restore checks, run
 `python3 tests/e2e/run-ledger-recovery.py --out /tmp/ledger-recovery.json`.

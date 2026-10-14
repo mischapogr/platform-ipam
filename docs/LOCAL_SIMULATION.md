@@ -80,6 +80,18 @@ and live AWS remain outside this evidence. All disposable test projects and
 private archives/dumps were removed, including source volumes left unreferenced
 by the switched Compose mounts. See the [restore runbook](../deploy/runbooks/RESTORE.md).
 
+## Model-backed media recovery (2026-10-14)
+
+The [model-backed media extension](qualification/MODEL_MEDIA_RECOVERY_2026_10_14.json)
+also passed twelve checks using `--restore-model-media`: two actual NetBox
+site image attachments retained full model/parent rows, PNG bytes and reader
+permissions after paired database and fresh media-volume restore. Real API
+probes preserved own reads, foreign/anonymous refusals and denied updates;
+runner preflight rejected missing files and wrong attachment parents.
+This supplements the earlier synthetic-file result. Customer attachments,
+tenant-private raw media downloads, interrupted/scheduled jobs and production
+identity/custody/retention remain unqualified.
+
 ## Which simulator to use
 
 The [2026-10-14 API reservation baseline](qualification/RESERVATION_SCALE_2026_10_14.md)

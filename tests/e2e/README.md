@@ -1,5 +1,11 @@
 # End-to-end suite
 
+For real-binary migration, API crash, database outage, configuration rollback
+and platform-ledger restore checks, run
+`python3 tests/e2e/run-ledger-recovery.py --out /tmp/ledger-recovery.json`.
+This opt-in rehearsal builds the actual application and creates/removes only
+its own disposable Compose project; see the [restore runbook](../../deploy/runbooks/RESTORE.md).
+
 For isolated saved-pilot PostgreSQL backup/restore and access checks, run
 `python3 tests/e2e/run-workspace-restore.py --out /tmp/workspace-restore.json`.
 This opt-in rehearsal creates and removes its own Compose project; see the

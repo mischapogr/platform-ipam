@@ -28,6 +28,20 @@ compatibility, real identity admission or a stage/prod chart rollout. The
 production settings continue to require OIDC discovery and live AWS mode.
 See the [restore runbook](../deploy/runbooks/RESTORE.md).
 
+## Coordinated recovery (2026-10-14)
+
+The [2026-10-14 coordinated restore](qualification/COORDINATED_RESTORE_2026_10_14.json)
+extends the separate recovery rehearsals with a real NetBox/API/worker pair.
+Two reservations were created through the authenticated API with fake AWS
+observations. After stopping all four writers, both databases were restored
+from one logical cutoff and their allocation/prefix markers reconciled before
+admission. A deliberately incorrect marker was refused by the runner's
+restore preflight. Retried reservations and metadata writes preserved five
+original audit events; after workers resumed, a third reservation committed
+without overlapping either restored hold. Queue/media volumes stayed local
+and were not restored, so their production custody and real identity/cloud
+admission remain external checks. See the [restore runbook](../deploy/runbooks/RESTORE.md).
+
 ## Which simulator to use
 
 | External dependency | Closest useful local exercise | What remains external |

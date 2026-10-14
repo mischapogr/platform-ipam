@@ -47,6 +47,51 @@ snapshot, and retries retained the existing revision and audit count. This
 was a separate rehearsal from the workspace backup; it does not qualify
 coordinated cutover of both databases.
 
+## Coordinated ledger and NetBox database rehearsal
+
+```sh
+python3 tests/e2e/run-coordinated-restore.py --out /tmp/coordinated-restore.json
+```
+
+This opt-in runner creates a disposable Compose stack with real NetBox,
+PostgreSQL, API and worker images. AWS observations use the development fake
+fixture. Two owning-tenant API reservations must commit to NetBox before the
+runner performs an authenticated metadata PATCH and pauses all four writers:
+the platform API/worker and NetBox server/worker.
+
+The stopped writer set establishes one logical cutoff for the two sequential
+database dumps. Before restore, record the ledger rows and complete NetBox
+prefix rows. Restore into two new databases and explicitly verify both
+database identities. Compare all ledger tables and prefix rows; verify that
+each restored reserved allocation matches exactly one prefix ID/CIDR, allocation/key/
+tenant/pool marker, permanent key and committed durable hold, with no orphan
+or duplicate allocation markers.
+
+Keep admission paused until this preflight passes. The runner deliberately
+changes one restored NetBox allocation marker and requires its preflight to
+refuse the pair before starting the API. It restores the correct marker and
+rechecks the original row snapshot before proceeding. This is a rehearsal of
+the operator's restore gate; it does not add an automatic production startup
+gate to the application.
+
+The API starts first, with the worker still paused. Exact reservation/PATCH
+retries and tenant authorization must leave the recovered pair unchanged.
+After the workers resume, a third reservation must commit from a range
+disjoint from the two restored holds, and the existing audit events must
+remain unchanged. Queue and media volumes are retained during this local
+test, rather than restored; qualify their custody/recovery, real identity,
+workload access and admission controls in the actual deployment separately.
+Only the runner's project resources and private temporary dumps are removed.
+
+The [2026-10-14 coordinated evidence](../../docs/qualification/COORDINATED_RESTORE_2026_10_14.json)
+records six passed checks: two API-created reservations and three source
+prefixes (including the pool), matching restored ledger/inventory rows, a
+refused marker mismatch, unchanged retries/authorization, and successful
+resumed allocation. Five original audit events survived unchanged; the third
+reservation added two more. The new `10.64.8.0/22` range was disjoint from the
+restored `10.64.0.0/22` and `10.64.4.0/22` holds. All are disposable local
+development ranges observed through the fake AWS adapter.
+
 ## Saved migration pilot evidence
 
 `MigrationPilot` and `PilotSnapshot` are in the NetBox database. Back up the

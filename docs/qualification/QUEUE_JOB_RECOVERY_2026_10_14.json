@@ -1,0 +1,217 @@
+{
+  "archives": {
+    "media": {
+      "bytes": 4096,
+      "sha256": "5b4d2d9bb9b8435f4e09a7da3333586088d7bf6b34989e6f7800f403585132cb"
+    },
+    "queue": {
+      "bytes": 12288,
+      "sha256": "0be413c956646ceb6331e731e52e51489e14a3c5a900c488cf0f7b8cc7f4f990"
+    }
+  },
+  "checks": [
+    "scheduled_job_and_killed_started_job_with_durable_receipt",
+    "fresh_queue_media_restore_matches_started_and_scheduled_state",
+    "restored_queue_requires_authentication",
+    "real_rq_scheduler_completed_restored_due_job",
+    "real_expiry_marks_abandoned_job_failed_without_replay",
+    "fixture_review_refuses_invalid_receipt_without_requeue",
+    "explicit_same_job_retry_reuses_receipt_without_duplicate_effect",
+    "finished_jobs_leave_started_scheduled_and_failed_registries"
+  ],
+  "cleanup": "isolated_project_removed",
+  "completed_at": "2026-10-14T21:10:51.075965+00:00",
+  "credential_values_retained": false,
+  "failed_after_restore": {
+    "events": [
+      {
+        "action": "receipt_created"
+      }
+    ],
+    "failed_ids": [
+      "interrupted"
+    ],
+    "jobs": {
+      "interrupted": {
+        "abandoned_error": true,
+        "args": [],
+        "function": "queue_recovery_fixture.receipt_once",
+        "id": "interrupted",
+        "queued_occurrences": 0,
+        "result": null,
+        "status": "failed"
+      },
+      "scheduled": {
+        "abandoned_error": false,
+        "args": [
+          [
+            20,
+            22
+          ]
+        ],
+        "function": "builtins.sum",
+        "id": "scheduled",
+        "queued_occurrences": 0,
+        "result": 42,
+        "status": "finished"
+      }
+    },
+    "media": {
+      "executions.jsonl": {
+        "bytes": 30,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "c7077af7ab8376cd320004cb3c0e71fbeba518b8dca29716debe74a1242c5ffc",
+        "uid": 0
+      },
+      "interrupted.json": {
+        "bytes": 34,
+        "gid": 0,
+        "mode": 384,
+        "sha256": "eb026f85471025e0c91acc7b89e42d3912f8cad6c405be80166b4adb019dc2a7",
+        "uid": 0
+      }
+    },
+    "scheduled_ids": [],
+    "started_entries": []
+  },
+  "final": {
+    "events": [
+      {
+        "action": "receipt_created"
+      },
+      {
+        "action": "receipt_reused"
+      }
+    ],
+    "failed_ids": [],
+    "jobs": {
+      "interrupted": {
+        "abandoned_error": false,
+        "args": [],
+        "function": "queue_recovery_fixture.receipt_once",
+        "id": "interrupted",
+        "queued_occurrences": 0,
+        "result": 42,
+        "status": "finished"
+      },
+      "scheduled": {
+        "abandoned_error": false,
+        "args": [
+          [
+            20,
+            22
+          ]
+        ],
+        "function": "builtins.sum",
+        "id": "scheduled",
+        "queued_occurrences": 0,
+        "result": 42,
+        "status": "finished"
+      }
+    },
+    "media": {
+      "executions.jsonl": {
+        "bytes": 59,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "674ebc32b2f0fbf41165c02a433a1b04b8e0e142dccb510309ce8803df81b6e4",
+        "uid": 0
+      },
+      "interrupted.json": {
+        "bytes": 34,
+        "gid": 0,
+        "mode": 384,
+        "sha256": "eb026f85471025e0c91acc7b89e42d3912f8cad6c405be80166b4adb019dc2a7",
+        "uid": 0
+      }
+    },
+    "scheduled_ids": [],
+    "started_entries": []
+  },
+  "limits": [
+    "development_compose_dependencies_only",
+    "pinned_rq_not_django_netbox_management_integration",
+    "synthetic_local_receipt_not_external_job_side_effects",
+    "fixture_review_not_production_retry_policy",
+    "no_customer_jobs_or_real_oidc_or_aws",
+    "no_production_custody_or_cutover"
+  ],
+  "project": "platform-ipam-queue-recovery-test-3760131a54",
+  "runtime_image_ids": {
+    "netbox-redis": "sha256:3441308844bf0ce1382eadcde891fbb3f97db691b30d2e0402af3c99acc603ea",
+    "netbox-worker": "sha256:698ebc1d1ced7d87acb677f468b264ae63a50e585c71579b5ec45a192c72d77d"
+  },
+  "seed": {
+    "packages": {
+      "redis": "8.1.0",
+      "rq": "2.12.0"
+    },
+    "scheduled_at": "2026-10-14T21:09:43.482345+00:00"
+  },
+  "source": {
+    "events": [
+      {
+        "action": "receipt_created"
+      }
+    ],
+    "failed_ids": [],
+    "jobs": {
+      "interrupted": {
+        "abandoned_error": false,
+        "args": [],
+        "function": "queue_recovery_fixture.receipt_once",
+        "id": "interrupted",
+        "queued_occurrences": 0,
+        "result": null,
+        "status": "started"
+      },
+      "scheduled": {
+        "abandoned_error": false,
+        "args": [
+          [
+            20,
+            22
+          ]
+        ],
+        "function": "builtins.sum",
+        "id": "scheduled",
+        "queued_occurrences": 0,
+        "result": null,
+        "status": "scheduled"
+      }
+    },
+    "media": {
+      "executions.jsonl": {
+        "bytes": 30,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "c7077af7ab8376cd320004cb3c0e71fbeba518b8dca29716debe74a1242c5ffc",
+        "uid": 0
+      },
+      "interrupted.json": {
+        "bytes": 34,
+        "gid": 0,
+        "mode": 384,
+        "sha256": "eb026f85471025e0c91acc7b89e42d3912f8cad6c405be80166b4adb019dc2a7",
+        "uid": 0
+      }
+    },
+    "scheduled_ids": [
+      "scheduled"
+    ],
+    "started_entries": [
+      [
+        "interrupted:9a815ec479514e4489ea57308815fa71",
+        1792012244.0
+      ]
+    ]
+  },
+  "source_sha256": {
+    "deploy/compose/compose.netbox.yaml": "8e04633c464cc6356955b17896da314b08925750b594414ee983f1b9b408e3d4",
+    "deploy/compose/compose.yaml": "e5d203df8b119e49bd46f4fe756554a789c1de56c56e6ed05deb9d6617ad3d2e",
+    "tests/e2e/queue_recovery_fixture.py": "f64ffaeb04cb5a5fecc060797f3435a249ef9ccd58a899db7fa7d7833fb05e73",
+    "tests/e2e/run-queue-recovery.py": "4670339b59af3b1f14c312c7f4fcfec773992ef77b7586c2e4feffbe7428c532"
+  },
+  "status": "PASSED"
+}

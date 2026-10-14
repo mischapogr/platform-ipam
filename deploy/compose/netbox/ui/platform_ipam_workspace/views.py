@@ -186,6 +186,14 @@ def prepare_pilot_view(report):
                      "--region", target["region"], "--account", target["account_id"],
                      "--prefix-length", str(target["prefix_length"])]
             move["reserve_command"] = " ".join(shlex.quote(str(part)) for part in parts)
+            move["reserve_api_body"] = json.dumps({
+                "allocation_key": target["allocation_key"],
+                "scope": target["scope"],
+                "environment": target["environment"],
+                "region": target["region"],
+                "account_id": target["account_id"],
+                "prefix_length": target["prefix_length"],
+            }, sort_keys=True, indent=2)
 
 
 @method_decorator(never_cache, name="dispatch")

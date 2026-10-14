@@ -124,3 +124,36 @@ Application/runtime checks beyond the reported static contract scope were not ru
 Private local probe artifacts were kept under `/tmp/platform-ipam-mcp-*`; only bounded status information was reported. They are temporary evidence, not maintained configuration or a skill-installation fallback.
 
 References: [Codex native configuration](https://learn.chatgpt.com/docs/config-file/config-basic), [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [Codex app-server inspection](https://learn.chatgpt.com/docs/app-server), [Codex skill discovery](https://learn.chatgpt.com/docs/build-skills), [AWS Knowledge MCP](https://awslabs.github.io/mcp/servers/aws-knowledge-mcp-server), [Terraform MCP release](https://github.com/hashicorp/terraform-mcp-server/releases/tag/v1.2.0), [OpenAPI validator](https://openapi-spec-validator.readthedocs.io/en/latest/), [Compose config](https://docs.docker.com/reference/cli/docker/compose/config/), [Helm lint](https://helm.sh/docs/helm/helm_lint/).
+
+## Platform client launcher pattern (2026-10-07)
+
+Public platform repositories use `scripts/ai/codex` and `scripts/ai/claude` as
+project entry points. Each launcher derives its repository root from its own
+location, preserves literal caller arguments and uses that repository's native
+settings. Existing model, authentication, sandbox and approval choices stay in
+the project/client layers; the launcher is not a global configuration overlay.
+
+IPAM retains its existing Codex launcher and native diagnostics. The companion
+Claude launcher changes to this checkout and loads only its explicit `.mcp.json`:
+
+```bash
+scripts/ai/codex --check-config
+scripts/ai/codex --check-skills
+scripts/ai/codex
+scripts/ai/claude
+scripts/ai/claude --model sonnet --effort medium
+```
+
+The Claude launcher uses `--strict-mcp-config`; put its variadic `--mcp-config`
+option last internally so a positional prompt is forwarded as a prompt. User and
+managed authentication/permission settings still apply. Plain `claude` continues
+to inherit other MCPs; strict isolation applies when using this launcher. Current
+IPAM MCP declarations/transports and model/effort defaults are preserved. This
+change does not establish MCP connectivity or repair the historical GitHub
+credential boundary.
+
+SIGNAL applies the same pattern with its own defaults and a Context7 baseline,
+plus task-scoped optional tools. Its Rust-specific skills and usage helper stay
+in SIGNAL; IPAM retains its allocation/AWS/Terraform skills and work-plan runner.
+Future platform repositories can copy these small launchers and supply their own
+native config and MCP map without depending on another checkout's launcher.

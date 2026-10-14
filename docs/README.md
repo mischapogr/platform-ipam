@@ -49,7 +49,8 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [ADR 0021](decisions/0021-SEPARATE_AWS_TOPOLOGY_EVIDENCE.md) | Opt-in read-only AWS topology evidence stays separate from intended connectivity assessment |
 | [ADR 0022](decisions/0022-PILOT_ADDRESS_READINESS_AND_POOL_AUTHORITY.md) | Address readiness and advisory candidates stay separate from network readiness and allocation authority |
 | [ADR 0023](decisions/0023-IMMUTABLE_PILOT_SNAPSHOTS.md) | Opt-in immutable derived pilot snapshots; uploaded source files remain request-scoped |
-| [ADR 0024](decisions/0024-BROWSER_RESERVATION_IDENTITY_AND_REVIEW_AUTHORITY.md) | Proposed browser reservation identity and review authority for PILOT-3; owner decision pending |
+| [ADR 0024](decisions/0024-BROWSER_RESERVATION_IDENTITY_AND_REVIEW_AUTHORITY.md) | Accepted read-only PILOT-3 browser and authenticated CLI/API handoff; tenant SSO and browser writes are post-pilot |
+| [ADR 0025](decisions/0025-AWS_IPAM_AUTHORITY_HANDOFF.md) | Proposed AWS IPAM authority handoff for PILOT-1; owner choice and live test pending |
 | [ADR 0006](decisions/0006-OPERATOR_UI_AUTHENTICATION.md) | One proxy in front of the NetBox UI, with basic, Entra ID and LDAP modes |
 | [ADR 0007](decisions/0007-ONBOARDING_IMPORT_AS_UNMANAGED_OCCUPANCY.md) | Existing networks are imported as unmanaged occupancy, not as allocations |
 | [ADR 0008](decisions/0008-PLATFORM_OWNED_OPERATOR_UI.md) | Proposed: no platform-owned operator UI, and a NetBox plugin if that changes |

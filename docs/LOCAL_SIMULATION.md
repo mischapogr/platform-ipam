@@ -60,6 +60,26 @@ without overlapping either restored hold. Queue/media volumes stayed local
 and were not restored, so their production custody and real identity/cloud
 admission remain external checks. See the [restore runbook](../deploy/runbooks/RESTORE.md).
 
+## Queue, media and local secret recovery (2026-10-14)
+
+`python3 tests/e2e/run-coordinated-restore.py --restore-auxiliary --out /tmp/auxiliary-recovery.json`
+extends the coordinated pair restore into fresh queue/media volumes. The
+[recorded auxiliary recovery](qualification/AUXILIARY_RECOVERY_2026_10_14.json)
+passed ten checks, retaining the three-entry media manifest (two synthetic
+files and the image's placeholder), permissions and ownership. A 39,424-byte
+queue archive preserved a pending RQ job; the recovered NetBox worker returned
+42 while the platform worker remained paused and reservation/audit rows stayed
+unchanged. The platform worker then resumed and a third disjoint reservation
+committed, preserving five original audit events. Local credentials made a
+mode-0600 private-file round trip with no values in the report; anonymous
+queue reads and a corrupted archive were refused.
+
+The cache was recreated rather than restored. Interrupted/scheduled jobs,
+model-backed attachments, production secret custody/retention, real identity
+and live AWS remain outside this evidence. All disposable test projects and
+private archives/dumps were removed, including source volumes left unreferenced
+by the switched Compose mounts. See the [restore runbook](../deploy/runbooks/RESTORE.md).
+
 ## Which simulator to use
 
 | External dependency | Closest useful local exercise | What remains external |

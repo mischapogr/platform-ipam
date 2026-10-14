@@ -8,6 +8,13 @@ audit history, then verifies a new reservation after workers resume. It uses
 fake AWS observations and removes only its own disposable Compose project;
 see the [restore runbook](../../deploy/runbooks/RESTORE.md).
 
+Add `--restore-auxiliary` to the coordinated restore command to archive and
+restore queue/media into fresh volumes, round-trip generated local secrets
+through a private temporary file, refuse a corrupted archive and run a
+recovered synthetic pending RQ job before creating the new reservation.
+The cache is recreated; interrupted/scheduled jobs, model-backed media and
+production secret custody remain outside this local rehearsal.
+
 For real-binary migration, API crash, database outage, configuration rollback
 and platform-ledger restore checks, run
 `python3 tests/e2e/run-ledger-recovery.py --out /tmp/ledger-recovery.json`.

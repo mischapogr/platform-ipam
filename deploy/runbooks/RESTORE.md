@@ -92,6 +92,58 @@ reservation added two more. The new `10.64.8.0/22` range was disjoint from the
 restored `10.64.0.0/22` and `10.64.4.0/22` holds. All are disposable local
 development ranges observed through the fake AWS adapter.
 
+## Local queue, media and secret recovery
+
+```sh
+python3 tests/e2e/run-coordinated-restore.py --restore-auxiliary --out /tmp/auxiliary-recovery.json
+```
+
+This optional extension uses the same real API/NetBox reservation pair. With
+all four writers stopped, create two synthetic files in NetBox's media volume
+and one pending synthetic RQ job (`builtins.sum([20, 22])`). These fixtures are
+not model attachments or customer provisioning jobs. Record the media bytes,
+file permissions/ownership, job identity/arguments and pending membership.
+
+Keep the generated local credentials in a mode-0600 file inside the runner's
+private temporary directory. Simulate losing the runner's credential values
+and load them from that file before creating the recovered services. No
+credential values are written to the evidence report. This demonstrates a
+local custody round trip; production vault, encryption/key rotation, access
+audit and retention need the deployment owner's process.
+
+Stop the queue/cache services gracefully before archiving the queue's complete
+data directory, including its append-only files, and the media volume. Keep
+the private mode-0600 archives together with the paired database dumps at the
+quiesced cutoff. The runner refuses a deliberately corrupted archive checksum
+before extraction; this is its preflight gate, not a production admission
+feature or an authenticated backup manifest.
+
+Extract only into fresh, empty queue/media volumes. The source volumes remain
+untouched. Recreate the cache on a fresh volume rather than restoring it.
+Check the media manifest and pending job against the source while application
+writers remain paused; authenticated queue reads must work and anonymous
+queue access must fail. Resume the NetBox worker only after these checks and
+the paired database/marker preflight pass; keep the platform worker paused
+during the job comparison so its normal fresh reconciliation cannot change
+the snapshot. The recovered job must return 42 and leave the queue, with
+reservation/audit rows and media unchanged. Then resume the platform worker
+and require the normal disjoint third reservation to commit.
+
+This does not qualify interrupted or scheduled jobs, external job side
+effects, model-backed media attachments, production secret custody, real
+identity/cloud access or a production cutover. Remove only the disposable
+project and its private files after the rehearsal. Owner-defined retention,
+holds, deletion authorization and backup expiry remain open.
+
+The [2026-10-14 auxiliary recovery evidence](../../docs/qualification/AUXILIARY_RECOVERY_2026_10_14.json)
+records ten passed checks, a 39,424-byte queue archive, a 4,608-byte media
+archive and a three-entry media manifest. A restored pending job returned 42
+without changing the paired reservation/audit evidence. After the platform
+worker resumed, a third disjoint reservation committed and all five original
+audit events remained unchanged. Runtime image/package identities are bound
+in the report; private archives, credential files and project resources were
+removed.
+
 ## Saved migration pilot evidence
 
 `MigrationPilot` and `PilotSnapshot` are in the NetBox database. Back up the

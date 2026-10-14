@@ -8,6 +8,26 @@ The core Compose stack exercises the API, worker, PostgreSQL ledger, NetBox, fak
 
 The optional identity overlays use their own Compose projects. `tests/e2e/run-ui-entra.sh` drives a mock OIDC issuer through oauth2-proxy; its six tests cover admission by an Entra-shaped group object ID, rejection of an unrelated group and a group-overage-shaped token without a flat `groups` list, and header forgery. `tests/e2e/run-ui-ldap.sh` drives NetBox's LDAP backend against OpenLDAP; its seven tests cover viewer, maintainer, outsider, bad password, write denial and header forgery. On 2026-09-23 both suites passed locally, including an ORM check that neither LDAP user became a superuser. The projects were stopped with their volumes retained.
 
+## Real application recovery (2026-10-14)
+
+`python3 tests/e2e/run-ledger-recovery.py --out /tmp/ledger-recovery.json`
+uses the real release image and PostgreSQL in an isolated development Compose
+project. The [recorded run](qualification/LEDGER_RECOVERY_2026_10_14.json)
+passed seven recovery checks, including API crash, ledger outage, failed and
+repeated migrations, invalid policy rollback, and restore into a second
+database whose identity was checked explicitly. Three seeded allocation
+states, durable holds, permanent keys, one API-generated audit event and one
+retry record remained unchanged. Authorization and an exact metadata retry
+were rechecked after every recovery. The test project and private dump were
+removed.
+
+This is development application behavior with synthetic allocations and a
+deliberately unavailable NetBox adapter endpoint. It does not establish live
+reservation, coordinated NetBox/ledger restore, a different binary's schema
+compatibility, real identity admission or a stage/prod chart rollout. The
+production settings continue to require OIDC discovery and live AWS mode.
+See the [restore runbook](../deploy/runbooks/RESTORE.md).
+
 ## Which simulator to use
 
 | External dependency | Closest useful local exercise | What remains external |

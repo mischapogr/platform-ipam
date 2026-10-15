@@ -108,6 +108,22 @@ This dependency-only result does not run Django/NetBox management or system
 jobs, establish safe retry for external/customer effects, or define production
 admission/custody/retention policy.
 
+## Native NetBox system jobs (2026-10-15)
+
+`python3 tests/e2e/run-coordinated-restore.py --restore-system-jobs --out /tmp/netbox-system-job-recovery.json`
+extends the paired restore through the built-in housekeeping job's database
+and queue records. The [recorded native rehearsal](qualification/NETBOX_SYSTEM_JOB_RECOVERY_2026_10_15.json)
+passed thirteen checks: exact restored schedule evidence, mismatched identity
+refusal before admission, completion through the real `manage.py rqworker`,
+and one daily successor preserved across worker restart. Reservation/audit
+and media evidence stayed unchanged until the platform worker resumed and
+committed a third disjoint reservation. All disposable resources were removed.
+
+The fixture disables outbound checks and job/changelog pruning; persisted
+logs confirm both skips. This supplements the earlier dependency-only RQ
+rehearsal. Interrupted/custom NetBox jobs, customer side effects and production
+retention/identity/custody remain unqualified.
+
 ## Which simulator to use
 
 The [2026-10-14 API reservation baseline](qualification/RESERVATION_SCALE_2026_10_14.md)

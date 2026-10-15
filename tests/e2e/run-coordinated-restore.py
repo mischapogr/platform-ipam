@@ -70,8 +70,9 @@ def run():
     parser.add_argument("--out", type=Path, help="Write compact evidence JSON; never retains database dumps")
     parser.add_argument("--restore-auxiliary", action="store_true", help="Restore queue/media into fresh volumes with private local secret custody")
     parser.add_argument("--restore-model-media", action="store_true", help="Also restore actual NetBox site image attachments and constrained API readers")
+    parser.add_argument("--restore-system-jobs", action="store_true", help="Restore a database-backed built-in NetBox recurring job through its management worker")
     args = parser.parse_args()
-    if args.restore_model_media:
+    if args.restore_model_media or args.restore_system_jobs:
         args.restore_auxiliary = True
     project = "platform-ipam-joint-restore-test-" + secrets.token_hex(5)
     image = "platform-ipam-joint-restore:" + project.rsplit("-", 1)[-1]
@@ -108,6 +109,9 @@ def run():
             services["netbox"] = {"environment": {"DB_NAME": netbox_db}, "healthcheck": {"start_period": "600s"}}
             services["netbox-worker"] = {"environment": {"DB_NAME": netbox_db}}
             services["netbox-bootstrap"] = {"environment": {"DB_NAME": netbox_db}}
+            if args.restore_system_jobs:
+                for name in ("netbox", "netbox-worker", "netbox-bootstrap"):
+                    services[name]["environment"].update(ISOLATED_DEPLOYMENT="true", JOB_RETENTION="0", CHANGELOG_RETENTION="0")
             configuration = {"services": services}
             if args.restore_auxiliary:
                 configuration["volumes"] = {name: {} for name in ("queue-restored", "media-restored", "cache-restored")}
@@ -161,6 +165,13 @@ def run():
                 raise AssertionError("Model media " + action + " failed: " + result["fixture_error"])
             return result
 
+        def system_jobs(action):
+            source = (ROOT / "tests/e2e/netbox-system-jobs.py").read_text()
+            result = netbox_python("ACTION=" + repr(action) + "\n" + source, django=True)
+            if isinstance(result, dict) and "fixture_error" in result:
+                raise AssertionError("System job " + action + " failed: " + result["fixture_error"])
+            return result
+
         def queue_job():
             return netbox_python("import json; from django_rq import get_queue; from rq.job import Job; "
                 f"q=get_queue('default'); job=Job.fetch('{project}-sum',connection=q.connection); "
@@ -181,6 +192,8 @@ def run():
             auxiliary = {"media_manifest": media_manifest(), "queued_job": queue_job(), "archives": {}}
             if args.restore_model_media:
                 auxiliary["model_media"] = {"snapshot": model_media("snapshot"), "source_api": source_media_api}
+            if args.restore_system_jobs:
+                auxiliary["system_jobs"] = {"source": system_jobs("seed")}
             auxiliary["python_packages"] = netbox_python(
                 "import json; from importlib.metadata import version; "
                 "print(json.dumps({name:version(name) for name in ('rq','django-rq','redis')}))")
@@ -234,6 +247,12 @@ def run():
                     raise AssertionError("Restored attachment rows, parents, bytes or permissions differ")
                 auxiliary["model_media"]["negative_checks"] = model_media("negative")
                 checks.append("model_attachment_rows_parents_bytes_permissions_and_preflight_preserved")
+            if args.restore_system_jobs:
+                if system_jobs("snapshot") != auxiliary["system_jobs"]["source"]:
+                    raise AssertionError("Restored database/queue system-job evidence differs")
+                if system_jobs("negative") is not True:
+                    raise AssertionError("Mismatched database/queue system-job preflight did not refuse admission")
+                checks.append("native_system_job_database_queue_pair_preserved_and_mismatch_refused")
             denied = execute("exec", "-T", "netbox-redis", "valkey-cli", "PING")
             if b"NOAUTH" not in denied or b"PONG" in denied:
                 raise AssertionError("Restored queue admitted unauthenticated access")
@@ -411,6 +430,34 @@ def run():
                 if media_manifest() != auxiliary["media_manifest"] or read_pair() != baseline:
                     raise AssertionError("Recovered synthetic queue execution changed media or reservation evidence")
                 checks.append("restored_pending_job_completed_without_changing_reservations_or_media")
+                if args.restore_system_jobs:
+                    source_job = auxiliary["system_jobs"]["source"]["active"][0]
+                    deadline = time.monotonic() + 120
+                    while time.monotonic() < deadline:
+                        native = system_jobs("snapshot")
+                        completed = next(row for row in native["rows"] if row["id"] == source_job["id"])
+                        if completed["status"] == "completed":
+                            break
+                        if completed["status"] in ("failed", "errored"):
+                            raise AssertionError("Recovered built-in NetBox job failed")
+                        time.sleep(2)
+                    else:
+                        raise AssertionError("Recovered built-in NetBox job did not complete")
+                    if len(native["active"]) != 1 or native["active"][0]["job_id"] == source_job["job_id"]:
+                        raise AssertionError("Recurring system job lacks exactly one new occurrence")
+                    following = next(row for row in native["rows"] if row["id"] == native["active"][0]["id"])
+                    if following["interval"] != 1440 or following["status"] != "scheduled":
+                        raise AssertionError("Recurring system-job schedule differs")
+                    if not completed["started"] or not completed["completed"] or completed["error"] or not completed["log_entries"]:
+                        raise AssertionError("Native job lacks completed database/log evidence")
+                    auxiliary["system_jobs"]["completed"] = native
+                    checks.append("native_netbox_worker_completed_restored_job_and_scheduled_one_successor")
+                    execute("stop", "netbox-worker")
+                    execute("up", "-d", "--no-deps", "--wait", "netbox-worker")
+                    if system_jobs("snapshot") != native or read_pair() != baseline or media_manifest() != auxiliary["media_manifest"]:
+                        raise AssertionError("Native worker restart duplicated schedule or changed reservation/media evidence")
+                    auxiliary["system_jobs"]["restart_preserved_snapshot"] = True
+                    checks.append("native_worker_restart_preserved_schedule_and_reservation_media_evidence")
                 execute("up", "-d", "--no-deps", "--wait", "worker")
             else:
                 execute("up", "-d", "--no-deps", "--wait", "worker", "netbox-worker")
@@ -446,6 +493,8 @@ def run():
                        ROOT / "deploy/compose/seed-netbox.py", ROOT / "deploy/compose/fixtures/cloud.json"]
             if args.restore_model_media:
                 sources.append(ROOT / "tests/e2e/netbox-model-media.py")
+            if args.restore_system_jobs:
+                sources.append(ROOT / "tests/e2e/netbox-system-jobs.py")
             result["source_sha256"] = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
             if auxiliary_archives:
                 result["auxiliary_recovery"] = auxiliary
@@ -457,6 +506,11 @@ def run():
                     result["limits"].remove("synthetic_media_files_not_model_attachments")
                     result["limits"].extend(["synthetic_site_image_attachments_only",
                                             "api_metadata_authorization_not_tenant_private_media_download_qualification"])
+                if args.restore_system_jobs:
+                    result["limits"].remove("synthetic_pending_rq_job_only")
+                    result["limits"].remove("no_inflight_job_or_scheduled_job_recovery_qualification")
+                    result["limits"].extend(["built_in_housekeeping_schedule_only", "no_interrupted_netbox_job_recovery_qualification",
+                                            "fixture_isolated_mode_and_disabled_pruning_not_production_retention_policy"])
         finally:
             execute("down", "--volumes", "--remove-orphans")
             # Swapped-out source volumes are no longer referenced by active

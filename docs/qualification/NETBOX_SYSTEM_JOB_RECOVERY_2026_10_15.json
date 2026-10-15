@@ -1,0 +1,490 @@
+{
+  "auxiliary_recovery": {
+    "archives": {
+      "media": {
+        "bytes": 4608,
+        "sha256": "b370a4fe5a62999481ec13af4d1adb97eaa36f93ed916b56aa9b2438c4e1e8a8"
+      },
+      "queue": {
+        "bytes": 41984,
+        "sha256": "6ad5d52f3c4de1af22bab5e4825a3e6306ccb69b9f4be02ad9805c7a97262bd8"
+      }
+    },
+    "completed_job": {
+      "args": [
+        [
+          20,
+          22
+        ]
+      ],
+      "function": "builtins.sum",
+      "id": "platform-ipam-joint-restore-test-dc5cfc7f4d-sum",
+      "queued_occurrences": 0,
+      "result": 42,
+      "status": "finished"
+    },
+    "media_manifest": {
+      ".gitkeep": {
+        "bytes": 0,
+        "gid": 0,
+        "mode": 436,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "uid": 999
+      },
+      "recovery/binary.bin": {
+        "bytes": 256,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880",
+        "uid": 0
+      },
+      "recovery/evidence.txt": {
+        "bytes": 39,
+        "gid": 0,
+        "mode": 420,
+        "sha256": "511b541224d482da5428b7ea3a4d3391d37a0d5b19ce7fcebbe1da9aa3e59e71",
+        "uid": 0
+      }
+    },
+    "python_packages": {
+      "django-rq": "4.2.0",
+      "redis": "8.1.0",
+      "rq": "2.12.0"
+    },
+    "queued_job": {
+      "args": [
+        [
+          20,
+          22
+        ]
+      ],
+      "function": "builtins.sum",
+      "id": "platform-ipam-joint-restore-test-dc5cfc7f4d-sum",
+      "queued_occurrences": 1,
+      "result": null,
+      "status": "queued"
+    },
+    "secret_custody": {
+      "key_names": [
+        "PLATFORM_DB_PASSWORD",
+        "NETBOX_DB_PASSWORD",
+        "NETBOX_REDIS_PASSWORD",
+        "NETBOX_CACHE_PASSWORD",
+        "NETBOX_SECRET_KEY",
+        "NETBOX_API_TOKEN_PEPPER",
+        "NETBOX_SUPERUSER_PASSWORD",
+        "NETBOX_UI_PASSWORD",
+        "IPAM_LOCAL_TOKEN",
+        "IPAM_OPS_TOKEN",
+        "IPAM_OPERATOR_TOKEN",
+        "IPAM_NETBOX_TOKEN",
+        "NETBOX_E2E_VIEWER_TOKEN",
+        "NETBOX_E2E_MAINTAINER_TOKEN"
+      ],
+      "mode": "0600",
+      "roundtrip": true,
+      "values_retained_in_report": false
+    },
+    "system_jobs": {
+      "completed": {
+        "active": [
+          {
+            "function": "core.jobs.SystemHousekeepingJob.handle",
+            "id": 6,
+            "job_id": "393d94ae-e2bb-4fc6-a412-3343d1482ac4",
+            "queued_occurrences": 0,
+            "scheduled_score": 1792122251.0,
+            "status": "scheduled"
+          }
+        ],
+        "rows": [
+          {
+            "completed": "2026-10-15T03:43:23.360Z",
+            "created": "2026-10-15T03:43:23.226Z",
+            "data": null,
+            "error": "",
+            "execution_time": "P0DT00H00M00.075217S",
+            "id": 1,
+            "interval": 1440,
+            "job_id": "0e160a4c-c5d9-4793-9923-e937a692bde6",
+            "log_entries": [
+              {
+                "level": "info",
+                "message": "Reporting census data...",
+                "timestamp": "2026-10-15T03:43:23.351Z"
+              },
+              {
+                "level": "info",
+                "message": "ISOLATED_DEPLOYMENT is enabled; skipping",
+                "timestamp": "2026-10-15T03:43:23.351Z"
+              },
+              {
+                "level": "info",
+                "message": "Clearing expired sessions...",
+                "timestamp": "2026-10-15T03:43:23.351Z"
+              },
+              {
+                "level": "info",
+                "message": "Sessions cleared.",
+                "timestamp": "2026-10-15T03:43:23.356Z"
+              },
+              {
+                "level": "info",
+                "message": "Pruning old changelog entries...",
+                "timestamp": "2026-10-15T03:43:23.356Z"
+              },
+              {
+                "level": "info",
+                "message": "No retention period specified; skipping.",
+                "timestamp": "2026-10-15T03:43:23.359Z"
+              },
+              {
+                "level": "info",
+                "message": "Deleting expired jobs...",
+                "timestamp": "2026-10-15T03:43:23.359Z"
+              },
+              {
+                "level": "info",
+                "message": "No retention period specified; skipping.",
+                "timestamp": "2026-10-15T03:43:23.360Z"
+              },
+              {
+                "level": "info",
+                "message": "Checking for new releases...",
+                "timestamp": "2026-10-15T03:43:23.360Z"
+              },
+              {
+                "level": "info",
+                "message": "ISOLATED_DEPLOYMENT is enabled; skipping",
+                "timestamp": "2026-10-15T03:43:23.360Z"
+              }
+            ],
+            "name": "System Housekeeping",
+            "notifications": "always",
+            "object_id": null,
+            "object_type_id": null,
+            "queue_name": "default",
+            "scheduled": null,
+            "started": "2026-10-15T03:43:23.285Z",
+            "status": "completed",
+            "user_id": null
+          },
+          {
+            "completed": "2026-10-15T03:45:34.878Z",
+            "created": "2026-10-15T03:43:56.490Z",
+            "data": null,
+            "error": "",
+            "execution_time": "P0DT00H00M00.078939S",
+            "id": 5,
+            "interval": 1440,
+            "job_id": "11f786de-55d3-4dd3-9a00-1e9694f78b69",
+            "log_entries": [
+              {
+                "level": "info",
+                "message": "Reporting census data...",
+                "timestamp": "2026-10-15T03:45:34.869Z"
+              },
+              {
+                "level": "info",
+                "message": "ISOLATED_DEPLOYMENT is enabled; skipping",
+                "timestamp": "2026-10-15T03:45:34.869Z"
+              },
+              {
+                "level": "info",
+                "message": "Clearing expired sessions...",
+                "timestamp": "2026-10-15T03:45:34.869Z"
+              },
+              {
+                "level": "info",
+                "message": "Sessions cleared.",
+                "timestamp": "2026-10-15T03:45:34.874Z"
+              },
+              {
+                "level": "info",
+                "message": "Pruning old changelog entries...",
+                "timestamp": "2026-10-15T03:45:34.874Z"
+              },
+              {
+                "level": "info",
+                "message": "No retention period specified; skipping.",
+                "timestamp": "2026-10-15T03:45:34.877Z"
+              },
+              {
+                "level": "info",
+                "message": "Deleting expired jobs...",
+                "timestamp": "2026-10-15T03:45:34.877Z"
+              },
+              {
+                "level": "info",
+                "message": "No retention period specified; skipping.",
+                "timestamp": "2026-10-15T03:45:34.878Z"
+              },
+              {
+                "level": "info",
+                "message": "Checking for new releases...",
+                "timestamp": "2026-10-15T03:45:34.878Z"
+              },
+              {
+                "level": "info",
+                "message": "ISOLATED_DEPLOYMENT is enabled; skipping",
+                "timestamp": "2026-10-15T03:45:34.878Z"
+              }
+            ],
+            "name": "System Housekeeping",
+            "notifications": "never",
+            "object_id": null,
+            "object_type_id": null,
+            "queue_name": "default",
+            "scheduled": "2026-10-15T03:44:11.484Z",
+            "started": "2026-10-15T03:45:34.799Z",
+            "status": "completed",
+            "user_id": null
+          },
+          {
+            "completed": null,
+            "created": "2026-10-15T03:45:34.894Z",
+            "data": null,
+            "error": "",
+            "execution_time": null,
+            "id": 6,
+            "interval": 1440,
+            "job_id": "393d94ae-e2bb-4fc6-a412-3343d1482ac4",
+            "log_entries": [],
+            "name": "System Housekeeping",
+            "notifications": "never",
+            "object_id": null,
+            "object_type_id": null,
+            "queue_name": "default",
+            "scheduled": "2026-10-16T03:44:11.484Z",
+            "started": null,
+            "status": "scheduled",
+            "user_id": null
+          }
+        ],
+        "settings": {
+          "changelog_retention": 0,
+          "isolated_deployment": true,
+          "job_retention": 0
+        }
+      },
+      "restart_preserved_snapshot": true,
+      "source": {
+        "active": [
+          {
+            "function": "core.jobs.SystemHousekeepingJob.handle",
+            "id": 5,
+            "job_id": "11f786de-55d3-4dd3-9a00-1e9694f78b69",
+            "queued_occurrences": 0,
+            "scheduled_score": 1792035851.0,
+            "status": "scheduled"
+          }
+        ],
+        "rows": [
+          {
+            "completed": "2026-10-15T03:43:23.360Z",
+            "created": "2026-10-15T03:43:23.226Z",
+            "data": null,
+            "error": "",
+            "execution_time": "P0DT00H00M00.075217S",
+            "id": 1,
+            "interval": 1440,
+            "job_id": "0e160a4c-c5d9-4793-9923-e937a692bde6",
+            "log_entries": [
+              {
+                "level": "info",
+                "message": "Reporting census data...",
+                "timestamp": "2026-10-15T03:43:23.351Z"
+              },
+              {
+                "level": "info",
+                "message": "ISOLATED_DEPLOYMENT is enabled; skipping",
+                "timestamp": "2026-10-15T03:43:23.351Z"
+              },
+              {
+                "level": "info",
+                "message": "Clearing expired sessions...",
+                "timestamp": "2026-10-15T03:43:23.351Z"
+              },
+              {
+                "level": "info",
+                "message": "Sessions cleared.",
+                "timestamp": "2026-10-15T03:43:23.356Z"
+              },
+              {
+                "level": "info",
+                "message": "Pruning old changelog entries...",
+                "timestamp": "2026-10-15T03:43:23.356Z"
+              },
+              {
+                "level": "info",
+                "message": "No retention period specified; skipping.",
+                "timestamp": "2026-10-15T03:43:23.359Z"
+              },
+              {
+                "level": "info",
+                "message": "Deleting expired jobs...",
+                "timestamp": "2026-10-15T03:43:23.359Z"
+              },
+              {
+                "level": "info",
+                "message": "No retention period specified; skipping.",
+                "timestamp": "2026-10-15T03:43:23.360Z"
+              },
+              {
+                "level": "info",
+                "message": "Checking for new releases...",
+                "timestamp": "2026-10-15T03:43:23.360Z"
+              },
+              {
+                "level": "info",
+                "message": "ISOLATED_DEPLOYMENT is enabled; skipping",
+                "timestamp": "2026-10-15T03:43:23.360Z"
+              }
+            ],
+            "name": "System Housekeeping",
+            "notifications": "always",
+            "object_id": null,
+            "object_type_id": null,
+            "queue_name": "default",
+            "scheduled": null,
+            "started": "2026-10-15T03:43:23.285Z",
+            "status": "completed",
+            "user_id": null
+          },
+          {
+            "completed": null,
+            "created": "2026-10-15T03:43:56.490Z",
+            "data": null,
+            "error": "",
+            "execution_time": null,
+            "id": 5,
+            "interval": 1440,
+            "job_id": "11f786de-55d3-4dd3-9a00-1e9694f78b69",
+            "log_entries": [],
+            "name": "System Housekeeping",
+            "notifications": "never",
+            "object_id": null,
+            "object_type_id": null,
+            "queue_name": "default",
+            "scheduled": "2026-10-15T03:44:11.484Z",
+            "started": null,
+            "status": "scheduled",
+            "user_id": null
+          }
+        ],
+        "settings": {
+          "changelog_retention": 0,
+          "isolated_deployment": true,
+          "job_retention": 0
+        }
+      }
+    }
+  },
+  "backups": {
+    "ledger": {
+      "bytes": 15353,
+      "restored": "joint_restored",
+      "sha256": "78864e908ce4b5c34b1237b040967dfc46a1647601c73e34632847d5fc631c54",
+      "source": "joint"
+    },
+    "netbox": {
+      "bytes": 1256079,
+      "restored": "netbox_joint_restored",
+      "sha256": "7c54d52befbfa21b501b4daa8dced996d55530b0d3fd47a07252c580b934a60f",
+      "source": "netbox"
+    }
+  },
+  "checks": [
+    "real_api_reservations_netbox_commit_and_audit",
+    "corrupted_auxiliary_archive_refused_by_runner",
+    "quiesced_queue_media_and_private_secret_custody",
+    "all_writers_quiesced_and_pair_verified",
+    "both_restored_databases_match_quiesced_pair",
+    "inventory_marker_mismatch_refused_before_admission",
+    "native_system_job_database_queue_pair_preserved_and_mismatch_refused",
+    "fresh_queue_media_volumes_match_and_queue_authentication_preserved",
+    "restored_reservation_metadata_retry_and_authorization",
+    "restored_pending_job_completed_without_changing_reservations_or_media",
+    "native_netbox_worker_completed_restored_job_and_scheduled_one_successor",
+    "native_worker_restart_preserved_schedule_and_reservation_media_evidence",
+    "resumed_writers_and_disjoint_new_reservation"
+  ],
+  "cleanup": "isolated_project_removed",
+  "completed_at": "2026-10-15T03:46:16.414039+00:00",
+  "cutoff": "2026-10-15T03:44:00.687700+00:00",
+  "image_id": "sha256:a016b6bf812be2411e43227421cd13b5d1e28ed90f839f0c1dd0f9859d188016",
+  "limits": [
+    "development_compose_only",
+    "fake_aws_observations",
+    "no_real_oidc",
+    "no_production_cutover",
+    "synthetic_media_files_not_model_attachments",
+    "cache_recreated_not_restored",
+    "local_private_secret_file_not_production_custody",
+    "built_in_housekeeping_schedule_only",
+    "no_interrupted_netbox_job_recovery_qualification",
+    "fixture_isolated_mode_and_disabled_pruning_not_production_retention_policy"
+  ],
+  "project": "platform-ipam-joint-restore-test-dc5cfc7f4d",
+  "resumed_allocations": [
+    {
+      "cidr": "10.64.0.0/22",
+      "id": "alloc_c61637382ab7f14b51031d1df6e83c04",
+      "key": "joint/first"
+    },
+    {
+      "cidr": "10.64.4.0/22",
+      "id": "alloc_09845dca06bf05b641f11c6eb90b970f",
+      "key": "joint/second"
+    },
+    {
+      "cidr": "10.64.8.0/22",
+      "id": "alloc_f52ce34610eb6aa2b333bb8c4284c4c0",
+      "key": "joint/after-restore"
+    }
+  ],
+  "resumed_audit_events": 7,
+  "retained_audit_events": 5,
+  "runtime_image_ids": {
+    "netbox": "sha256:698ebc1d1ced7d87acb677f468b264ae63a50e585c71579b5ec45a192c72d77d",
+    "netbox-redis": "sha256:3441308844bf0ce1382eadcde891fbb3f97db691b30d2e0402af3c99acc603ea",
+    "netbox-redis-cache": "sha256:3441308844bf0ce1382eadcde891fbb3f97db691b30d2e0402af3c99acc603ea"
+  },
+  "source_ledger_rows": {
+    "allocation_keys": 2,
+    "allocations": 2,
+    "audit_events": 5,
+    "coverage": 1,
+    "findings": 0,
+    "holds": 2,
+    "idempotency_requests": 3,
+    "observations": 1,
+    "operation_barriers": 0,
+    "operations": 2,
+    "platform_ledger_schema": 1
+  },
+  "source_pair_sha256": "8a5aacab7c07643be06f7d704d1fe8895ea067aeadf59aa4bad2f7ed99a923a2",
+  "source_prefix_rows": 3,
+  "source_sha256": {
+    "Dockerfile": "97f03a7882c4b7b890437fd934c3879e867f1c31c52ed61e241fac555fb9ca21",
+    "cmd/platform-ipam/main.go": "ee73a970c23e9db1485b5c7379be76f92575496bfb1d998215369e321f4d09e9",
+    "deploy/compose/compose.netbox.yaml": "8e04633c464cc6356955b17896da314b08925750b594414ee983f1b9b408e3d4",
+    "deploy/compose/compose.yaml": "e5d203df8b119e49bd46f4fe756554a789c1de56c56e6ed05deb9d6617ad3d2e",
+    "deploy/compose/fixtures/cloud.json": "ca4b798c7dd42f0e373a0e5807748eccb80328e7c031099fee464bb58c3649e4",
+    "deploy/compose/seed-netbox.py": "836eed8b6aaf5bb8cf683d8146ae41530475fe299647e65e064b5f4091366b1f",
+    "go.mod": "e577f4ff291769e1e1d1fd7a2373c4b5774198ae7fe3fc3f92edd734f9eb4bbc",
+    "go.sum": "44dec3c57dfe27ec8656966cdd60bca2fa1341d99f4f7a233cb1f0522359112c",
+    "internal/service/service.go": "cdec9f6ba889c56238ce7ed951fdc8d2e13436166eeca337ef53904ef59650c6",
+    "internal/storage/postgres.go": "d0e9a3b2d6ab8cb3dc0bf9448576e790d8f0d160a533f6180697fd5c3dac7834",
+    "tests/e2e/netbox-system-jobs.py": "4959f85a4825e4f91aae0b48d72d72b1d83571d4448b0bef1f909a1c7e09e44e",
+    "tests/e2e/run-coordinated-restore.py": "1eafee5e20e2b37f1d2477bb08515374b4fbd325a8a5b9e9b2615adb652ce8c0"
+  },
+  "status": "PASSED",
+  "stopped_writers": [
+    "api",
+    "worker",
+    "netbox-worker",
+    "netbox"
+  ],
+  "unreferenced_source_volumes_removed": 3
+}

@@ -35,6 +35,13 @@ files/wrong parents, and repeats real API scoped-reader and denied-write
 probes. Credentials remain private; raw media download isolation, production
 identity and customer attachment acceptance remain unqualified.
 
+Use `--restore-system-jobs` on the coordinated runner for NetBox's own
+database-backed recurring housekeeping job. It checks restored database/RQ
+identity, mismatch refusal before admission, completion through the real
+`manage.py rqworker`, and a single successor preserved across worker restart.
+The disposable overlay disables outbound checks and retention pruning;
+interrupted management jobs and production policy remain unqualified.
+
 For scheduled and interrupted synthetic RQ jobs, run
 `python3 tests/e2e/run-queue-recovery.py --out /tmp/queue-recovery.json`.
 This opt-in dependency-only rehearsal cold-restores queue/receipt volumes,

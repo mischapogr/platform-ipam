@@ -182,6 +182,52 @@ recovered pending job returned 42, all five original reservation audit events
 remained unchanged, and a third disjoint reservation committed. The runner
 removed its project, private backups and three unreferenced source volumes.
 
+## Native NetBox recurring system-job recovery
+
+```sh
+python3 tests/e2e/run-coordinated-restore.py --restore-system-jobs --out /tmp/netbox-system-job-recovery.json
+```
+
+This option includes auxiliary recovery and the paired NetBox/ledger restore.
+It uses the pinned NetBox's built-in `SystemHousekeepingJob` and unchanged
+`manage.py rqworker` command. Its disposable overlay enables isolated mode
+and disables job/changelog pruning for every NetBox process. These settings
+keep outbound release/census checks and retention deletion out of the
+rehearsal; they are not production policy defaults.
+
+With writers stopped, replace only the disposable project's pending
+housekeeping occurrence with a near-term daily schedule. Repeating
+`enqueue_once` must return the same identity. Capture all housekeeping
+database rows and the active RQ job's handler, database identity, status and
+scheduled registry score alongside the other quiesced backups.
+
+After restoring both databases and fresh queue/media volumes, require exact
+system-job evidence equality. Deliberately mismatch its database UUID and
+require runner preflight to refuse the missing queue identity; restore the
+original UUID and confirm the snapshot is unchanged before starting writers.
+This is a runner preflight, not a new production startup guard.
+
+Start the actual NetBox management worker while the platform worker remains
+paused. The restored occurrence must finish with database start/completion
+timestamps and log evidence, and create exactly one new daily occurrence.
+Restart the NetBox worker: its normal system-job registration must preserve
+the completed history and that single successor. Reservation/audit rows and
+media must remain unchanged; only then resume the platform worker and require
+the usual third disjoint reservation.
+
+This qualifies the local scheduled housekeeping lifecycle with pruning and
+external checks disabled. Interrupted NetBox management jobs, customer job
+effects, production retention/identity/custody and cutover remain unqualified.
+
+The [2026-10-15 native system-job evidence](../../docs/qualification/NETBOX_SYSTEM_JOB_RECOVERY_2026_10_15.json)
+records thirteen passed checks. The restored housekeeping job completed with
+persisted timestamps/logs; those logs confirm both outbound checks and both
+retention-pruning steps were skipped. Its single scheduled daily successor
+and completed history survived a native worker restart. Five original
+reservation audit events remained unchanged, and a third disjoint reservation
+committed. The private dumps/archives and all disposable project resources,
+including three unreferenced source volumes, were removed.
+
 ## Local scheduled and interrupted queue jobs
 
 ```sh

@@ -22,6 +22,8 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [AWS topology inventory](AWS_TOPOLOGY_INVENTORY.md) | Optional read-only route and TGW collection with explicit per-cell gaps; no reachability verdict |
 | [Pilot address readiness](ADDRESS_READINESS.md) | Four input artifacts, explicit address state, protected ranges, advisory replacement candidates and single pool authority |
 | [First customer pilot gates](PILOT_GATES.md) | Four explicit pass/fail gates for inputs, live coverage, planning, and reservation by the sole authority |
+| [AWS IPAM handoff](AWS_IPAM_HANDOFF.md) | Allocating reviewed pilot moves from an AWS-IPAM-owned pool with a stable identity, then revalidating from a fresh read; fake-CLI tested only |
+| [Live AWS evaluation](LIVE_AWS_EVALUATION.md) | Sandbox runbook for IAM, live discovery at scale and the AWS IPAM handoff; not yet run |
 | [Pilot reservation verification](RESERVATION_VERIFICATION.md) | Read-only authenticated Platform-IPAM allocation check and its UI evidence handoff |
 | [NetBox AWS plugin](NETBOX_AWS_PLUGIN.md) | Plugin evaluation and optional Compose image for AWS accounts, VPCs and subnets |
 | [Onboarding import](ONBOARDING_IMPORT.md) | Importing existing accounts, networks and ranges from CSV, Excel or a pasted table |
@@ -49,6 +51,7 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [ADR 0021](decisions/0021-SEPARATE_AWS_TOPOLOGY_EVIDENCE.md) | Opt-in read-only AWS topology evidence stays separate from intended connectivity assessment |
 | [ADR 0022](decisions/0022-PILOT_ADDRESS_READINESS_AND_POOL_AUTHORITY.md) | Address readiness and advisory candidates stay separate from network readiness and allocation authority |
 | [ADR 0023](decisions/0023-IMMUTABLE_PILOT_SNAPSHOTS.md) | Opt-in immutable derived pilot snapshots; uploaded source files remain request-scoped |
+| [ADR 0025](decisions/0025-AWS_IPAM_AUTHORITY_HANDOFF.md) | AWS IPAM handoff: identity-tagged, idempotent allocation, adopt-on-retry, no automatic release, verification from a fresh read |
 | [ADR 0024](decisions/0024-BROWSER_RESERVATION_IDENTITY_AND_REVIEW_AUTHORITY.md) | Proposed browser reservation identity and review authority for PILOT-3; owner decision pending |
 | [ADR 0006](decisions/0006-OPERATOR_UI_AUTHENTICATION.md) | One proxy in front of the NetBox UI, with basic, Entra ID and LDAP modes |
 | [ADR 0007](decisions/0007-ONBOARDING_IMPORT_AS_UNMANAGED_OCCUPANCY.md) | Existing networks are imported as unmanaged occupancy, not as allocations |

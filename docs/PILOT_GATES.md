@@ -99,13 +99,16 @@ through a current authenticated read. Its first version requires an exact
 match to the reviewed advisory CIDR; a different safe CIDR needs explicit
 owner review before it can count as verified.
 
-For an `aws-ipam`-owned pool, this gate is **currently open**. The offline
-planner does not read AWS IPAM state or reserve from AWS IPAM, and the local
-allocator must not allocate in that pool. Implement and validate a dedicated
-authority handoff with stable request identity, retries, response
-revalidation, failure recovery and NetBox projection before claiming a pass.
-Until then, the report may recommend a pool and size but cannot claim that an
-AWS IPAM prefix is available or reserved.
+For an `aws-ipam`-owned pool, use the [AWS IPAM handoff](AWS_IPAM_HANDOFF.md)
+([ADR 0025](decisions/0025-AWS_IPAM_AUTHORITY_HANDOFF.md)). It allocates
+with a stable request identity and client token, retries safely, adopts
+rather than duplicates after a failure, and never releases automatically.
+`verify-reservations.py --aws-ipam` then revalidates the returned CIDR from a
+fresh AWS read. The local allocator must still not allocate in that pool.
+The handoff is tested against a fake AWS CLI only. **Do not claim a pass
+until the [live AWS evaluation](LIVE_AWS_EVALUATION.md) has run.** NetBox
+shows the verified allocation through the uploaded verification report; it
+does not hold an IPAM record for it.
 
 ## Pilot evidence summary
 
@@ -123,9 +126,9 @@ Publish one dated summary with counts and links to the retained evidence:
 | Network readiness | `NOT_ASSESSED` |
 
 This is a pilot acceptance artifact, not evidence that applications migrated
-or that private traffic works. The next engineering priority is the authority
-handoff for customers whose pools are owned by AWS IPAM, followed by live
-discovery and timing at representative account scale. TGW/security/traffic
+or that private traffic works. The next priority is the
+[live AWS evaluation](LIVE_AWS_EVALUATION.md): live discovery and timing at
+representative account scale, and the AWS IPAM handoff against a real pool. TGW/security/traffic
 correlation is outside this pilot.
 
 The supported pilot deployment also needs an operational qualification with

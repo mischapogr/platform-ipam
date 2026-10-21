@@ -54,7 +54,9 @@ Use `"authority":"aws-ipam"` for a pool owned by AWS IPAM. The planner
 then identifies the pool and required prefix size but does **not** choose a
 local CIDR. Provisioning must request one from the authoritative AWS IPAM
 pool. Do not run Platform-IPAM's allocator over the same pool.
-This local version trusts the operator-approved pool file; it does not read
+Add `"aws_ipam_pool_id":"ipam-pool-..."` to name the AWS pool; the
+[AWS IPAM handoff](AWS_IPAM_HANDOFF.md) requires it, and the planner refuses
+it on a `platform-ipam` pool. The planner itself trusts the operator-approved pool file; it does not read
 AWS IPAM pool inventory, available capacity or allocations. Verify the pool
 against AWS IPAM before a customer pilot uses that authority mode.
 

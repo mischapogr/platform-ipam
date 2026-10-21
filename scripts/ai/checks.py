@@ -173,6 +173,7 @@ def aws(report, args):
     report.command("test_address_plan", [sys.executable, str(directory / "test_address_plan.py")], cwd=ROOT)
     report.command("test_pilot_evidence", [sys.executable, str(directory / "test_pilot_evidence.py")], cwd=ROOT)
     report.command("test_verify_reservations", [sys.executable, str(directory / "test_verify_reservations.py")], cwd=ROOT)
+    report.command("test_aws_ipam_handoff", [sys.executable, str(directory / "test_aws_ipam_handoff.py")], cwd=ROOT)
     report.command("test_migration_workspace_fixtures",
                    [sys.executable, str(directory / "test_migration_workspace_fixtures.py")], cwd=ROOT)
     

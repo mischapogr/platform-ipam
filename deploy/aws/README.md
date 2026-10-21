@@ -117,6 +117,22 @@ instance. Deleting stack instances first (`delete-stack-instances`) before
 deleting the StackSet itself follows the same lifecycle as any other
 CloudFormation StackSet.
 
+## AWS IPAM handoff role
+
+`platform-ipam-ipam-handoff-role.yaml` is deployed as a plain stack in the
+account that owns the reviewed AWS IPAM pools, not in member accounts. It
+always grants `ec2:GetIpamPoolAllocations` on the pool ARNs listed in
+`IpamPoolArns` (`arn:aws:ec2::<account>:ipam-pool/<id>`; IPAM pool ARNs have
+no region), restricted by `ec2:Region` to `AllowedRegions`. With
+`EnableAllocation=true` it also grants `ec2:AllocateIpamPoolCidr` on those
+pools and on new `ipam-pool-allocation` resources. This is the only
+allocation-capable AWS permission this repository proposes. It never grants
+`ReleaseIpamPoolAllocation`. Deploy one verification role with
+`EnableAllocation=false` and one handoff role with `true`; see
+[AWS IPAM handoff](../../docs/AWS_IPAM_HANDOFF.md). The resource types and
+ARN formats were checked against the AWS service reference on 2026-10-21,
+and `cfn-lint` 1.20.0 passes.
+
 ## What was not verified
 
 Nothing in this directory was deployed or validated against a live AWS

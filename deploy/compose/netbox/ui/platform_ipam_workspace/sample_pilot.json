@@ -176,6 +176,7 @@
   ],
   "replacements": {
     "approved": 1,
+    "aws_ipam_requests": 0,
     "moves": [
       {
         "allocation_key": "vpc-a-new",

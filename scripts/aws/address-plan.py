@@ -12,6 +12,7 @@ import hashlib
 import ipaddress
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -93,6 +94,10 @@ def read_plan(path):
         authority = row.get("authority")
         if authority not in ("platform-ipam", "aws-ipam"):
             raise ValueError(f"pool {row['id']}: authority must be platform-ipam or aws-ipam")
+        aws_pool_id = row.get("aws_ipam_pool_id")
+        if aws_pool_id is not None and (authority != "aws-ipam" or not isinstance(aws_pool_id, str) or
+                                        not re.fullmatch(r"ipam-pool-[0-9a-f]{8,32}", aws_pool_id)):
+            raise ValueError(f"pool {row['id']}: aws_ipam_pool_id must be an ipam-pool ID on an aws-ipam pool")
         network = ipv4_prefix(row["cidr"])
         lengths = row.get("allowed_prefix_lengths")
         if not isinstance(lengths, list) or not lengths or any(type(n) is not int or n < network.prefixlen or n > 32 for n in lengths):

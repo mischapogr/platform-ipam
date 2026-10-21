@@ -127,6 +127,18 @@ class AddressPlanTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "one authority per range"):
             self.run_plan(self.assessment())
 
+    def test_aws_ipam_pool_id_belongs_only_to_aws_ipam_pools(self):
+        pool = {"id": "a", "cidr": "10.64.0.0/16", "authority": "platform-ipam",
+                "region": "eu-central-1", "allowed_prefix_lengths": [22],
+                "aws_ipam_pool_id": "ipam-pool-0123456789abcdef0"}
+        self.approved.write_text(json.dumps({"version": 1, "pools": [pool]}), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "aws_ipam_pool_id"):
+            self.run_plan(self.assessment())
+        pool["authority"] = "aws-ipam"
+        self.approved.write_text(json.dumps({"version": 1, "pools": [pool]}), encoding="utf-8")
+        self.assertTrue(all(item["status"] == "REQUEST_FROM_AWS_IPAM"
+                            for item in self.run_plan(self.assessment())["proposals"]))
+
     def test_changed_protected_input_is_refused(self):
         old_assessment = self.assessment()
         self.protected.write_text("[]\n", encoding="utf-8")

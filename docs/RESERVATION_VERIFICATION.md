@@ -44,8 +44,10 @@ moves verified, `3` means a report with missing or mismatched allocations,
 and `4` means no trustworthy report (including stale inventory or an
 unreadable authority response).
 
-The verifier supports **Platform-IPAM-owned** pools only. An AWS-IPAM-owned
-pool remains `UNKNOWN` until an AWS IPAM authority handoff exists. A
+With `--aws-ipam` (and optionally without `--url`), the verifier also reads
+AWS IPAM pool allocations for moves in AWS-IPAM-owned pools; see the
+[AWS IPAM handoff](AWS_IPAM_HANDOFF.md). A move whose authority was not read
+stays `UNKNOWN`. A
 successful check is evidence of durable Platform-IPAM holds at the read
 instant; it does not mean the old VPC CIDRs have moved or that routes,
 security controls, DNS or traffic work. The API's paginated list is not a

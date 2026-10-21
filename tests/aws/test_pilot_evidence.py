@@ -213,6 +213,23 @@ class PilotEvidenceTest(unittest.TestCase):
             pilot.attach_verification(report, verification,
                                       datetime(2026, 9, 23, 12, 2, tzinfo=timezone.utc))
 
+    def test_aws_ipam_request_is_a_reviewed_option_closed_only_by_its_authority(self):
+        proposal = self.address["proposals"][0]
+        proposal.update(status="REQUEST_FROM_AWS_IPAM", candidate_cidr=None, authority="aws-ipam")
+        report = self.result()
+        self.assertEqual(report["pilot_gates"]["planning"], "PASS")
+        self.assertEqual(report["replacements"]["aws_ipam_requests"], 1)
+        self.assertEqual(report["replacements"]["proposed_cidrs"], 0)
+        self.assertNotIn("CIDR_CANDIDATES_INCOMPLETE", [item["code"] for item in report["blockers"]])
+        self.assertEqual(report["pilot_gates"]["allocation"], "UNKNOWN")
+        verification = dict(self.verification(report), authority="aws-ipam")
+        attached = pilot.attach_verification(report, verification,
+                                             datetime(2026, 9, 23, 12, 2, tzinfo=timezone.utc))
+        self.assertEqual(attached["pilot_gates"]["allocation"], "PASS")
+        verification["authority"] = "unreviewed-tool"
+        with self.assertRaisesRegex(ValueError, "unsupported authority"):
+            pilot.attach_verification(self.result(), verification)
+
     def test_unreviewed_plan_cannot_import_a_green_verification(self):
         self.progress["moves"][0]["approval"] = None
         report = self.result()

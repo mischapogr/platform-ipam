@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Check reviewed pilot moves against a current authenticated Platform-IPAM read.
+"""Check reviewed pilot moves against a current read of each pool's sole authority.
 
-This command is read-only. It never treats the migration-progress evidence
-export as a reservation receipt because that export deliberately omits CIDR
-and pool ID. AWS IPAM pools remain unverified by this command.
+This command is read-only. It reads Platform-IPAM's authenticated allocation
+list and, with --aws-ipam, AWS IPAM pool allocations. It never treats the
+migration-progress evidence export as a reservation receipt because that
+export deliberately omits CIDR and pool ID.
 """
 
 import argparse
@@ -18,6 +19,9 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import aws_ipam  # noqa: E402
 
 
 def digest(path):
@@ -121,7 +125,32 @@ def authority_allocations(origin, token):
     return rows
 
 
-def verify(pilot, approved, protected, observed_cidrs, allocations, read_at, now, maximum_age_seconds):
+def aws_ipam_allocations(approved, moves, runner=None):
+    """Identity-tagged allocations from every AWS IPAM pool a selected move names."""
+    pools = {row["id"]: row for row in approved["pools"]}
+    indexed = {}
+    read = set()
+    for move in moves:
+        pool = pools.get(move.get("pool_id"))
+        if move.get("authority") != "aws-ipam" or not pool or pool.get("authority") != "aws-ipam":
+            continue
+        aws_pool_id = pool.get("aws_ipam_pool_id")
+        if not isinstance(aws_pool_id, str) or not aws_ipam.POOL_ID.match(aws_pool_id):
+            raise ValueError(f"pool {pool['id']}: aws_ipam_pool_id is required for AWS IPAM verification")
+        if aws_pool_id in read:
+            continue
+        read.add(aws_pool_id)
+        options = {"runner": runner} if runner else {}
+        for key, rows in aws_ipam.owned_rows(
+                aws_ipam.pool_allocations(aws_pool_id, pool["region"], **options), aws_pool_id).items():
+            for row in rows:
+                row["pool_id"] = pool["id"]
+            indexed.setdefault(key, []).extend(rows)
+    return indexed
+
+
+def verify(pilot, approved, protected, observed_cidrs, allocations, read_at, now, maximum_age_seconds,
+           aws_allocations=None):
     if pilot.get("version") != 1 or approved.get("version") != 1:
         raise ValueError("unsupported pilot or approved plan version")
     if not pilot["discovery"]["complete"] or pilot["pilot_gates"]["planning"] != "PASS":
@@ -141,8 +170,10 @@ def verify(pilot, approved, protected, observed_cidrs, allocations, read_at, now
     protected_ranges = [ipv4(row["cidr"]) for row in protected]
     occupied = [ipv4(value) for value in observed_cidrs]
     selected = pilot["replacements"]["moves"]
+    if allocations is None and aws_allocations is None:
+        raise ValueError("at least one authority read is required")
     indexed = {}
-    for row in allocations:
+    for row in allocations or []:
         if not isinstance(row, dict) or not row.get("tenant_id") or not row.get("allocation_key"):
             raise ValueError("authority read is not an operator-scoped allocation list")
         key = (row["tenant_id"], row["allocation_key"])
@@ -154,16 +185,39 @@ def verify(pilot, approved, protected, observed_cidrs, allocations, read_at, now
         target = move.get("target") or {}
         key = (target.get("tenant_id"), target.get("allocation_key"))
         pool = pools.get(move.get("pool_id"))
-        row = indexed.get(key)
+        authority = move.get("authority")
+        owned = authority in ("platform-ipam", "aws-ipam") and pool and pool.get("authority") == authority
         reasons = []
         returned = None
+        row = None
         if not move.get("approved"):
             reasons.append("move approval is missing")
-        if move.get("authority") != "platform-ipam" or not pool or pool.get("authority") != "platform-ipam":
-            reasons.append("the selected pool is not Platform-IPAM-owned")
-        if not row:
-            reasons.append("no committed allocation was returned by the authority")
+        if not owned:
+            reasons.append("the selected pool does not name the move's authority")
+        elif authority == "aws-ipam" and aws_allocations is None:
+            reasons.append("AWS IPAM was not read; rerun with --aws-ipam")
+        elif authority == "platform-ipam" and allocations is None:
+            reasons.append("Platform-IPAM was not read; rerun with --url")
+        elif authority == "aws-ipam":
+            held = aws_allocations.get(key, [])
+            if len(held) > 1:
+                reasons.append("AWS IPAM holds more than one allocation for this request identity")
+            if held:
+                row = held[0]
+                if row.get("aws_ipam_pool_id") != pool.get("aws_ipam_pool_id"):
+                    reasons.append("allocation lies in a different AWS IPAM pool")
+                if row.get("resource_type") != "custom":
+                    reasons.append("allocation is not a custom AWS IPAM reservation")
         else:
+            row = indexed.get(key)
+        if owned and not row and not reasons:
+            reasons.append("no committed allocation was returned by the authority")
+        elif row and authority == "aws-ipam":
+            try:
+                returned = ipv4(row["cidr"])
+            except (KeyError, ValueError, TypeError):
+                reasons.append("allocation CIDR is absent or invalid")
+        elif row:
             for field in ("allocation_key", "scope", "environment", "region", "account_id", "prefix_length"):
                 if row.get(field) != target.get(field):
                     reasons.append(f"allocation {field} differs from the reviewed target")
@@ -182,26 +236,27 @@ def verify(pilot, approved, protected, observed_cidrs, allocations, read_at, now
                     reasons.append("allocation CIDR size differs from the reviewed target")
                 if move.get("proposed_cidr") != str(returned):
                     reasons.append("allocator returned a different CIDR; owner review is required")
-                if pool:
-                    pool_range = ipv4(pool["cidr"])
-                    if not returned.subnet_of(pool_range):
-                        reasons.append("allocation CIDR lies outside the approved pool")
-                    if target.get("prefix_length") not in pool.get("allowed_prefix_lengths", []):
-                        reasons.append("prefix length is not approved for the pool")
-                    if pool.get("region") != target.get("region"):
-                        reasons.append("pool region differs from the reviewed target")
-                    eligible = pool.get("eligible_accounts") or []
-                    if eligible and target.get("account_id") not in eligible:
-                        reasons.append("account is not eligible for the approved pool")
-                    if any(returned.overlaps(ipv4(cidr)) for cidr in pool.get("excluded_cidrs", [])):
-                        reasons.append("allocation CIDR overlaps a pool exclusion")
-                if any(returned.overlaps(item) for item in protected_ranges):
-                    reasons.append("allocation CIDR overlaps a protected range")
-                if any(returned.overlaps(item) for item in occupied):
-                    reasons.append("allocation CIDR overlaps observed inventory")
-        status = ("VERIFIED" if not reasons else "FAIL" if row and
-                  move.get("authority") == "platform-ipam" and pool and
-                  pool.get("authority") == "platform-ipam" else "UNKNOWN")
+        if returned:
+            if returned.prefixlen != target.get("prefix_length") and authority == "aws-ipam":
+                reasons.append("allocation CIDR size differs from the reviewed target")
+            if pool:
+                pool_range = ipv4(pool["cidr"])
+                if not returned.subnet_of(pool_range):
+                    reasons.append("allocation CIDR lies outside the approved pool")
+                if target.get("prefix_length") not in pool.get("allowed_prefix_lengths", []):
+                    reasons.append("prefix length is not approved for the pool")
+                if pool.get("region") != target.get("region"):
+                    reasons.append("pool region differs from the reviewed target")
+                eligible = pool.get("eligible_accounts") or []
+                if eligible and target.get("account_id") not in eligible:
+                    reasons.append("account is not eligible for the approved pool")
+                if any(returned.overlaps(ipv4(cidr)) for cidr in pool.get("excluded_cidrs", [])):
+                    reasons.append("allocation CIDR overlaps a pool exclusion")
+            if any(returned.overlaps(item) for item in protected_ranges):
+                reasons.append("allocation CIDR overlaps a protected range")
+            if any(returned.overlaps(item) for item in occupied):
+                reasons.append("allocation CIDR overlaps observed inventory")
+        status = "VERIFIED" if not reasons else "FAIL" if row and owned else "UNKNOWN"
         results.append({"subject": move["subject"], "allocation_key": target.get("allocation_key"),
                         "authority": move.get("authority"), "pool_id": move.get("pool_id"),
                         "proposal_cidr": move.get("proposed_cidr"),
@@ -219,7 +274,10 @@ def verify(pilot, approved, protected, observed_cidrs, allocations, read_at, now
     verified = sum(item["status"] == "VERIFIED" for item in results)
     gate = ("PASS" if selected and verified == len(selected) else
             "FAIL" if any(item["status"] == "FAIL" for item in results) else "UNKNOWN")
-    return {"version": 1, "authority": "platform-ipam", "read_at": read_at,
+    authorities = [name for name, value in (("platform-ipam", allocations), ("aws-ipam", aws_allocations))
+                   if value is not None]
+    return {"version": 1, "authority": authorities[0] if len(authorities) == 1 else "mixed",
+            "authorities_read": authorities, "read_at": read_at,
             "inventory_finished_at": pilot["discovery"]["finished_at"],
             "inventory_oldest_observed_at": pilot["discovery"]["oldest_observed_at"],
             "inventory_age_seconds": int(age), "max_inventory_age_seconds": maximum_age_seconds,
@@ -236,7 +294,9 @@ def main():
     parser.add_argument("--protected", type=Path, required=True)
     parser.add_argument("--networks", type=Path, required=True)
     parser.add_argument("--run", type=Path, required=True)
-    parser.add_argument("--url", required=True)
+    parser.add_argument("--url", help="Platform-IPAM origin; required when a move uses a Platform-IPAM pool")
+    parser.add_argument("--aws-ipam", action="store_true",
+                        help="read AWS IPAM pool allocations with ambient read-only AWS credentials")
     parser.add_argument("--max-inventory-age-seconds", type=int, required=True)
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
@@ -257,11 +317,14 @@ def main():
             network_rows = list(csv.DictReader(handle))
         check_discovery_snapshot(pilot, read_json(args.run), network_rows)
         observed = [row["cidr"] for row in network_rows]
-        token = os.environ.get("PLATFORM_IPAM_TOKEN", "")
-        rows = authority_allocations(args.url, token)
+        if not args.url and not args.aws_ipam:
+            raise ValueError("name at least one authority: --url and/or --aws-ipam")
+        rows = authority_allocations(args.url, os.environ.get("PLATFORM_IPAM_TOKEN", "")) if args.url else None
+        aws_rows = aws_ipam_allocations(approved, pilot["replacements"]["moves"]) if args.aws_ipam else None
+        # The latest read bounds the inventory age, so it is the conservative instant.
         read_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         result = verify(pilot, approved, protected, observed, rows, read_at,
-                        datetime.now(timezone.utc), args.max_inventory_age_seconds)
+                        datetime.now(timezone.utc), args.max_inventory_age_seconds, aws_rows)
         result["pilot_sha256"] = canonical_digest(pilot)
         body = json.dumps(result, sort_keys=True, indent=2) + "\n"
         if args.out:

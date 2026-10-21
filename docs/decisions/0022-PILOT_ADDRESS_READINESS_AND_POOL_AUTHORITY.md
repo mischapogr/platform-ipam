@@ -68,3 +68,10 @@ CIDR-free migration-progress export. It cannot verify AWS IPAM authority.
 An imported verifier report may be displayed by the NetBox workspace without
 giving that plugin a platform API credential; the source remains an
 operator-supplied artifact.
+
+## AWS IPAM authority, 2026-10-21
+
+[ADR 0025](0025-AWS_IPAM_AUTHORITY_HANDOFF.md) adds the separate contract
+this record required for `aws-ipam` pools. A reviewed AWS IPAM request now
+counts as a planning option. The allocation still comes only from AWS IPAM
+and is verified from a fresh AWS read.

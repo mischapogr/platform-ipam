@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  AWS IPAM handoff role for platform-ipam pilots, deployed once in the
+  account that owns the reviewed IPAM pools (the IPAM delegated
+  administrator). It always grants ec2:GetIpamPoolAllocations on the named
+  pools for verification. Only with EnableAllocation=true does it also grant
+  ec2:AllocateIpamPoolCidr on those pools, which
+  scripts/aws/aws-ipam-reserve.py --execute uses. It never grants
+  ReleaseIpamPoolAllocation, pool changes or any other write: releasing a
+  rejected allocation is an operator decision outside this role.
+  Nothing in this template has been deployed or validated against a live
+  AWS account.
+
+Parameters:
+  RoleName:
+    Type: String
+    Default: PlatformIpamIpamHandoff
+    MinLength: 1
+    MaxLength: 64
+    AllowedPattern: "[\\w+=,.@-]+"
+    Description: >-
+      Name of the IAM role. Deploy the template twice under different names
+      when the verifier must not be able to allocate: once with
+      EnableAllocation=false for the verifier, once with true for the
+      operator who runs the handoff.
+
+  TrustedPrincipalArn:
+    Type: String
+    AllowedPattern: "^arn:aws:iam::[0-9]{12}:role/.+$"
+    ConstraintDescription: >-
+      Must be the ARN of an IAM role — never a wildcard or account root.
+    Description: >-
+      ARN of the single operator role allowed to assume this role.
+
+  IpamPoolArns:
+    Type: CommaDelimitedList
+    Description: >-
+      Full ARNs of the reviewed AWS IPAM pools, in the form
+      arn:aws:ec2::<account-id>:ipam-pool/<ipam-pool-id> (the region field
+      is empty for IPAM pools). List exactly the pools whose
+      aws_ipam_pool_id appears in the approved address plan.
+
+  AllowedRegions:
+    Type: CommaDelimitedList
+    Description: >-
+      Locale regions of those pools. AWS IPAM allocations and allocation
+      reads are made in the pool's locale region.
+
+  EnableAllocation:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >-
+      When "true", grants ec2:AllocateIpamPoolCidr on the named pools. Leave
+      "false" for a verification-only role.
+
+Conditions:
+  EnableAllocationCondition: !Equals [!Ref EnableAllocation, "true"]
+
+Resources:
+  HandoffRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: >-
+        platform-ipam AWS IPAM pilot handoff. Reads allocations in reviewed
+        pools and, when enabled, allocates custom CIDRs from them; never
+        releases or changes pools.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TrustConfiguredPrincipal
+            Effect: Allow
+            Principal:
+              AWS: !Ref TrustedPrincipalArn
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PlatformIpamReadPoolAllocations
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadReviewedPoolAllocations
+                Effect: Allow
+                Action: ec2:GetIpamPoolAllocations
+                Resource: !Ref IpamPoolArns
+                Condition:
+                  StringEquals:
+                    ec2:Region: !Ref AllowedRegions
+        - !If
+          - EnableAllocationCondition
+          - PolicyName: PlatformIpamAllocateFromReviewedPools
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Sid: AllocateCustomCidrFromReviewedPools
+                  Effect: Allow
+                  Action: ec2:AllocateIpamPoolCidr
+                  Resource: !Split
+                    - ","
+                    - !Join
+                      - ","
+                      - - !Join [",", !Ref IpamPoolArns]
+                        - !Sub "arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:ipam-pool-allocation/*"
+                  Condition:
+                    StringEquals:
+                      ec2:Region: !Ref AllowedRegions
+          - !Ref "AWS::NoValue"
+
+Outputs:
+  RoleArn:
+    Description: ARN of the deployed AWS IPAM handoff role.
+    Value: !GetAtt HandoffRole.Arn

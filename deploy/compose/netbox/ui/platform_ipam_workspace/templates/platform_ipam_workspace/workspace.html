@@ -528,7 +528,7 @@
           <p class="small text-muted">Run as the owning tenant with <code>PLATFORM_IPAM_URL</code> and <code>PLATFORM_IPAM_TOKEN</code> set. The API selects the CIDR; a different returned CIDR needs owner review. Upload a fresh CLI verification report afterward.</p>
           {% for move in report.replacements.moves %}
             {% if move.reserve_command %}<details class="mb-2"><summary>{{ move.subject }} · CLI reserve command</summary><pre class="mt-2 mb-0">{{ move.reserve_command }}</pre></details>
-            {% elif move.authority == 'aws-ipam' %}<p class="small mb-2">{{ move.subject }}: AWS IPAM is the sole authority; live handoff is not configured.</p>
+            {% elif move.authority == 'aws-ipam' %}<p class="small mb-2">{{ move.subject }}: AWS IPAM is the sole authority. Run <code>scripts/aws/aws-ipam-reserve.py</code> with the pilot inputs (dry run first, then <code>--execute</code>), then upload a <code>verify-reservations.py --aws-ipam</code> report. See docs/AWS_IPAM_HANDOFF.md.</p>
             {% endif %}
           {% endfor %}
         </div>

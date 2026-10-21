@@ -140,7 +140,7 @@ def review_template(pilot):
 
 
 def attach_verification(pilot, verification, now=None):
-    if verification.get("version") != 1 or verification.get("authority") != "platform-ipam":
+    if verification.get("version") != 1 or verification.get("authority") not in ("platform-ipam", "aws-ipam", "mixed"):
         raise ValueError("unsupported authority verification report")
     if not pilot["discovery"]["complete"] or pilot["pilot_gates"]["planning"] != "PASS":
         raise ValueError("complete discovery and a passing planning gate are required for authority verification")
@@ -308,6 +308,7 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
     approved_count = 0
     candidate_count = 0
     target_evidence_count = 0
+    aws_request_count = 0
     claimed_conflicts = set()
     for move in progress["moves"]:
         if move["disposition"] != "replace":
@@ -329,6 +330,7 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
         if candidate and target_match:
             target_match = ipaddress.ip_network(candidate, strict=True).prefixlen == target["prefix_length"]
         candidate_count += status == "ADVISORY_CANDIDATE" and bool(candidate) and target_match
+        aws_request_count += status == "REQUEST_FROM_AWS_IPAM" and target_match
         target_fact = move.get("target_fact", "unknown")
         target_evidence_count += target_fact in ("reserved", "active")
         claimed_conflicts.update(item["conflict_id"] for item in move.get("resolves") or [])
@@ -359,8 +361,8 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
         blockers.append({"code": "NO_REVIEWED_REPLACEMENTS", "detail": "The reviewed plan names no replacement moves in the pilot scope."})
     if replacement_count and approved_count != replacement_count:
         blockers.append({"code": "MOVE_APPROVAL_INCOMPLETE", "detail": "At least one replacement has no move approval."})
-    if replacement_count and candidate_count != replacement_count:
-        blockers.append({"code": "CIDR_CANDIDATES_INCOMPLETE", "detail": "A selected move lacks a locally proposed CIDR; AWS IPAM recommendations intentionally have no CIDR."})
+    if replacement_count and candidate_count + aws_request_count != replacement_count:
+        blockers.append({"code": "CIDR_CANDIDATES_INCOMPLETE", "detail": "A selected move lacks a reviewed option: a local advisory CIDR or an AWS IPAM pool and size request."})
     unclaimed_conflicts = sorted({item["id"] for item in address["conflicts"]} - claimed_conflicts)
     if unclaimed_conflicts:
         blockers.append({"code": "CONFLICT_WITHOUT_SELECTED_MOVE", "detail": "Reviewed replacements do not claim every relevant conflict.",
@@ -458,7 +460,8 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
         "network_readiness": "NOT_ASSESSED",
         "pilot_gates": {"input": "UNKNOWN", "discovery": "UNKNOWN", "planning": "PASS" if full_coverage and
                         not address["unresolved_intent_conflicts"] and replacement_count and
-                        approved_count == replacement_count and candidate_count == replacement_count and
+                        approved_count == replacement_count and
+                        candidate_count + aws_request_count == replacement_count and
                         not unclaimed_conflicts else "UNKNOWN",
                         "allocation": "UNKNOWN"},
         "scope": {"accounts": accounts, "regions": regions},
@@ -476,7 +479,7 @@ def derive(address, progress, run, networks, network_path, run_path, assessment=
                       "observed_relationships": len(relationships)},
         "relationships": relationships,
         "replacements": {"planned": replacement_count, "approved": approved_count,
-                         "proposed_cidrs": candidate_count, "target_facts_reserved_or_active": target_evidence_count,
+                         "proposed_cidrs": candidate_count, "aws_ipam_requests": aws_request_count, "target_facts_reserved_or_active": target_evidence_count,
                          "reservations_verified": 0, "moves": moves},
         "reviewed_waves": [{"id": wave.get("id"), "name": wave.get("name"),
                              "owner": wave.get("owner"), "approval": wave.get("approval"),

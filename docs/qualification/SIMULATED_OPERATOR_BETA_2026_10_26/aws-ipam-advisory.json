@@ -1,0 +1,140 @@
+{
+  "address_readiness": "CIDR_BLOCKED",
+  "confirmed_conflicts": 1,
+  "conflicts": [
+    {
+      "fixed": false,
+      "id": "c-4d60d755b2aecdfa",
+      "impact": "confirmed",
+      "intersection": "10.20.0.0/22",
+      "kind": "equal-cidr",
+      "matrix_relation": "must_communicate",
+      "sides": [
+        {
+          "account_id": "000000000000",
+          "association_id": "vpc-cidr-assoc-000000000000",
+          "cidr": "10.20.0.0/22",
+          "environment": "unknown",
+          "fixed": false,
+          "group": "target",
+          "identity": "aws:000000000000:eu-central-1:vpc-00000000000000001:10.20.0.0/22:vpc-cidr-assoc-000000000000",
+          "name": "synthetic-target",
+          "observed_at": "2026-10-26T20:30:57Z",
+          "owner": "unknown",
+          "primary": "true",
+          "product": "unknown",
+          "region": "eu-central-1",
+          "source_file": "/tmp/platform-ipam-beta-pilot-20261026-v4/networks.csv",
+          "source_row": 2,
+          "state": "available",
+          "vpc_id": "vpc-00000000000000001"
+        },
+        {
+          "account_id": "111111111111",
+          "association_id": "vpc-cidr-assoc-111111111111",
+          "cidr": "10.20.0.0/22",
+          "environment": "unknown",
+          "fixed": false,
+          "group": "peer",
+          "identity": "aws:111111111111:eu-central-1:vpc-00000000000000002:10.20.0.0/22:vpc-cidr-assoc-111111111111",
+          "name": "synthetic-peer",
+          "observed_at": "2026-10-26T20:30:57Z",
+          "owner": "unknown",
+          "primary": "true",
+          "product": "unknown",
+          "region": "eu-central-1",
+          "source_file": "/tmp/platform-ipam-beta-pilot-20261026-v4/networks.csv",
+          "source_row": 3,
+          "state": "available",
+          "vpc_id": "vpc-00000000000000002"
+        }
+      ]
+    }
+  ],
+  "coverage_complete": true,
+  "input_limits": null,
+  "input_sha256": {
+    "approved_plan": "b0b76355b35237e81a0e04cce789b02ae4262385cdde42a78bf0967fce90779d",
+    "matrix": "2453ba8cbe5cb5ff6258aee97b4d672f0c81926dd8c055774bbcafb5d89d0eab",
+    "migration_plan": "525f76d0321f308f6c0c76bb04dde44792c503e7a3cd1e842e0e25cd2f05e6ea",
+    "networks": "c850c860467afbb5f9f0b8b4b3aa7f6a4cdd89309ec7548fb96faab5917c16d2",
+    "pilot_scope": "a90015ae353d2c537fbece13aa15203b38cefbfba7f396cdb1ce0be832b877cc",
+    "protected": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "network_readiness": "NOT_ASSESSED",
+  "notes": [
+    "All proposals are alternatives for owner review, not a decision to move every VPC.",
+    "Candidates are not reservations; current ledger, NetBox and AWS IPAM authority must be checked at execution.",
+    "No TGW route, security, DNS or traffic test contributes to network readiness."
+  ],
+  "pilot_scope": {
+    "accounts": [
+      "000000000000",
+      "111111111111",
+      "222222222222"
+    ],
+    "owner": "synthetic-operator",
+    "regions": [
+      "eu-central-1"
+    ]
+  },
+  "proposals": [
+    {
+      "account_id": "000000000000",
+      "authority": "aws-ipam",
+      "candidate_cidr": null,
+      "conflict_ids": [
+        "c-4d60d755b2aecdfa"
+      ],
+      "pool_id": "pool_dev_euc1",
+      "prefix_length": 22,
+      "reason": "AWS IPAM is the sole allocation authority; no local CIDR is selected",
+      "region": "eu-central-1",
+      "reviewed_target": true,
+      "status": "REQUEST_FROM_AWS_IPAM",
+      "target_account_id": "000000000000",
+      "target_region": "eu-central-1",
+      "vpc_id": "vpc-00000000000000001"
+    },
+    {
+      "account_id": "111111111111",
+      "authority": null,
+      "candidate_cidr": null,
+      "conflict_ids": [
+        "c-4d60d755b2aecdfa"
+      ],
+      "pool_id": null,
+      "prefix_length": 22,
+      "reason": "expected one eligible approved pool, found 0",
+      "region": "eu-central-1",
+      "reviewed_target": false,
+      "status": "NEEDS_REVIEW",
+      "target_account_id": "111111111111",
+      "target_region": "eu-central-1",
+      "vpc_id": "vpc-00000000000000002"
+    }
+  ],
+  "scope_inputs": {
+    "approved_pools": [
+      {
+        "allowed_prefix_lengths": [
+          22
+        ],
+        "authority": "aws-ipam",
+        "cidr": "10.64.0.0/16",
+        "eligible_accounts": [
+          "000000000000"
+        ],
+        "id": "pool_dev_euc1",
+        "region": "eu-central-1"
+      }
+    ],
+    "protected_ranges": [],
+    "versions": {
+      "approved_plan": 1,
+      "pilot_scope": 1
+    }
+  },
+  "unresolved_intent_conflicts": 0,
+  "version": 1
+}

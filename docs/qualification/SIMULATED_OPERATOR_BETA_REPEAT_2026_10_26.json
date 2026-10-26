@@ -1,0 +1,346 @@
+{
+  "artifact_sha256": {
+    "UNKNOWN_VARIANT/accounts.json": "56a1dbe1fead9f22cf8ccb6e92fab39b7b5f568ac3363e5e5d3ac84bf6f1694e",
+    "UNKNOWN_VARIANT/failures.csv": "97ccdc7a62f6772a1596319476b2e69b222c8680485cbb592c2eb90534954557",
+    "UNKNOWN_VARIANT/networks.csv": "776b826b082ad3fc04f63ccbad751e32aafeff0fac0ca44ac62647317827849c",
+    "UNKNOWN_VARIANT/run.json": "8460ad89df6d5b6da58d77d80fd6c3399b2db802972739a942b847fc401bb0c8",
+    "accounts.json": "56a1dbe1fead9f22cf8ccb6e92fab39b7b5f568ac3363e5e5d3ac84bf6f1694e",
+    "address.json": "26f3011b671d4f99011021004e8cd8895b1d0b84398c102a088d706e4d2e8276",
+    "approved-plan.json": "b5c3ca341107479d43f464beab3e38ab07e0f420528599c00ea574ecd6be16de",
+    "assessment.json": "2c806ec7593154ca2b47e8ff61854b9d2a6372b55441e1b06cbdd155fe99d825",
+    "check-aws-offline.json": "df6e2dce9a819f39fff13c200d5d3886b006c3c4458ee450b2a4fb1e22abb0e1",
+    "check-compose.json": "14af8d48d50c95822492da6eba4fb1a55d206aaf775f800aa9f9c1761dc99323",
+    "check-contract.json": "eb7b15052c06b722cf0aa3d4ca883527ea892886964ca59d6edcbd4c98010fe2",
+    "check-provider.json": "0d3413d4b5555a8e9608a317acc4a2fe92a02eae504484db1093a0608404b231",
+    "e2e-first.log": "8b80592e87581b73e1534abfbbdf3b05bfffb099c21d1453a19122b6a838ecc3",
+    "e2e-second.log": "a62f5056153427e8c99bd3fb49ab3fd4a4c4f8d46b2870f2e23f1d8cd7c2e3e7",
+    "failures.csv": "4a74f351d27af022b21d28bb586de98baf540360d6e43d2facee93553e0019da",
+    "matrix.yaml": "2453ba8cbe5cb5ff6258aee97b4d672f0c81926dd8c055774bbcafb5d89d0eab",
+    "migration.yaml": "444ffa96a1c59df971865258348237447cf1a1ead6690600c11c9a45deca1e13",
+    "networks.csv": "29c53a89a548b75811687a724ba10c1ca5c6f4f0c01008ed04c2d09583025099",
+    "ownership.yaml": "96cd13633bf67085081140e63a21c235492abdf2d4f00a20e583f99e49929360",
+    "pilot-reviewed.json": "8e622df9015846f010166dc45883397c335b14a82c584d208a6d81709b83626b",
+    "pilot-scope.json": "a90015ae353d2c537fbece13aa15203b38cefbfba7f396cdb1ce0be832b877cc",
+    "pilot-unreviewed.json": "a60b6d9f4ec3f59708a2ecb3b5d3efada162a26c2bf4c3594d5511e7004afc61",
+    "pilot-verified.json": "805089e9f107d8222da38afb4c6de49bc0c312769d1d8bce9248a1713ea4eb58",
+    "progress.json": "2b42f0eb6b1806f3faacad84defe821271dfd9b7fd3eea7baa5a3ee2214cca55",
+    "protected.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "review-template.json": "24730b36ee5bb55f252e603af9d82bacab1effb32d433bc7fa90e82260164b12",
+    "review.json": "f6abd4eee409ed2705a5b5c262a0aa212d73a3d08e1a8019e29e2ad64888e420",
+    "run.json": "8a5747587e5d292ea74a5e749e1b166d70bcdf728489da270f25e7a5fd942df0",
+    "terraform-after-plan.json": "25a1a7f643d1edbe846ab7882131d7bc748d5ac6433bd8fd3b2bd38f1f776b69",
+    "terraform-before-plan.json": "25a1a7f643d1edbe846ab7882131d7bc748d5ac6433bd8fd3b2bd38f1f776b69",
+    "terraform-outputs.json": "d95ccc9c596116accb18300d17e787c06f5608196552376f1bb62409392854d1",
+    "terraform-saved-plan.json": "77c79b7bcae7dd229f32965144bc15f7570f0d8d6dce53a6f8b085e1acbaba7b",
+    "terraform-unsafe-plan.json": "d934f13d358b9b4d72c23cfcddfe0dc3147117fe513dd86314c5f094e3382aba",
+    "unknown-address.json": "e9c8d67915f18818d2be0726eb0ef7b4573e8b5777026b8b67c767faf5c9c475",
+    "unknown-assessment.json": "71bf3723d525aef206b86c763fa4aecb22c59aed2d8c38ad955b2587a06137ef",
+    "verification.json": "2c8e799614acdb1cc196a19cb0311269fdb7971061ef67984c453b3af42bef8f"
+  },
+  "checks": {
+    "aws_offline": {
+      "artifact": "SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26/check-aws-offline.json",
+      "status": "PASSED"
+    },
+    "compose": {
+      "artifact": "SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26/check-compose.json",
+      "status": "PASSED"
+    },
+    "contract": {
+      "artifact": "SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26/check-contract.json",
+      "status": "PASSED"
+    },
+    "e2e_first": {
+      "artifact": "SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26/e2e-first.log",
+      "skips": 0,
+      "status": "PASSED",
+      "tests": 71
+    },
+    "e2e_second": {
+      "artifact": "SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26/e2e-second.log",
+      "skips": 0,
+      "status": "PASSED",
+      "tests": 55
+    },
+    "provider": {
+      "artifact": "SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26/check-provider.json",
+      "status": "PASSED"
+    }
+  },
+  "cleanup": {
+    "local_images": "retained_as_cache",
+    "project": "platform-ipam-beta-e2e-20261026second",
+    "remaining_project_containers": 0,
+    "remaining_project_volumes": 0
+  },
+  "completed_at": "2026-10-26T21:29:11.464473Z",
+  "encountered_failures": [
+    {
+      "observation": "Health briefly became unhealthy while migrations continued.",
+      "product_defect": false,
+      "resolution": "Waited for healthy state; no restart or reset.",
+      "stage": "NetBox first startup"
+    },
+    {
+      "observation": "/usr/bin/time could not launch shell function terraform_local (exit 127).",
+      "product_defect": false,
+      "resolution": "Ran the unchanged plan through the function directly and timed with shell timestamps.",
+      "stage": "operator timing wrapper"
+    },
+    {
+      "observation": "Probe expected top-level verification.status and raised KeyError.",
+      "product_defect": false,
+      "resolution": "Used allocation_gate and per-result status; verifier itself passed.",
+      "stage": "operator report assertion"
+    },
+    {
+      "observation": "Probe expected an output file after verifier exit 4; none was written.",
+      "product_defect": false,
+      "resolution": "Checked exit 4 and the explicit stderr diagnostic.",
+      "stage": "operator stale-output probe"
+    },
+    {
+      "observation": "Runbook linked an uncommitted first packet absent from the copied overlay; OpenAPI check lacked Docker access.",
+      "product_defect": false,
+      "resolution": "Copied the referenced packet and reran with Docker access; contract passed.",
+      "stage": "initial clone contract check"
+    },
+    {
+      "observation": "Stub tests passed but shellcheck containers lacked Docker access.",
+      "product_defect": false,
+      "resolution": "Reran with Docker access; offline checks passed.",
+      "stage": "initial offline AWS check"
+    },
+    {
+      "observation": "create-env.sh defaults to .env in the current directory, while the runbook starts at repository root.",
+      "product_defect": true,
+      "resolution": "Used the explicit deploy/compose/.env target and corrected the runbook instruction.",
+      "stage": "runbook environment setup"
+    }
+  ],
+  "journey": {
+    "allocation_id": "alloc_b19518a57bf1b5a1b7abdcde7ddd8abe",
+    "allocation_key": "beta/20261026211430/primary",
+    "allocations_after_plan": 0,
+    "allocations_before_plan": 0,
+    "candidate_cidr": "10.64.0.0/22",
+    "cidr_unknown_in_plan": true,
+    "confirmed_must_communicate_overlap": 1,
+    "gates_at_verification": {
+      "allocation": "PASS",
+      "discovery": "UNKNOWN",
+      "input": "PASS",
+      "planning": "PASS"
+    },
+    "netbox_prefix_id": 2,
+    "normal_followup_plan_exit": 0,
+    "pool_id": "pool_dev_euc1",
+    "requested_cells": 3,
+    "returned_cidr": "10.64.0.0/22",
+    "review_source": "named synthetic attestation",
+    "reviewed_by": "codex-second-operator-simulation",
+    "saved_plan_actions": [
+      "create"
+    ],
+    "scanned_cells": 3,
+    "terraform_apply_exit": 0,
+    "verification_is_historical_after_valid_until": true,
+    "verification_read_at": "2026-10-26T21:15:34.946719Z",
+    "verification_status": "VERIFIED",
+    "verification_valid_until": "2026-10-26T21:22:31Z"
+  },
+  "label": "simulation-ready operator beta; repeated in a fresh local clone",
+  "limits": [
+    "synthetic_inventory_not_live_aws_discovery",
+    "discovery_gate_unknown",
+    "mock_local_identity_not_real_idp",
+    "development_compose_not_stage_or_production",
+    "no_customer_approval_or_network_connectivity_claim",
+    "aws_ipam_pool_authority_not_qualified",
+    "verification_hold_only_valid_at_recorded_read_instant",
+    "second_operator_is_agent_simulation_not_independent_human_acceptance"
+  ],
+  "operator": "Codex acting as a second local operator; no independent human acceptance claimed",
+  "refusals": {
+    "identity_replay_and_reuse": "Covered by the 126 end-to-end cases; see retained full logs.",
+    "incomplete_coverage": {
+      "candidate_cidr": null,
+      "coverage_complete": false,
+      "report": "SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26/unknown-address.json"
+    },
+    "overlap": {
+      "address_readiness": "CIDR_BLOCKED",
+      "assessment": "confirmed"
+    },
+    "stale_inventory": {
+      "diagnostic": "reservation verification: inventory is stale for allocation verification (196 seconds)",
+      "output_file_written": false,
+      "verifier_exit": 4
+    },
+    "unsafe_same_key_replacement": {
+      "applied": false,
+      "guard_exit": 1,
+      "plan_actions": [
+        "delete",
+        "create"
+      ],
+      "unsafe_allocations": [
+        "platformipam_allocation.replacement"
+      ]
+    }
+  },
+  "schema_version": 1,
+  "scope": {
+    "aws_mode": "fake",
+    "customer_pilot": false,
+    "environment": "isolated development Compose",
+    "identity": "generated local development tokens",
+    "inventory": "synthetic-fixture",
+    "network_readiness": "NOT_ASSESSED",
+    "pool_authority": "platform-ipam",
+    "project": "platform-ipam-beta-e2e-20261026second"
+  },
+  "source": {
+    "api_image_id": "sha256:c007e0d6018d10105b391de7de870a6cb5ea8a3a64dcce4f248d09e800464723",
+    "application_binary_sha256": "c42597f7f50603dfd2e8376cc2a0308df19d4ca18dd014044921031fda0996d0",
+    "clone_path": "/tmp/platform-ipam-second-operator-20261026",
+    "corrected_runbook_sha256": "b2ff769ff187e6c08f7c1d8a8b559de24b6b9817514b5c4d51de8dee577d32ca",
+    "frozen_commit": "06d8e01af3fe1d0a79022fa5e3e65d14a818cc3d",
+    "frozen_tree": "a44985364c4b0ecc64e73d93a8e497da6d869e13",
+    "initial_overlay_sha256": {
+      "docs/SIMULATED_OPERATOR_BETA.md": "9ece54d1c3165e952c4918704fe6fe9ce1c4334380e0203eeb1edb55e4d07060",
+      "docs/qualification/SIMULATED_OPERATOR_BETA_2026_10_26.json": "70f344f029dd5e46890d00cf05165ed5be1739f66780b691b97b5fbd43b29041",
+      "examples/simulated-operator-beta/main.tf": "485ab31e0e74496db33d037c6bec47ff3e1152dd487d0c0f15100d24d270353e",
+      "tests/e2e/generate-simulated-pilot.py": "67557ce541185d6267868d5e21afa141f8fd2c006da38c3223b1e0f5519fbdab"
+    },
+    "netbox_image_id": "sha256:698ebc1d1ced7d87acb677f468b264ae63a50e585c71579b5ec45a192c72d77d",
+    "netbox_pinned_digest": "sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74",
+    "provider_binary_sha256": "73e363a649462377881a05ca38e0878846d19fe5a4d2749fa8b846b93c8c07bf",
+    "tracked_clone_diff": [],
+    "workflow_overlay_note": "The runbook, generator, Terraform example, and first packet are uncommitted; they were copied into the detached clone and hashed. Runtime and provider tracked source was unchanged."
+  },
+  "status": "PASSED",
+  "steps": [
+    {
+      "result": "PASSED",
+      "step": "create detached clone and copy hashed uncommitted workflow overlay"
+    },
+    {
+      "result": "PASSED",
+      "step": "generate local-only .env at deploy/compose/.env"
+    },
+    {
+      "elapsed_seconds": 7.04,
+      "result": "PASSED",
+      "step": "start NetBox"
+    },
+    {
+      "observed_elapsed_seconds": 416,
+      "observed_first": "2026-10-26T21:04:40Z",
+      "observed_healthy": "2026-10-26T21:11:36Z",
+      "result": "PASSED",
+      "step": "wait for first-run NetBox migration and health"
+    },
+    {
+      "elapsed_seconds": 20.85,
+      "result": "PASSED",
+      "step": "start remaining Compose services"
+    },
+    {
+      "elapsed_seconds": 16.36,
+      "result": "PASSED",
+      "step": "bootstrap NetBox"
+    },
+    {
+      "elapsed_seconds": 7.56,
+      "result": "PASSED",
+      "step": "seed development pool"
+    },
+    {
+      "elapsed_seconds": 64.42,
+      "result": "PASSED",
+      "step": "build CLI from pinned Go image"
+    },
+    {
+      "elapsed_seconds": 26.93,
+      "result": "PASSED",
+      "step": "build provider from pinned Go image"
+    },
+    {
+      "elapsed_seconds": 0.31,
+      "result": "PASSED",
+      "step": "generate synthetic pilot"
+    },
+    {
+      "elapsed_seconds": 0.05,
+      "result": "PASSED",
+      "step": "complete named simulation review"
+    },
+    {
+      "elapsed_seconds": 1.0,
+      "result": "PASSED",
+      "step": "Terraform saved plan and zero-reservation assertion"
+    },
+    {
+      "elapsed_seconds": 1.0,
+      "result": "PASSED",
+      "step": "Terraform apply"
+    },
+    {
+      "elapsed_seconds": 0.0,
+      "result": "PASSED",
+      "step": "read-only authority verification"
+    },
+    {
+      "exit": 4,
+      "result": "EXPECTED_REFUSAL",
+      "step": "stale inventory refusal"
+    },
+    {
+      "exit": 1,
+      "result": "EXPECTED_REFUSAL",
+      "step": "unsafe replacement guard"
+    },
+    {
+      "elapsed_seconds": 412.0,
+      "result": "PASSED",
+      "skips": 0,
+      "step": "e2e first half",
+      "test_seconds": 380.311,
+      "tests": 71
+    },
+    {
+      "elapsed_seconds": 215.0,
+      "result": "PASSED",
+      "skips": 0,
+      "step": "e2e second half without reset",
+      "test_seconds": 215.741,
+      "tests": 55
+    },
+    {
+      "elapsed_seconds": 15.011,
+      "result": "PASSED",
+      "step": "contract check"
+    },
+    {
+      "elapsed_seconds": 2.16,
+      "result": "PASSED",
+      "step": "compose check"
+    },
+    {
+      "elapsed_seconds": 43.605,
+      "result": "PASSED",
+      "step": "provider check"
+    },
+    {
+      "elapsed_seconds": 6.621,
+      "result": "PASSED",
+      "step": "aws_offline check"
+    },
+    {
+      "elapsed_seconds": 11.0,
+      "result": "PASSED",
+      "step": "remove only disposable project and its volumes"
+    }
+  ]
+}

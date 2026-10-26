@@ -1,0 +1,12 @@
+{
+  "accounts": [
+    "000000000000",
+    "111111111111",
+    "222222222222"
+  ],
+  "owner": "synthetic-operator",
+  "regions": [
+    "eu-central-1"
+  ],
+  "version": 1
+}

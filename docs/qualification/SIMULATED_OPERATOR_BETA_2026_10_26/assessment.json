@@ -1,0 +1,138 @@
+{
+  "report_version": 1,
+  "inputs": [
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/accounts.json",
+      "sha256": "56a1dbe1fead9f22cf8ccb6e92fab39b7b5f568ac3363e5e5d3ac84bf6f1694e"
+    },
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/failures.csv",
+      "sha256": "4a74f351d27af022b21d28bb586de98baf540360d6e43d2facee93553e0019da"
+    },
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/matrix.yaml",
+      "sha256": "2453ba8cbe5cb5ff6258aee97b4d672f0c81926dd8c055774bbcafb5d89d0eab"
+    },
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/networks.csv",
+      "sha256": "c850c860467afbb5f9f0b8b4b3aa7f6a4cdd89309ec7548fb96faab5917c16d2"
+    },
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/ownership.yaml",
+      "sha256": "96cd13633bf67085081140e63a21c235492abdf2d4f00a20e583f99e49929360"
+    },
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/protected.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/run.json",
+      "sha256": "da094122d019fa5be89e69be9981354ca984c611147e86377f933c6ad6cf3569"
+    }
+  ],
+  "input_limits": null,
+  "coverage": {
+    "complete": true,
+    "failed": null,
+    "partial": null,
+    "not_attempted": null,
+    "read_empty": null,
+    "run_missing": false,
+    "accounts_missing": false,
+    "row_count_short": null,
+    "row_count_exceeded": null
+  },
+  "summary": {
+    "sentence": "across the AWS network data actually observed, 1 VPC/CIDR relationship(s) prevent the intended connectivity (1 confirmed, 0 potential, 0 unknown)",
+    "total_relationships": 1,
+    "by_kind": [
+      {
+        "kind": "equal-cidr",
+        "count": 1
+      },
+      {
+        "kind": "contains",
+        "count": 0
+      }
+    ],
+    "by_impact": [
+      {
+        "impact": "confirmed",
+        "count": 1
+      },
+      {
+        "impact": "potential",
+        "count": 0
+      },
+      {
+        "impact": "unknown",
+        "count": 0
+      }
+    ],
+    "fixed_relationships": 0,
+    "incomplete_accounts": 0,
+    "incomplete_region_pairs": 0,
+    "implicated_vpcs": 0,
+    "duplicate_observations": 0,
+    "unknown_ownership_sides": 0,
+    "decisions_decided": 0,
+    "decisions_undecided": 1,
+    "decisions_stale": 0
+  },
+  "conflicts": [
+    {
+      "id": "c-4d60d755b2aecdfa",
+      "kind": "equal-cidr",
+      "impact": "confirmed",
+      "matrix_relation": "must_communicate",
+      "intersection": "10.20.0.0/22",
+      "fixed": false,
+      "sides": [
+        {
+          "identity": "aws:000000000000:eu-central-1:vpc-00000000000000001:10.20.0.0/22:vpc-cidr-assoc-000000000000",
+          "account_id": "000000000000",
+          "region": "eu-central-1",
+          "vpc_id": "vpc-00000000000000001",
+          "cidr": "10.20.0.0/22",
+          "association_id": "vpc-cidr-assoc-000000000000",
+          "primary": "true",
+          "name": "synthetic-target",
+          "state": "available",
+          "observed_at": "2026-10-26T20:30:57Z",
+          "product": "synthetic-target",
+          "environment": "development",
+          "owner": "synthetic-operator",
+          "group": "target",
+          "fixed": false,
+          "source_file": "/tmp/platform-ipam-beta-pilot-20261026-v4/networks.csv",
+          "source_row": 2
+        },
+        {
+          "identity": "aws:111111111111:eu-central-1:vpc-00000000000000002:10.20.0.0/22:vpc-cidr-assoc-111111111111",
+          "account_id": "111111111111",
+          "region": "eu-central-1",
+          "vpc_id": "vpc-00000000000000002",
+          "cidr": "10.20.0.0/22",
+          "association_id": "vpc-cidr-assoc-111111111111",
+          "primary": "true",
+          "name": "synthetic-peer",
+          "state": "available",
+          "observed_at": "2026-10-26T20:30:57Z",
+          "product": "synthetic-peer",
+          "environment": "development",
+          "owner": "synthetic-operator",
+          "group": "peer",
+          "fixed": false,
+          "source_file": "/tmp/platform-ipam-beta-pilot-20261026-v4/networks.csv",
+          "source_row": 3
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "kind": "reachability-disclaimer",
+      "message": "no route table, Transit Gateway attachment, propagation or traffic test was read; nothing in this report asserts that any two workloads can or cannot reach each other"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "groups": [
+    {
+      "id": "target",
+      "members": [
+        "000000000000"
+      ]
+    },
+    {
+      "id": "peer",
+      "members": [
+        "111111111111"
+      ]
+    }
+  ],
+  "must_communicate": [
+    [
+      "target",
+      "peer"
+    ]
+  ],
+  "must_stay_isolated": [],
+  "shared_services": [],
+  "version": 1
+}

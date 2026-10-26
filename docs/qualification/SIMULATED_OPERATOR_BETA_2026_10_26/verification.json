@@ -1,0 +1,28 @@
+{
+  "allocation_gate": "PASS",
+  "authority": "platform-ipam",
+  "inventory_age_seconds": 197,
+  "inventory_finished_at": "2026-10-26T20:31:57Z",
+  "inventory_oldest_observed_at": "2026-10-26T20:30:57Z",
+  "max_inventory_age_seconds": 600,
+  "network_readiness": "NOT_ASSESSED",
+  "pilot_sha256": "6d189b2d616fb43b8b885fa7aa3bbebfb8a0dceccd3f73609843c29963c1cafd",
+  "read_at": "2026-10-26T20:34:14.676036Z",
+  "required": 1,
+  "results": [
+    {
+      "allocation_id": "alloc_47c31973b74195cb6630d13160cf422d",
+      "allocation_key": "beta/20261026/primary",
+      "authority": "platform-ipam",
+      "pool_id": "pool_dev_euc1",
+      "proposal_cidr": "10.64.0.0/22",
+      "reasons": [],
+      "returned_cidr": "10.64.0.0/22",
+      "status": "VERIFIED",
+      "subject": "aws:000000000000:eu-central-1:vpc-00000000000000001"
+    }
+  ],
+  "valid_until": "2026-10-26T20:40:57Z",
+  "verified": 1,
+  "version": 1
+}

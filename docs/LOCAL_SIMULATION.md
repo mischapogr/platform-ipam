@@ -2,6 +2,14 @@
 
 Status: local development route, 2026-09-23. The default integration environment remains Docker Compose. LS1 and LS2 have passed against isolated Compose projects; LS3 has passed a local kind chart-controller probe. It does not turn simulated results into stage, production, AWS, Entra ID, or Windows Active Directory evidence.
 
+The [2026-10-26 simulated operator beta](SIMULATED_OPERATOR_BETA.md) binds a
+fresh synthetic conflict review, Terraform reservation, authenticated
+verification, NetBox projection and current-source regression run. Its
+[evidence packet](qualification/SIMULATED_OPERATOR_BETA_2026_10_26.json)
+records 126 e2e tests, 11 workspace tests and one browser flow with the exact
+source/image and input hashes. The local reservation verification has an
+expiry and the customer discovery gate remains `UNKNOWN`.
+
 ## Current Compose baseline
 
 The core Compose stack exercises the API, worker, PostgreSQL ledger, NetBox, fake AWS observation service, REST/CLI/Terraform clients, onboarding, adoption, and operator permissions. The [end-to-end suite](../tests/e2e/README.md) is the integration gate. The 2026-09-23 isolated run passed 71 and 55 tests in its two discovery halves, the PostgreSQL storage suite, and `seed` against the development NetBox; see [the work-plan closeout](WORK_PLAN.md#3-packages).

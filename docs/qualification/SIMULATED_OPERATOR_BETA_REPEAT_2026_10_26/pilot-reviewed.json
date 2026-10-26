@@ -1,0 +1,312 @@
+{
+  "blockers": [
+    {
+      "code": "ALLOCATION_VERIFICATION_NOT_SUPPLIED",
+      "detail": "No current authority verification report was supplied; target facts do not prove the returned CIDR or pool."
+    },
+    {
+      "code": "CURRENT_ADDRESS_CONFLICTS",
+      "detail": "Observed VPC conflicts remain until a later discovery proves otherwise."
+    }
+  ],
+  "conflicts": {
+    "confirmed": 1,
+    "observed_relationships": 1,
+    "unresolved_intent": 0
+  },
+  "current_address_readiness": "CIDR_BLOCKED",
+  "discovery": {
+    "cells": [
+      {
+        "account_id": "000000000000",
+        "observed_at": "2026-10-26T21:12:31Z",
+        "reason": null,
+        "region": "eu-central-1",
+        "stage": null,
+        "status": "succeeded"
+      },
+      {
+        "account_id": "111111111111",
+        "observed_at": "2026-10-26T21:12:31Z",
+        "reason": null,
+        "region": "eu-central-1",
+        "stage": null,
+        "status": "succeeded"
+      },
+      {
+        "account_id": "222222222222",
+        "observed_at": "2026-10-26T21:12:31Z",
+        "reason": null,
+        "region": "eu-central-1",
+        "stage": null,
+        "status": "succeeded"
+      }
+    ],
+    "collector_version": "synthetic-beta-v1",
+    "complete": true,
+    "duration_seconds": 120,
+    "finished_at": "2026-10-26T21:13:31Z",
+    "inventory_vpcs": [
+      {
+        "account_id": "000000000000",
+        "cidrs": [
+          "10.20.0.0/22"
+        ],
+        "name": "synthetic-target",
+        "overlap_status": "CONFIRMED_CONFLICT",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-00000000000000001"
+      },
+      {
+        "account_id": "111111111111",
+        "cidrs": [
+          "10.20.0.0/22"
+        ],
+        "name": "synthetic-peer",
+        "overlap_status": "CONFIRMED_CONFLICT",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-00000000000000002"
+      },
+      {
+        "account_id": "222222222222",
+        "cidrs": [
+          "10.30.0.0/22"
+        ],
+        "name": "synthetic-third",
+        "overlap_status": "NO_OBSERVED_OVERLAP",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-00000000000000003"
+      }
+    ],
+    "newest_observed_at": "2026-10-26T21:12:31Z",
+    "oldest_observed_at": "2026-10-26T21:12:31Z",
+    "requested_cells": 3,
+    "scanned_cells": 3,
+    "started_at": "2026-10-26T21:11:31Z",
+    "vpc_cidr_associations": 3,
+    "vpcs": 3,
+    "without_observed_overlap": 1
+  },
+  "input_review": {
+    "discovery_reasons": [
+      "LIVE_COLLECTION_NOT_REVIEWED"
+    ],
+    "discovery_valid_until": null,
+    "reviewed_at": "2026-10-26T21:14:40.388832Z",
+    "reviewed_by": "codex-second-operator-simulation",
+    "sha256": "f6abd4eee409ed2705a5b5c262a0aa212d73a3d08e1a8019e29e2ad64888e420",
+    "source": "uploaded_reviewer_attestation"
+  },
+  "input_sha256": {
+    "approved_plan": "b5c3ca341107479d43f464beab3e38ab07e0f420528599c00ea574ecd6be16de",
+    "matrix": "2453ba8cbe5cb5ff6258aee97b4d672f0c81926dd8c055774bbcafb5d89d0eab",
+    "migration_plan": "444ffa96a1c59df971865258348237447cf1a1ead6690600c11c9a45deca1e13",
+    "migration_plans": [
+      "444ffa96a1c59df971865258348237447cf1a1ead6690600c11c9a45deca1e13"
+    ],
+    "networks": "29c53a89a548b75811687a724ba10c1ca5c6f4f0c01008ed04c2d09583025099",
+    "pilot_scope": "a90015ae353d2c537fbece13aa15203b38cefbfba7f396cdb1ce0be832b877cc",
+    "protected": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "run": "8a5747587e5d292ea74a5e749e1b166d70bcdf728489da270f25e7a5fd942df0"
+  },
+  "network_readiness": "NOT_ASSESSED",
+  "pilot_gates": {
+    "allocation": "UNKNOWN",
+    "discovery": "UNKNOWN",
+    "input": "PASS",
+    "planning": "PASS"
+  },
+  "pilot_owner": "synthetic-operator",
+  "relationships": [
+    {
+      "id": "c-4d60d755b2aecdfa",
+      "impact": "confirmed",
+      "kind": "equal-cidr",
+      "matrix_relation": "must_communicate",
+      "next_step": "Review the selected replacement and approved pool, reserve through its sole authority, then upload a current verification report.",
+      "review_limit": "Review order is advisory: workload dependencies, route references and migration cost were not assessed.",
+      "review_order": [
+        {
+          "environment": "development",
+          "observed_subnets": 0,
+          "owner": "synthetic-operator",
+          "selected_replace": true,
+          "subject": "aws:000000000000:eu-central-1:vpc-00000000000000001"
+        },
+        {
+          "environment": "development",
+          "observed_subnets": 0,
+          "owner": "synthetic-operator",
+          "selected_replace": false,
+          "subject": "aws:111111111111:eu-central-1:vpc-00000000000000002"
+        }
+      ],
+      "selected_moves": [
+        {
+          "allocation_key": "beta/20261026211430/primary",
+          "approval": {
+            "approved_at": "2026-10-26T21:13:31Z",
+            "approved_by": "synthetic-operator",
+            "approves": "simulation only"
+          },
+          "approved": true,
+          "authority": "platform-ipam",
+          "blockers": [],
+          "conflict_ids": [
+            "c-4d60d755b2aecdfa"
+          ],
+          "depends_on": [],
+          "notes": null,
+          "owner": "synthetic-operator",
+          "pool_id": "pool_dev_euc1",
+          "proposal_status": "ADVISORY_CANDIDATE",
+          "proposal_target_match": true,
+          "proposed_cidr": "10.64.0.0/22",
+          "reservation_status": "VERIFICATION_NOT_SUPPLIED",
+          "reservation_verified": false,
+          "rollback": "Synthetic exercise; no workloads or routes exist.",
+          "subject": "aws:000000000000:eu-central-1:vpc-00000000000000001",
+          "target": {
+            "account_id": "000000000000",
+            "allocation_key": "beta/20261026211430/primary",
+            "environment": "development",
+            "prefix_length": 22,
+            "region": "eu-central-1",
+            "scope": "vpc",
+            "tenant_id": "developer"
+          },
+          "target_fact": "unknown",
+          "verifications": [],
+          "wave_id": "wave-1"
+        }
+      ],
+      "sides": [
+        {
+          "account_id": "000000000000",
+          "association_id": "vpc-cidr-assoc-000000000000",
+          "cidr": "10.20.0.0/22",
+          "environment": "development",
+          "fixed": false,
+          "group": "target",
+          "identity": "aws:000000000000:eu-central-1:vpc-00000000000000001:10.20.0.0/22:vpc-cidr-assoc-000000000000",
+          "name": "synthetic-target",
+          "observed_at": "2026-10-26T21:12:31Z",
+          "owner": "synthetic-operator",
+          "primary": "true",
+          "product": "synthetic-target",
+          "region": "eu-central-1",
+          "source_file": "/tmp/platform-ipam-second-operator-20261026/work/pilot/networks.csv",
+          "source_row": 2,
+          "state": "available",
+          "vpc_id": "vpc-00000000000000001"
+        },
+        {
+          "account_id": "111111111111",
+          "association_id": "vpc-cidr-assoc-111111111111",
+          "cidr": "10.20.0.0/22",
+          "environment": "development",
+          "fixed": false,
+          "group": "peer",
+          "identity": "aws:111111111111:eu-central-1:vpc-00000000000000002:10.20.0.0/22:vpc-cidr-assoc-111111111111",
+          "name": "synthetic-peer",
+          "observed_at": "2026-10-26T21:12:31Z",
+          "owner": "synthetic-operator",
+          "primary": "true",
+          "product": "synthetic-peer",
+          "region": "eu-central-1",
+          "source_file": "/tmp/platform-ipam-second-operator-20261026/work/pilot/networks.csv",
+          "source_row": 3,
+          "state": "available",
+          "vpc_id": "vpc-00000000000000002"
+        }
+      ]
+    }
+  ],
+  "replacements": {
+    "approved": 1,
+    "moves": [
+      {
+        "allocation_key": "beta/20261026211430/primary",
+        "approval": {
+          "approved_at": "2026-10-26T21:13:31Z",
+          "approved_by": "synthetic-operator",
+          "approves": "simulation only"
+        },
+        "approved": true,
+        "authority": "platform-ipam",
+        "blockers": [],
+        "conflict_ids": [
+          "c-4d60d755b2aecdfa"
+        ],
+        "depends_on": [],
+        "notes": null,
+        "owner": "synthetic-operator",
+        "pool_id": "pool_dev_euc1",
+        "proposal_status": "ADVISORY_CANDIDATE",
+        "proposal_target_match": true,
+        "proposed_cidr": "10.64.0.0/22",
+        "reservation_status": "VERIFICATION_NOT_SUPPLIED",
+        "reservation_verified": false,
+        "rollback": "Synthetic exercise; no workloads or routes exist.",
+        "subject": "aws:000000000000:eu-central-1:vpc-00000000000000001",
+        "target": {
+          "account_id": "000000000000",
+          "allocation_key": "beta/20261026211430/primary",
+          "environment": "development",
+          "prefix_length": 22,
+          "region": "eu-central-1",
+          "scope": "vpc",
+          "tenant_id": "developer"
+        },
+        "target_fact": "unknown",
+        "verifications": [],
+        "wave_id": "wave-1"
+      }
+    ],
+    "planned": 1,
+    "proposed_cidrs": 1,
+    "reservations_verified": 0,
+    "target_facts_reserved_or_active": 0
+  },
+  "reviewed_waves": [
+    {
+      "approval": null,
+      "id": "wave-1",
+      "moves_total": 1,
+      "name": "Synthetic replacement",
+      "owner": "synthetic-operator"
+    }
+  ],
+  "scope": {
+    "accounts": [
+      "000000000000",
+      "111111111111",
+      "222222222222"
+    ],
+    "regions": [
+      "eu-central-1"
+    ]
+  },
+  "scope_inputs": {
+    "approved_pools": [
+      {
+        "allowed_prefix_lengths": [
+          22
+        ],
+        "authority": "platform-ipam",
+        "cidr": "10.64.0.0/16",
+        "eligible_accounts": [
+          "000000000000"
+        ],
+        "id": "pool_dev_euc1",
+        "region": "eu-central-1"
+      }
+    ],
+    "protected_ranges": [],
+    "versions": {
+      "approved_plan": 1,
+      "pilot_scope": 1
+    }
+  },
+  "version": 1
+}

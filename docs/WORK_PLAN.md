@@ -91,6 +91,29 @@ The remaining items are **open**, not completed by this continuation. Authority 
 | ENV-1 | Local binary version and coordinated recovery passed; deployment gate open | The [real application recovery](qualification/LEDGER_RECOVERY_2026_10_14.json) passed migration ordering/refusal, crash/outage recovery and invalid-policy rollback. The [coordinated restore](qualification/COORDINATED_RESTORE_2026_10_14.json) exercised real NetBox/API/worker reservation commit, paired database restore and resumed allocation. The [two-image version recovery](qualification/VERSION_RECOVERY_2026_10_14.json) passed upgrade from reviewed baseline `d1807f4` to runtime `f843252`, candidate-ledger restore, older-image rollback and re-upgrade with unchanged version-1 schema, audit/hold/key/retry rows and authorization. Both images refused a missing supported schema marker without mutation. Development settings and fake AWS remain the boundary; the kind probe verifies chart-controller behavior only. | Qualify actual images, dependencies, workload identity, seed/migration ordering, forward schema compatibility, upgrade/restore and failure recovery in the target Kubernetes environment. The local same-schema run does not establish arbitrary future schema compatibility. Real OIDC discovery and live AWS remain required for stage/prod; no local-auth or fake-AWS bypass is enabled. |
 | SCALE-1 | Local API baseline recorded; customer qualification / deferred design | M4g's local 1,000-allocation measurement passed. The [ledger contention baseline](qualification/SCALE_2026_10_14.md) measures 1/4/8 clients against 1,000 synthetic allocations. An [exploratory real API/NetBox run](qualification/RESERVATION_SCALE_2026_10_14.md) committed 53 disjoint reservations, verified holds/keys/markers/audit/retries and recorded sample p95 of 0.46/7.72/10.57 seconds at 1/4/8 clients. All 34 timed 503 retries were `domain_busy`; latency includes server-directed backoff. Small samples and growing resident counts do not qualify customer capacity. Per-aggregate locking and admission concurrency remain future reviewed design work. | Agree workload/concurrency/p95 targets and topology; measure discovery and allocation/reconciliation under representative account/domain load, then scope persistence or admission changes only if the evidence requires them while preserving unresolved-operation safety. |
 
+**2026-10-26 simulated operator beta.** The
+[operator runbook](SIMULATED_OPERATOR_BETA.md) and
+[dated evidence](qualification/SIMULATED_OPERATOR_BETA_2026_10_26.json) bind a
+three-account synthetic conflict, named simulation review, current-source
+Terraform reservation, authenticated Platform-IPAM verification and NetBox
+marker to one frozen runtime/provider commit. The 71+55 development e2e cases
+passed with zero skips; 11 workspace tests and one browser flow passed.
+Incomplete coverage withheld candidates, stale verification was refused, a
+forced same-key replacement plan failed the guard, and an AWS-IPAM pool
+received no local CIDR. The verified hold was current only at its recorded
+read instant; the disposable stack was removed. Discovery remains `UNKNOWN`,
+network readiness `NOT_ASSESSED`, and the seven customer, stable-release and
+deployment gates above remain open.
+
+The [second-operator local repeat](qualification/SIMULATED_OPERATOR_BETA_REPEAT_2026_10_26.json)
+used a fresh detached clone of the same commit with hashed copies of the
+uncommitted runbook, generator, Terraform example and first packet. Its new
+synthetic reservation, verification, 71+55 end-to-end tests and four required
+checks passed; the disposable project was removed. A missing explicit `.env`
+target in the runbook was corrected. The actor was Codex in a second-operator
+role, not an independent human reviewer. AWS discovery, real identity,
+stage/production and customer acceptance remain unqualified.
+
 **2026-09-29 local continuation.** The PILOT-2 reviewer form and derivation are
 implemented for CLI and workspace upload. Fourteen focused pilot tests and the
 contract check pass. The broader AWS wrapper could not complete because this

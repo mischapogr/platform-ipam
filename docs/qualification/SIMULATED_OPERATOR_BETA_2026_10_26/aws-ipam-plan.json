@@ -1,0 +1,17 @@
+{
+  "pools": [
+    {
+      "allowed_prefix_lengths": [
+        22
+      ],
+      "authority": "aws-ipam",
+      "cidr": "10.64.0.0/16",
+      "eligible_accounts": [
+        "000000000000"
+      ],
+      "id": "pool_dev_euc1",
+      "region": "eu-central-1"
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,55 @@
+{
+  "accounts": [
+    {
+      "account_id": "000000000000",
+      "account_name": "synthetic-target",
+      "credential_source": "synthetic-fixture",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-10-26T21:12:31Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "111111111111",
+      "account_name": "synthetic-peer",
+      "credential_source": "synthetic-fixture",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-10-26T21:12:31Z",
+          "outcome": "succeeded",
+          "region": "eu-central-1",
+          "row_count": 1
+        }
+      ],
+      "regions_attempted": "known"
+    },
+    {
+      "account_id": "222222222222",
+      "account_name": "synthetic-third",
+      "credential_source": "synthetic-fixture",
+      "region_source": "configured",
+      "regions": [
+        {
+          "observed_at": "2026-10-26T21:12:31Z",
+          "outcome": "failed",
+          "region": "eu-central-1",
+          "row_count": 0
+        }
+      ],
+      "regions_attempted": "known"
+    }
+  ],
+  "configured_regions": [
+    "eu-central-1"
+  ],
+  "finished_at": "2026-10-26T21:13:31Z",
+  "script_version": "synthetic-beta-v1",
+  "started_at": "2026-10-26T21:11:31Z"
+}

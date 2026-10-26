@@ -1,0 +1,41 @@
+{
+  "moves": [
+    {
+      "approval": {
+        "approved_at": "2026-10-26T20:31:57Z",
+        "approved_by": "synthetic-operator",
+        "approves": "simulation only"
+      },
+      "disposition": "replace",
+      "owner": "synthetic-operator",
+      "resolves": [
+        "c-4d60d755b2aecdfa"
+      ],
+      "rollback": "Synthetic exercise; no workloads or routes exist.",
+      "subject": {
+        "account_id": "000000000000",
+        "region": "eu-central-1",
+        "vpc_id": "vpc-00000000000000001"
+      },
+      "target": {
+        "account_id": "000000000000",
+        "allocation_key": "beta/20261026/primary",
+        "environment": "development",
+        "prefix_length": 22,
+        "region": "eu-central-1",
+        "scope": "vpc",
+        "tenant_id": "developer"
+      },
+      "wave": "wave-1"
+    }
+  ],
+  "plan_id": "synthetic-operator-beta",
+  "version": 1,
+  "waves": [
+    {
+      "id": "wave-1",
+      "name": "Synthetic replacement",
+      "owner": "synthetic-operator"
+    }
+  ]
+}

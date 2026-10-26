@@ -1,0 +1,36 @@
+{
+  "approved_scope": {
+    "accounts": [
+      "000000000000",
+      "111111111111",
+      "222222222222"
+    ],
+    "regions": [
+      "eu-central-1"
+    ]
+  },
+  "decision": "approved",
+  "discovery": {
+    "max_age_seconds": null,
+    "reconciled_samples": [],
+    "run_sha256": "8a5747587e5d292ea74a5e749e1b166d70bcdf728489da270f25e7a5fd942df0",
+    "source": "not_reviewed"
+  },
+  "input_sha256": {
+    "approved_plan": "b5c3ca341107479d43f464beab3e38ab07e0f420528599c00ea574ecd6be16de",
+    "matrix": "2453ba8cbe5cb5ff6258aee97b4d672f0c81926dd8c055774bbcafb5d89d0eab",
+    "migration_plan": "444ffa96a1c59df971865258348237447cf1a1ead6690600c11c9a45deca1e13",
+    "migration_plans": [
+      "444ffa96a1c59df971865258348237447cf1a1ead6690600c11c9a45deca1e13"
+    ],
+    "networks": "29c53a89a548b75811687a724ba10c1ca5c6f4f0c01008ed04c2d09583025099",
+    "pilot_scope": "a90015ae353d2c537fbece13aa15203b38cefbfba7f396cdb1ce0be832b877cc",
+    "protected": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "run": "8a5747587e5d292ea74a5e749e1b166d70bcdf728489da270f25e7a5fd942df0"
+  },
+  "pilot_owner": "synthetic-operator",
+  "pilot_sha256": "a60b6d9f4ec3f59708a2ecb3b5d3efada162a26c2bf4c3594d5511e7004afc61",
+  "reviewed_at": "2026-10-26T21:14:40.388832Z",
+  "reviewed_by": "codex-second-operator-simulation",
+  "version": 1
+}

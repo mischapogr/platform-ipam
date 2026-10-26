@@ -1,0 +1,19 @@
+{
+  "Accounts": [
+    {
+      "Id": "000000000000",
+      "Name": "synthetic-target",
+      "Status": "ACTIVE"
+    },
+    {
+      "Id": "111111111111",
+      "Name": "synthetic-peer",
+      "Status": "ACTIVE"
+    },
+    {
+      "Id": "222222222222",
+      "Name": "synthetic-third",
+      "Status": "ACTIVE"
+    }
+  ]
+}

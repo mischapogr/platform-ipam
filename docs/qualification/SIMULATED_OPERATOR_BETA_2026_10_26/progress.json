@@ -1,0 +1,267 @@
+{
+  "report_version": 1,
+  "inputs": [
+    {
+      "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/migration.yaml",
+      "sha256": "525f76d0321f308f6c0c76bb04dde44792c503e7a3cd1e842e0e25cd2f05e6ea"
+    }
+  ],
+  "input_limits": [
+    "evidence-scope-not-covered",
+    "no-evidence-supplied"
+  ],
+  "assessment": {
+    "inputs": [
+      {
+        "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/accounts.json",
+        "sha256": "56a1dbe1fead9f22cf8ccb6e92fab39b7b5f568ac3363e5e5d3ac84bf6f1694e"
+      },
+      {
+        "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/failures.csv",
+        "sha256": "4a74f351d27af022b21d28bb586de98baf540360d6e43d2facee93553e0019da"
+      },
+      {
+        "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/matrix.yaml",
+        "sha256": "2453ba8cbe5cb5ff6258aee97b4d672f0c81926dd8c055774bbcafb5d89d0eab"
+      },
+      {
+        "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/networks.csv",
+        "sha256": "c850c860467afbb5f9f0b8b4b3aa7f6a4cdd89309ec7548fb96faab5917c16d2"
+      },
+      {
+        "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/ownership.yaml",
+        "sha256": "96cd13633bf67085081140e63a21c235492abdf2d4f00a20e583f99e49929360"
+      },
+      {
+        "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/protected.json",
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      {
+        "path": "/tmp/platform-ipam-beta-pilot-20261026-v4/run.json",
+        "sha256": "da094122d019fa5be89e69be9981354ca984c611147e86377f933c6ad6cf3569"
+      }
+    ],
+    "input_limits": null,
+    "coverage": {
+      "complete": true,
+      "failed": null,
+      "partial": null,
+      "not_attempted": null,
+      "read_empty": null,
+      "run_missing": false,
+      "accounts_missing": false,
+      "row_count_short": null,
+      "row_count_exceeded": null
+    },
+    "summary": {
+      "sentence": "across the AWS network data actually observed, 1 VPC/CIDR relationship(s) prevent the intended connectivity (1 confirmed, 0 potential, 0 unknown)",
+      "total_relationships": 1,
+      "by_kind": [
+        {
+          "kind": "equal-cidr",
+          "count": 1
+        },
+        {
+          "kind": "contains",
+          "count": 0
+        }
+      ],
+      "by_impact": [
+        {
+          "impact": "confirmed",
+          "count": 1
+        },
+        {
+          "impact": "potential",
+          "count": 0
+        },
+        {
+          "impact": "unknown",
+          "count": 0
+        }
+      ],
+      "fixed_relationships": 0,
+      "incomplete_accounts": 0,
+      "incomplete_region_pairs": 0,
+      "implicated_vpcs": 0,
+      "duplicate_observations": 0,
+      "unknown_ownership_sides": 0,
+      "decisions_decided": 0,
+      "decisions_undecided": 1,
+      "decisions_stale": 0
+    }
+  },
+  "evidence": {
+    "complete": false,
+    "scopes": [],
+    "read_instants": [],
+    "digests": []
+  },
+  "summary": {
+    "sentence": "this progress report cannot make a full statement: no allocation evidence was supplied at all",
+    "derived": {
+      "moves_total": 1,
+      "fully_evidenced": 0,
+      "by_subject_fact": [
+        {
+          "value": "observed",
+          "count": 1
+        },
+        {
+          "value": "not-observed",
+          "count": 0
+        },
+        {
+          "value": "unknown",
+          "count": 0
+        }
+      ],
+      "by_target_fact": [
+        {
+          "value": "none",
+          "count": 0
+        },
+        {
+          "value": "reserved",
+          "count": 0
+        },
+        {
+          "value": "active",
+          "count": 0
+        },
+        {
+          "value": "retired",
+          "count": 0
+        },
+        {
+          "value": "mismatched",
+          "count": 0
+        },
+        {
+          "value": "unknown",
+          "count": 1
+        }
+      ],
+      "resolved_present": 1,
+      "resolved_stale": 0,
+      "unclaimed_conflicts": 0,
+      "unplanned_conflicts": 0,
+      "unmatched_subjects": 0
+    },
+    "typed": {
+      "moves_by_disposition": [
+        {
+          "value": "replace",
+          "count": 1
+        },
+        {
+          "value": "keep",
+          "count": 0
+        },
+        {
+          "value": "retire",
+          "count": 0
+        },
+        {
+          "value": "undecided",
+          "count": 0
+        }
+      ],
+      "moves_approved": 1,
+      "waves_total": 1,
+      "waves_approved": 0,
+      "blockers_total": 0,
+      "keep_blocked_by_conflict": 0
+    }
+  },
+  "waves": [
+    {
+      "id": "wave-1",
+      "name": "Synthetic replacement",
+      "owner": "synthetic-operator",
+      "moves_total": 1,
+      "fully_evidenced": 0,
+      "by_subject_fact": [
+        {
+          "value": "observed",
+          "count": 1
+        },
+        {
+          "value": "not-observed",
+          "count": 0
+        },
+        {
+          "value": "unknown",
+          "count": 0
+        }
+      ],
+      "by_target_fact": [
+        {
+          "value": "none",
+          "count": 0
+        },
+        {
+          "value": "reserved",
+          "count": 0
+        },
+        {
+          "value": "active",
+          "count": 0
+        },
+        {
+          "value": "retired",
+          "count": 0
+        },
+        {
+          "value": "mismatched",
+          "count": 0
+        },
+        {
+          "value": "unknown",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "moves": [
+    {
+      "subject": "aws:000000000000:eu-central-1:vpc-00000000000000001",
+      "account_id": "000000000000",
+      "region": "eu-central-1",
+      "vpc_id": "vpc-00000000000000001",
+      "disposition": "replace",
+      "wave_id": "wave-1",
+      "owner": "synthetic-operator",
+      "target": {
+        "tenant_id": "developer",
+        "allocation_key": "beta/20261026/primary",
+        "scope": "vpc",
+        "environment": "development",
+        "region": "eu-central-1",
+        "account_id": "000000000000",
+        "prefix_length": 22
+      },
+      "approval": {
+        "approved_by": "synthetic-operator",
+        "approved_at": "2026-10-26T20:31:57Z",
+        "approves": "simulation only"
+      },
+      "rollback": "Synthetic exercise; no workloads or routes exist.",
+      "subject_fact": "observed",
+      "unmatched": false,
+      "target_fact": "unknown",
+      "resolves": [
+        {
+          "conflict_id": "c-4d60d755b2aecdfa",
+          "status": "present"
+        }
+      ],
+      "fully_evidenced": false
+    }
+  ],
+  "unplanned_conflicts": null,
+  "notes": [
+    "no route table, Transit Gateway attachment, propagation or traffic test was read; nothing in this report asserts that any two workloads can or cannot reach each other",
+    "this report describes address compatibility for the target design the plan names, and nothing about routes, Transit Gateway attachments, propagations, security controls, DNS or application connectivity"
+  ]
+}

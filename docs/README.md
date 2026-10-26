@@ -16,6 +16,7 @@ The implementation is grounded in these contracts. External compatibility, live 
 | [Restore runbook](../deploy/runbooks/RESTORE.md) | Coordinated ledger/inventory restore and isolated saved-pilot snapshot recovery/access rehearsal |
 | [Deployment environments](DEPLOYMENT.md) | Docker Compose for development; Helm/Kubernetes for stage and prod; migration and promotion flow |
 | [Local simulation](LOCAL_SIMULATION.md) | Compose-first validation and the next AWS, identity, and Kubernetes simulation gates |
+| [Simulated operator beta](SIMULATED_OPERATOR_BETA.md) | Disposable, source-bound synthetic conflict review, Platform-IPAM reservation, Terraform and verification workflow |
 | [Adoption runbook](../deploy/runbooks/ADOPTION.md) | Giving an imported network an owner with `platform-ipam adopt plan\|apply`: prerequisites, the input table, verdicts, `adoption_stuck`, no undo |
 | [Work plan](WORK_PLAN.md) | Packaged next steps with the model and effort each one needs |
 | [Operator UI authentication](GUI_AUTHENTICATION.md) | Basic, mock Entra ID and OpenLDAP modes implemented in Compose; real identity providers remain unverified |

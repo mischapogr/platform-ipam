@@ -1,0 +1,20 @@
+[
+  {
+    "account_id": "000000000000",
+    "environment": "development",
+    "owner": "synthetic-operator",
+    "product": "synthetic-target"
+  },
+  {
+    "account_id": "111111111111",
+    "environment": "development",
+    "owner": "synthetic-operator",
+    "product": "synthetic-peer"
+  },
+  {
+    "account_id": "222222222222",
+    "environment": "development",
+    "owner": "synthetic-operator",
+    "product": "synthetic-third"
+  }
+]

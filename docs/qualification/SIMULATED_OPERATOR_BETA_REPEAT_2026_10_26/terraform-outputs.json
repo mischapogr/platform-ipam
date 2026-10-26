@@ -1,0 +1,12 @@
+{
+  "allocation_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "alloc_b19518a57bf1b5a1b7abdcde7ddd8abe"
+  },
+  "cidr": {
+    "sensitive": false,
+    "type": "string",
+    "value": "10.64.0.0/22"
+  }
+}

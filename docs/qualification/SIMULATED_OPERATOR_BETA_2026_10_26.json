@@ -1,0 +1,198 @@
+{
+  "checks": {
+    "aws_offline": {
+      "log_root": "/tmp/platform-ipam-aws-8tqiz5z_/",
+      "status": "PASSED"
+    },
+    "compose": {
+      "log_root": "/tmp/platform-ipam-compose-3cxsp9zm/",
+      "status": "PASSED"
+    },
+    "contract": {
+      "log_root": "/tmp/platform-ipam-contract-gzttnjwt/",
+      "status": "PASSED"
+    },
+    "e2e": {
+      "first": {
+        "log": "/tmp/platform-ipam-beta-e2e-first.log",
+        "seconds": 374.009,
+        "skips": 0,
+        "status": "PASSED",
+        "tests": 71
+      },
+      "second": {
+        "log": "/tmp/platform-ipam-beta-e2e-second.log",
+        "seconds": 213.729,
+        "skips": 0,
+        "status": "PASSED",
+        "tests": 55
+      }
+    },
+    "new_terraform_example_fmt": {
+      "image": "hashicorp/terraform:1.14",
+      "status": "PASSED"
+    },
+    "provider": {
+      "log_root": "/tmp/platform-ipam-provider-y3rywb52/",
+      "status": "PASSED"
+    },
+    "runbook_shell_syntax": {
+      "shell_blocks": 9,
+      "status": "PASSED"
+    },
+    "workspace_browser": {
+      "fixture": "dated synthetic 100-account demo, separate from the three-account reservation journey",
+      "log": "/tmp/platform-ipam-beta-workspace-browser.log",
+      "status": "PASSED",
+      "tests": 1
+    },
+    "workspace_plugin": {
+      "log": "/tmp/platform-ipam-beta-workspace-tests.log",
+      "status": "PASSED",
+      "tests": 11
+    }
+  },
+  "cleanup": {
+    "project": "platform-ipam-beta-e2e-20261026",
+    "project_images": "retained_as_local_cache",
+    "remaining_project_containers": 0,
+    "remaining_project_volumes": 0
+  },
+  "completed_at": "2026-10-26T20:55:04.091671+00:00",
+  "input_and_report_sha256": {
+    "UNKNOWN_VARIANT/accounts.json": "56a1dbe1fead9f22cf8ccb6e92fab39b7b5f568ac3363e5e5d3ac84bf6f1694e",
+    "UNKNOWN_VARIANT/failures.csv": "97ccdc7a62f6772a1596319476b2e69b222c8680485cbb592c2eb90534954557",
+    "UNKNOWN_VARIANT/networks.csv": "d1b52f1dc8541cf3d66d551e9b6ae7c3af54f85951dc2753494d851e1d3fa0bb",
+    "UNKNOWN_VARIANT/run.json": "d4be04ef47a2df886b0dec09f12762b54fea88e8ffe6eca33d5490e3722bb4b7",
+    "accounts.json": "56a1dbe1fead9f22cf8ccb6e92fab39b7b5f568ac3363e5e5d3ac84bf6f1694e",
+    "address.json": "7300a465479adec0507cff7acc63eff0ecbd20270177385d4d4d1fadc26ab19c",
+    "approved-plan.json": "b5c3ca341107479d43f464beab3e38ab07e0f420528599c00ea574ecd6be16de",
+    "assessment.json": "04179435f698782298578be5bf5a8a5477be8e927fc2354a118de14cc52fa010",
+    "aws-ipam-advisory.json": "e0e747097eb9af861e759846d6a7566e1831cdc5556ad145cbdb0e8585c5d533",
+    "aws-ipam-plan.json": "b0b76355b35237e81a0e04cce789b02ae4262385cdde42a78bf0967fce90779d",
+    "failures.csv": "4a74f351d27af022b21d28bb586de98baf540360d6e43d2facee93553e0019da",
+    "guard-accepted.json": "930af44c475a7f1b0a258285605530d137c7f0bcdcfcf5354527901b3d324af0",
+    "guard-refused.json": "6f0e2b168b4375295d4d1b8054775486a671e2b3fdb2ffb005609ef5f39dcf5f",
+    "matrix.yaml": "2453ba8cbe5cb5ff6258aee97b4d672f0c81926dd8c055774bbcafb5d89d0eab",
+    "migration.yaml": "525f76d0321f308f6c0c76bb04dde44792c503e7a3cd1e842e0e25cd2f05e6ea",
+    "networks.csv": "c850c860467afbb5f9f0b8b4b3aa7f6a4cdd89309ec7548fb96faab5917c16d2",
+    "ownership.yaml": "96cd13633bf67085081140e63a21c235492abdf2d4f00a20e583f99e49929360",
+    "pilot-plan.json": "da3aa55241d26e9a61133084c2f628c8f5fdbfd913cf1a6f911ba6c52dab9bd0",
+    "pilot-reviewed.json": "6d189b2d616fb43b8b885fa7aa3bbebfb8a0dceccd3f73609843c29963c1cafd",
+    "pilot-scope.json": "a90015ae353d2c537fbece13aa15203b38cefbfba7f396cdb1ce0be832b877cc",
+    "pilot-verified.json": "f1f22d115e0a57aaf9bdf5899ea1a53b1eb0549068dfc2a37f4188cccbef624a",
+    "progress.json": "4020dbaf3e3879f98a612ce040794f475d00fda5f921d6320ea86f90c0a12716",
+    "protected.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "review.json": "f7d89f7afd3fc33ccc6d8f01127c88ae05d9d497e15fc287e8662893e6991a75",
+    "run.json": "da094122d019fa5be89e69be9981354ca984c611147e86377f933c6ad6cf3569",
+    "terraform-outputs.json": "5b93fa0594dc9cd4dc8f9c1667c03befdd1acfc78e81289b6675480640df5b3b",
+    "unknown-address.json": "964ac3991e6ca0813f29765d5f7f347de525b6de4e1a3a1650c6813bae77cbab",
+    "unknown-assessment.json": "9f81c217d133247b408ef80222f1b671765124821a84cf71f217cd8a36da7a6d",
+    "unsafe-plan.json": "e6f02e610b67db4c28158fcffb5eaefec6fc7abce2d74e22e1124968f7f02af7",
+    "verification.json": "a8aad2c30340d2e2c47b3aadb5d3bbde5b623907d06344e2cffabc52652251bf"
+  },
+  "label": "simulation-ready operator beta",
+  "limits": [
+    "synthetic_inventory_not_live_aws_discovery",
+    "input_review_is_synthetic_not_customer_approval",
+    "discovery_gate_unknown",
+    "aws_ipam_authority_not_qualified",
+    "mock_local_identity_not_real_idp",
+    "development_compose_not_stage_or_production",
+    "customer_scale_and_network_connectivity_not_assessed",
+    "offline_pilot_inventory_not_loaded_as_runtime_fake_cloud_resource_fixture",
+    "workspace_browser_uses_separate_dated_synthetic_demo"
+  ],
+  "operator_journey": {
+    "advisory_cidr": "10.64.0.0/22",
+    "allocation_id": "alloc_47c31973b74195cb6630d13160cf422d",
+    "allocations_after_plan": 0,
+    "authority_verification_is_historical_after_valid_until": true,
+    "authority_verification_read_at": "2026-10-26T20:34:14.676036Z",
+    "authority_verification_status": "VERIFIED",
+    "authority_verification_valid_until": "2026-10-26T20:40:57Z",
+    "confirmed_must_communicate_overlaps": 1,
+    "gates_at_verification": {
+      "allocation": "PASS",
+      "discovery": "UNKNOWN",
+      "input": "PASS",
+      "planning": "PASS"
+    },
+    "initial_saved_plan_guard": "PASSED",
+    "netbox_prefix_id": 2,
+    "normal_followup_plan_exit": 0,
+    "offline_inventory_and_runtime_fake_cloud_are_distinct_inputs": true,
+    "requested_cells": 3,
+    "returned_cidr": "10.64.0.0/22",
+    "review_source": "named synthetic operator attestation",
+    "reviewed_replacement_key": "beta/20261026/primary",
+    "scanned_cells": 3,
+    "terraform_apply_exit": 0,
+    "terraform_plan_exit": 0
+  },
+  "refusals": {
+    "aws_ipam_pool": {
+      "candidate_cidr": null,
+      "report": "SIMULATED_OPERATOR_BETA_2026_10_26/aws-ipam-advisory.json",
+      "status": "REQUEST_FROM_AWS_IPAM"
+    },
+    "missing_account_region_cell": {
+      "coverage_complete": false,
+      "report": "SIMULATED_OPERATOR_BETA_2026_10_26/unknown-address.json",
+      "selected_candidate": null
+    },
+    "overlap": {
+      "address_readiness": "CIDR_BLOCKED",
+      "assessment": "confirmed",
+      "e2e_case": "test_07_row_overlapping_a_live_allocation_is_refused"
+    },
+    "stale_inventory": {
+      "diagnostic": "inventory is stale for allocation verification (232 seconds)",
+      "max_inventory_age_seconds": 1,
+      "verifier_exit": 4
+    },
+    "unsafe_replacement": {
+      "applied": false,
+      "guard_exit": 1,
+      "unsafe_allocations": [
+        "platformipam_allocation.replacement"
+      ]
+    },
+    "unsafe_replay_or_reuse_e2e_cases": [
+      "test_replaying_one_allocation_key_returns_one_allocation",
+      "test_destroy_releases_the_allocation_without_freeing_it_immediately"
+    ],
+    "wrong_identity": {
+      "diagnostic": "HTTP 422 policy_violation: no eligible pool matches the request",
+      "direct_ops_client_exit": 5,
+      "e2e_case": "test_ops_identity_cannot_reserve"
+    }
+  },
+  "schema_version": 1,
+  "scope": {
+    "aws_mode": "fake",
+    "customer_pilot": false,
+    "environment": "isolated development Compose",
+    "inventory": "synthetic-fixture",
+    "network_readiness": "NOT_ASSESSED",
+    "pool_authority": "platform-ipam"
+  },
+  "source": {
+    "api_image_id": "sha256:29cc61e8614723431393bb033a2e406b90299f8eab89fa249cdf3d6654bbe149",
+    "application_binary_sha256": "c42597f7f50603dfd2e8376cc2a0308df19d4ca18dd014044921031fda0996d0",
+    "commit": "06d8e01af3fe1d0a79022fa5e3e65d14a818cc3d",
+    "generator_input_reproduction": {
+      "byte_identical": 14,
+      "files_compared": 14,
+      "method": "re-ran current generator at the recorded synthetic run timestamp and key; compared original source inputs and UNKNOWN_VARIANT"
+    },
+    "generator_sha256": "67557ce541185d6267868d5e21afa141f8fd2c006da38c3223b1e0f5519fbdab",
+    "netbox_base_digest": "sha256:59e3e5954d0243d8648f2fa7ba82cf7c7770aaeef392026cca8b21cd67411e74",
+    "provider_binary_sha256": "73e363a649462377881a05ca38e0878846d19fe5a4d2749fa8b846b93c8c07bf",
+    "terraform_example_sha256": "485ab31e0e74496db33d037c6bec47ff3e1152dd487d0c0f15100d24d270353e",
+    "tracked_runtime_and_provider_changes": [],
+    "tree": "a44985364c4b0ecc64e73d93a8e497da6d869e13",
+    "workspace_image_id": "sha256:29270448d1a2d90c0a82825ea838fd571d6c967f12ee9d3e06a8af7b877a66ab"
+  },
+  "status": "PASSED"
+}

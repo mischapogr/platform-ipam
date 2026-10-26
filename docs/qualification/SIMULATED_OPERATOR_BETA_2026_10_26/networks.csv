@@ -1,0 +1,4 @@
+account_id,account_name,region,type,resource_id,cidr,parent_id,az_id,name,state,primary,association_id,observed_at
+000000000000,synthetic-target,eu-central-1,vpc,vpc-00000000000000001,10.20.0.0/22,,,synthetic-target,available,true,vpc-cidr-assoc-000000000000,2026-10-26T20:30:57Z
+111111111111,synthetic-peer,eu-central-1,vpc,vpc-00000000000000002,10.20.0.0/22,,,synthetic-peer,available,true,vpc-cidr-assoc-111111111111,2026-10-26T20:30:57Z
+222222222222,synthetic-third,eu-central-1,vpc,vpc-00000000000000003,10.30.0.0/22,,,synthetic-third,available,true,vpc-cidr-assoc-222222222222,2026-10-26T20:30:57Z
